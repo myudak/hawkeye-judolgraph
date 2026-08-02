@@ -19,18 +19,19 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Deterministic fallback | implemented | `hawkeye/agent/investigator.py` | agent/runtime/benchmark tests | Canonical demo banner | Rule selection is intentionally simple |
 | Direct/redirect/new-tab/iframe discovery | implemented | controlled fixture/runtime modules | interaction/runtime tests | Canonical redirect scenario | Native/paid search excluded |
 | Synthetic fixture index search | implemented | `hawkeye/investigation/runtime.py` | runtime tests | Page B recollection | Reserved `.invalid` fixtures only |
-| Real Page B approval boundary | partially implemented | runtime/workspace modules | real-mode tests | Approval state | Approval is stored; external recollection is deliberately not automated |
+| Page B approval boundary | partially implemented | runtime/workspace modules | approval-gated UI/API test | Approval → controlled Page B | Reserved fixture recollection completes only after approval; external recollection is deliberately disabled |
 | Evidence-backed candidate assertions | implemented | investigation models/store/runtime | runtime tests | Assertion panel | Relationship support only, never ownership |
 | Append-only SQLite reviews | implemented | `hawkeye/investigation/store.py` | review-history tests | Append review | Single-machine label, no authenticated identity |
 | Append-only event log | implemented | `hawkeye/investigation/store.py` | event tests | Timeline | Local SQLite only |
-| Idempotent progressive graph | implemented | `hawkeye/investigation/reducer.py` | replay test | Graph/minimap/refresh | Layout is compact table/minimap, not React Flow |
-| Causal path/evidence/timeline/filter/focus/minimap | implemented | review app static assets/workspace API | `tests/test_mvp_workspace_ui.py`, Node syntax gate | Local UI | Vanilla JS used; no npm build pipeline |
-| Reduced-motion mode | implemented | `hawkeye/review_app/static/styles.css` | frontend syntax/UI API gate | OS reduced-motion setting | Visual QA still required |
+| Idempotent progressive graph | implemented | `hawkeye/investigation/reducer.py` | replay test | Canvas replay/refresh | Persistent truth remains independent of canvas state |
+| Canvas graph/pan/zoom/drag/hit-test/minimap | implemented | review app static assets | Node syntax, static safety, browser QA | Saved QQ and fixture run | Dependency-free vanilla JS; no 3D layouts |
+| Screenshot inspector/timeline/search/review | implemented | review app static assets/workspace API | `tests/test_mvp_workspace_ui.py`, browser QA | Local UI | Alternate screenshot views stay in artifact inventory |
+| Reduced-motion mode | implemented | review app static assets | frontend syntax/UI API gate | OS reduced-motion setting | Motion is removed; graph information remains |
 | Three-mode benchmark | implemented | `hawkeye/benchmark.py`, checked-in results | `tests/test_benchmark.py` | Benchmark table | Runtime rounds to milliseconds; fast runs can show 0 ms |
-| Optional sanitized live observations | deferred | evaluation manifests/protocol | existing evaluation tests | Not in official demo | Requires opt-in; not needed for completion |
+| Optional live robustness observations | implemented | ignored `evaluation/live-cases/` output | 12-target one-run matrix | Local QQ default only | 11 navigation captures; no live extraction eligible; never official test truth |
 | Public deployment/authentication | deferred | none | none | none | Requires separate threat model and authorization milestone |
 | Final proposal PDF | deferred | Markdown package | checklist | none | Human confirmations and layout review required |
-| Actual final screenshots/video | planned | `gemastik-2026/assets/` | final demo gate | final recording | Must be generated after final code gate |
+| Actual final screenshots | planned | `gemastik-2026/assets/` | final demo gate | sanitized fixture UI | Captured only after final full gate; video remains human-owned |
 
 ## Current exact verification
 

@@ -143,7 +143,7 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 
 ### Kebutuhan fungsional
 
-- Membuat case sintetis dari seed skenario terkontrol.
+- Menangkap satu seed publik berbatas atau membuat walkthrough lokal dari fixture terkontrol.
 - Menangkap halaman dengan status akses dan kecukupan yang eksplisit.
 - Menampilkan artefak awal dan kanonik beserta hash.
 - Mengekstrak 14 tipe observasi semantik publik.
@@ -151,8 +151,8 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 - Memblokir tindakan terlarang sebelum klik.
 - Menjalankan satu keputusan agen terstruktur atau fallback deterministik.
 - Menyimpan lead, Page B recollection, assertion, review, dan event SQLite.
-- Membangun graf stabil, causal path, timeline, evidence inspector, filter, focus, dan minimap dari
-  event yang sudah tersimpan.
+- Membangun graf canvas stabil dengan pan/zoom/drag/hit-testing/minimap, timeline/replay, screenshot-first
+  evidence inspector, search/focus, dan daftar relasi accessible dari bukti/event tersimpan.
 - Menghasilkan benchmark static/rule-based/agent-assisted dengan output mentah dan Markdown.
 
 ### Kebutuhan nonfungsional
@@ -208,7 +208,7 @@ animation queue.
 |---|---:|---|---|
 | Innovation | 20% | Pemisahan capture/access/adequacy; agent capability gate; event-first graph | Belum ada pembandingan novelty eksternal |
 | Impact and sustainability | 20% | Reproducible local workflow; deterministic fallback; tanpa paid search | Dampak pengguna dan model keberlanjutan belum diuji |
-| UI/usability/UX | 20% | Alur case→evidence→lead→review→graph; reduced motion; tabel accessible | Belum ada usability participants |
+| UI/usability/UX | 20% | URL scan; graph canvas; screenshot evidence; event replay; append review; reduced motion | Belum ada usability participants |
 | Development process | 20% | Milestone G4–G9, ADR, tests, raw benchmark, logical commits | Final full gate dicatat di status implementasi |
 | Idea-software alignment | 10% | Core flow diterapkan pada canonical synthetic path | Live robustness bukan benchmark truth |
 | Problem urgency | 10% | Masalah provenance dan unsafe automation dijelaskan | Angka urgensi membutuhkan sumber eksternal |
@@ -245,20 +245,23 @@ adalah 1.0000. Angka ini tidak digeneralisasi ke situs live.
 
 ## 8. Screenshot Mockup Interface Perangkat Lunak
 
-UI yang diimplementasikan terdiri atas:
+Interface final preliminary MVP memakai komposisi graph-first satu layar:
 
-1. panel pembuatan synthetic run dari 10 controlled seeds;
-2. daftar run dan status fallback/Page B;
-3. graph minimap dan relationship table dengan search/focus;
-4. evidence inspector untuk observations dan artifact links;
-5. candidate assertion serta form append-only review;
-6. agent/tool event timeline;
-7. causal path table;
-8. legacy verified-case console.
+1. command bar berisi URL publik, **Scan**, selector bukti tersimpan, dan status agent/fallback;
+2. **Site Intel** untuk status akses, kecukupan tangkapan, jumlah artefak/observasi/lead, serta
+   batas interpretasi;
+3. graph canvas animatif dengan force relaxation, glow, relation particles, pan, zoom, drag,
+   hit-testing, minimap, search, focus, fit, dan reduced-motion;
+4. evidence inspector yang langsung menampilkan screenshot tersimpan, status capture, artifact
+   links, semantic observations, kandidat, dan limitation;
+5. timeline aktual berdasarkan timestamp artefak atau event SQLite, dengan replay/pause/speed;
+6. safe review walkthrough dari selector, Page A/Page B fixture artifacts, candidate assertion,
+   dan form review append-only.
 
-TODO — requires completed test: tambahkan screenshot aktual dari demo lokal final ke
-`assets/proposal/` setelah full gate selesai, lalu catat hash, tanggal, dan langkah reproduksi di
-`FIGURE_INDEX.md`. Tidak ada mockup atau graf palsu yang boleh menggantikan screenshot aktual.
+Default lokal dapat membuka observasi QQ yang sudah tersimpan apabila root live lokal dipilih,
+tetapi aset itu diabaikan Git dan tidak digunakan pada screenshot proposal. Figure resmi memakai
+fixture `.invalid` yang disanitasi. Screenshot UI aktual, hash, viewport, commit, dan source run
+dicatat di `FIGURE_INDEX.md`; tidak ada mockup atau graf palsu.
 
 ## 9. Dokumentasi Cara Penggunaan Perangkat Lunak
 
@@ -284,13 +287,15 @@ python -m hawkeye serve --cases verification-output/demo-cases `
   --workspace verification-output/mvp-workspace --port 8760
 ```
 
-Buka `http://127.0.0.1:8760/`. Pilih controlled seed, tekan **Collect + expand safely**, periksa
-agent mode dan Page B state, buka observations/artifacts, lihat assertion, masukkan reviewer label
-dan alasan, pilih outcome, lalu tekan **Append review event**. Status dan appearance edge dibangun
-ulang dari event SQLite.
+Buka `http://127.0.0.1:8760/`. Aplikasi membuka case terverifikasi pertama; masukkan URL publik dan
+tekan **Scan** untuk tangkapan satu halaman tanpa klik atau candidate crawling. Pilih **New safe
+review walkthrough…** pada selector untuk membuat alur fixture Page A → Page B. Periksa agent mode,
+klik node canvas, buka artifacts, lihat assertion, masukkan reviewer label/alasan, pilih outcome,
+lalu tekan **Append review decision**. Replay memperlihatkan kembali urutan event tersimpan.
 
-Untuk melihat state waiting approval, buat run API atau CLI dengan `collection_mode=real_world`.
-UI dapat mencatat approval boundary tetapi tidak mengumpulkan candidate external secara otomatis.
+Approval-gated controlled run dapat dibuat melalui API/CLI dengan `collection_mode=real_world`;
+UI menampilkan tombol approval dan baru kemudian menjalankan recollection fixture `.invalid`.
+Kandidat eksternal tidak dikumpulkan oleh aksi tersebut.
 
 ### Verifikasi pengembang
 

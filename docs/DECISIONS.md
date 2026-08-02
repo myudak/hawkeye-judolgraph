@@ -149,9 +149,11 @@ attempts before the deterministic fallback emits the same normalized decision sh
 
 **Status:** accepted
 
-G7 allows automatic Page B recollection only for reserved synthetic fixtures. Real-world leads stop
-for explicit approval and approval does not itself perform collection. Assertions reference both
-page observations and artifacts; SQLite review history is append-only and current status is derived.
+G7 allows Page B recollection only for reserved synthetic fixtures. Automatic fixture mode may
+recollect immediately; approval-gated controlled mode must persist `candidate_page.approved` before
+the deterministic fixture recollection helper can store Page B. No external candidate network
+collection is enabled. Assertions reference both page observations and artifacts; SQLite review
+history is append-only and current status is derived.
 
 ## ADR-017 — Stored events build progressive graph truth
 
@@ -160,3 +162,17 @@ page observations and artifacts; SQLite review history is append-only and curren
 G8 persists investigation events before reduction. Graph state is idempotently rebuilt from the
 event log and is independent of the optional animation queue. Search leads, collected evidence,
 candidate assertions, verified relations, and rejected relations remain visually distinct.
+
+## ADR-018 — Canvas animation is a disposable evidence projection
+
+**Status:** accepted
+
+The preliminary console uses a dependency-free 2D canvas inspired by the interaction vocabulary of
+the owner-supplied WebGraph reference: continuous drawing, force relaxation, glow, edge particles,
+drag, pan, zoom, hit-testing, search, focus, and replay. HAWK-EYE does not copy WebGraph's generated
+site inventory or synthetic performance/risk values. Canvas state is rebuilt from verified case
+packages or the event reducer, and the DOM inspector/timeline remains the accessible evidence path.
+
+The local default may prefer an ignored, owner-authorized QQ observation when that case root is
+explicitly supplied to `hawkeye serve`. The application does not bundle, commit, or redistribute
+that live screenshot; deterministic `.invalid` fixtures remain official demo and benchmark truth.

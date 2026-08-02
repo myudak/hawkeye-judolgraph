@@ -130,15 +130,22 @@ present, visible redirect/challenge/consent/restriction behavior, concise notes 
 and the collector case being compared. Do not treat the observation as a relationship conclusion or
 as test truth.
 
-## Known rendered-content completeness gap
+## Rendered-content gap and post-G4A observations
 
 The initial G0 live observations showed rich visible landing content in Chrome while the isolated
-collector preserved substantially sparser title-led DOMs and dark screenshots. This does not
-classify either site as blocked, challenged, inaccessible, related, or unsafe; it identifies a
-possible headless, user-agent, timing, or site-behavior difference. The fully local
-`delayed-script-render-shell-v1` fixture captures the narrow symptom without copying any live
-content. G0 intentionally changes no collector behavior. G1 must define bounded completeness
-indicators and timing budgets before considering a capture-readiness change.
+collector preserved substantially sparser title-led DOMs and dark screenshots. The local
+`delayed-script-render-shell-v1` fixture reproduced the narrow timing symptom without copying live
+content. G4A now waits at fixed checkpoints, compares visual/DOM change, records browser-visible
+text, and marks continued rendering as limited instead of silently calling it complete.
+
+On 2026-08-03 the owner-authorized post-G4A matrix ran exactly once against each of the 12 supplied
+targets. Eleven produced verified navigation captures; `888sport.com` stopped at the request
+budget. All content-looking captures remained limited and therefore produced no automatic semantic
+extraction. Betfair and Paddy Power were recorded as geographic restriction observations, Sky
+targets as unavailable, and bet365 as an access challenge. The two QQ observations were preserved
+with screenshot/readiness evidence and limited status. These artifacts remain ignored under
+`evaluation/live-cases/gemastik-2026-08-03-g4a-fixed/`; they are local qualitative robustness
+evidence, not benchmark truth and not redistribution material.
 
 ## Metrics for future labeled fixtures
 
@@ -178,5 +185,7 @@ block rate, mean actions/runtime, candidate relation support, and replay consist
 measured locally and rounded to milliseconds. Synthetic results must never be described as live
 accuracy, ownership probability, operator identification, criminality, or legal status.
 
-Real candidate mode stops at an approval event and performs no automatic Page B recollection. The
-official benchmark and demo use reserved `.invalid` fixture data and no external network.
+External candidate mode stops at an approval event and performs no network recollection. The
+approval-gated controlled walkthrough may recollect only its reserved `.invalid` Page B after the
+approval event is stored. The official benchmark and demo use reserved fixture data and no external
+network.

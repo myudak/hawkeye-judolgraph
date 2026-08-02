@@ -94,13 +94,15 @@ truthfully uses the fallback path.
 
 Completed evidence: direct/redirect/new-tab/iframe lead discovery, synthetic Page B recollection,
 evidence-backed candidate assertions, append-only SQLite assertions/reviews, and derived current
-review state. Real-world mode stops at explicit approval and never collects a candidate automatically.
+review state. Approval-gated controlled mode records approval before it deterministically
+recollects fixture Page B; external candidate collection remains disabled in this preliminary MVP.
 
 ## G8 — Event-driven progressive graph and evaluation — completed
 
 Completed evidence: monotonic idempotent events, causal links, a replay reducer, separate animation
-queue, dashed proposed / emphasized verified / hidden rejected edges, evidence and timeline panels,
-search/focus/minimap, reduced motion, and a three-mode ten-scenario benchmark.
+queue, dashed proposed / emphasized verified / hidden rejected edges, a 2D canvas with pan, zoom,
+drag, hit-testing, minimap and animated edges, screenshot-first evidence inspection, event replay,
+search/focus, reduced motion, and a three-mode ten-scenario benchmark.
 
 ## G9 — Truthful GEMASTIK preliminary package — completed as Markdown source
 

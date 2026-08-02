@@ -273,7 +273,7 @@ to copy wholesale.
 | Central web graph | Causal evidence graph with uncertainty encoded in edge style and labels |
 | Node Inspector | Evidence Inspector: artifact preview, source selector, normalized/raw value, hashes, limitations |
 | Replay controls | Investigation event timeline with play, pause, step, speed, and reduced-motion mode |
-| URL scan bar | `Investigate safely` action with visible budgets and current execution mode |
+| URL scan bar | One public URL input and `Scan`; bounded behavior is stated in Site Intel/status |
 | Cluster statistics | Review queue, adequacy status, provenance completeness, blocked-action count |
 
 ## 10. Required screens and interaction flow
@@ -283,14 +283,14 @@ The preliminary product must support this complete journey without requiring CLI
 ```text
 case list
 → create case
-→ enter a controlled fixture or approved public seed
+→ enter one public seed or select a reserved walkthrough
 → collect
 → inspect access and capture adequacy
 → inspect artifacts and semantic observations
 → start bounded expansion
 → inspect agent/fallback and policy timeline
 → inspect a candidate lead
-→ approve real recollection when required
+→ approve reserved approval-gated fixture recollection when required
 → inspect Page B capture
 → inspect candidate assertion and both evidence sides
 → verify or reject with a review note
@@ -313,8 +313,8 @@ case list
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-On small screens, Case Intel and Evidence Inspector become drawers; the graph and current critical
-status remain visible.
+On smaller screens, Case Intel, graph, and Evidence Inspector stack while the current critical
+status remains visible.
 
 ## 11. Required UI states
 
@@ -337,8 +337,10 @@ Color alone is insufficient.
 | Verified | Show reviewer, time, version, rationale, and solid evidence edge |
 | Rejected | Preserve prior versions and show rejection rationale |
 
-The UI must never make an empty controlled case look like a finished investigation. The default demo
-must open a populated, understandable example or provide a one-click `Run controlled example` action.
+The UI must never make an empty controlled case look like a finished investigation. The local live
+workspace prefers the saved QQ observation requested by the owner; the official sanitized demo
+opens a populated fixture case. The evidence selector also exposes **New safe review
+walkthrough…** without placing fixture counters or test-harness cards on the primary screen.
 
 ## 12. Real-domain feedback loop
 

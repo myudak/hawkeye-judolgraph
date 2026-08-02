@@ -6,11 +6,12 @@ raw shell, Playwright object, HTTP client, filesystem, database mutation handle,
 unbounded HTML.
 
 The capability probe sends bounded empty POST requests only to the two fixed loopback routes. The
-2026-08-02 local probe found `/backend-api/codex` unsupported for POST (405) and `/v1/responses`
+2026-08-03 final local probe found `/backend-api/codex` unsupported for POST (405) and `/v1/responses`
 present but requiring a model field (400). No model or structured-output, tool continuation,
 streaming, cancellation, or native-search capability was advertised. Those capabilities remain
 `unknown`; model execution is disabled and deterministic fallback is required. Secret-free raw
-diagnostics are under ignored `verification-output/g4-g9/`.
+diagnostics are under ignored `verification-output/g4-g9/`; the final probe explicitly records
+`fallback_required: true` and `secrets_persisted: false`.
 
 If the local service requires a credential, set `HAWKEYE_CODEX_LB_API_KEY` in the server process
 environment. The probe and gated client send it only as an `Authorization: Bearer` request header;

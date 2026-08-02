@@ -66,8 +66,9 @@ the model path.
 ### Candidate and review
 
 A URL is a lead until recollection produces a stored candidate page artifact and observation. The
-synthetic fixture index may recollect automatically. Real mode requires approval and still leaves
-external collection to a separate explicit action. Assertions support public links, shared contact,
+synthetic fixture index may recollect automatically. Approval-gated controlled mode persists an
+approval event before it recollects reserved fixture Page B; external collection remains disabled.
+Assertions support public links, shared contact,
 redirect, download, referral, brand claim, and generic candidate relation. Reviews support verified,
 rejected, needs_more_evidence, duplicate, and uncertain.
 
@@ -76,7 +77,9 @@ rejected, needs_more_evidence, duplicate, and uncertain.
 Events use monotonic per-run sequence and causation IDs. Duplicate IDs with identical contents are
 idempotent; conflicting IDs fail. SQLite triggers reject update/delete operations on events,
 candidate leads, assertions, and reviews. The reducer emits graph state plus a separate animation
-queue.
+queue. The browser projects this truth to a DPR-aware 2D canvas with force relaxation, animated
+edges/particles, pan, zoom, drag, hit-testing, minimap, search, focus, fit, and replay. The screenshot-first
+inspector and DOM timeline remain usable without interpreting pixels in the canvas.
 
 ## Architecture
 
@@ -137,15 +140,17 @@ python -m hawkeye serve `
   --port 8760
 ```
 
-The UI flow is controlled seed → collect/expand → capture and fallback status → Page B state →
-observations/artifacts → candidate assertion → append review → replayed graph/timeline.
+The UI defaults to a verified saved observation, exposes one bounded public URL scan, and keeps the
+main screen to Site Intel → canvas evidence graph → screenshot/evidence inspector → actual
+timeline. Selecting **New safe review walkthrough…** creates the reserved fixture Page A → Page B
+path, after which the user can inspect the assertion, append review, and replay stored events.
 
 ## Screenshots
 
-TODO — requires completed test: capture actual final local UI screenshots after the final full gate,
-store sanitized images in `gemastik-2026/assets/technical/`, and record exact source run and hash in
-`FIGURE_INDEX.md`. No remote image, real-site artifact, personal information, or fake graph may be
-inserted.
+Final local UI figures are captured only from sanitized `.invalid` demo cases/runs and indexed with
+their exact source, viewport, commit, timestamp, and SHA-256 in `FIGURE_INDEX.md`. The ignored live
+QQ workspace screenshot is local QA only and is not part of the proposal assets. No remote image,
+personal information, or fabricated graph is inserted.
 
 ## Troubleshooting
 
@@ -157,7 +162,7 @@ inserted.
 | `direct_extractor_input_exceeds_2_mb` | HTML was preserved but not sent to extractor | Manual bounded inspection only |
 | `canonical_html_not_persisted` | HTML exceeded 5 MB | Use visible text/screenshots/readiness; no auto-extraction |
 | `stale_reference` | Snapshot or fingerprint changed | Rediscover elements; never reuse selector blindly |
-| `waiting_for_approval` | Real candidate is only a lead | Record explicit decision; collection remains separate |
+| `waiting_for_approval` | Candidate is only a lead | Record explicit decision; only reserved fixture recollection may continue |
 | `case_integrity_error` | Artifact/reference hash validation failed | Do not display or repair silently |
 | Host header error | Request was not addressed to localhost/127.0.0.1 | Use the loopback URL directly |
 
@@ -185,4 +190,3 @@ git diff --check
 ```
 
 Exact final results belong in `IMPLEMENTATION_STATUS.md` and `docs/STATUS.md` after the last run.
-
