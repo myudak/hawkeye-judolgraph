@@ -1,0 +1,31 @@
+{
+  "results": [
+    {
+      "task": {
+        "uuid": "scan-001",
+        "url": "https://seed.example.com/"
+      },
+      "page": {
+        "url": "https://mirror.example.net/welcome"
+      }
+    },
+    {
+      "task": {
+        "uuid": "scan-002",
+        "url": "https://www.seed.example.com/promo"
+      },
+      "page": {
+        "url": "https://candidate.example.org/landing?ref=campaign"
+      }
+    },
+    {
+      "task": {
+        "uuid": "scan-003",
+        "url": "http://127.0.0.1/private"
+      },
+      "page": {
+        "url": "not-a-valid-url"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>HAWK-EYE — Evidence Console</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <script src="/assets/app.js" defer></script>
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">JUDOLGRAPH / HAWK-EYE</p>
+        <h1>Evidence Console</h1>
+      </div>
+      <p class="mode">LOCAL · READ ONLY · HUMAN REVIEW REQUIRED</p>
+    </header>
+    <main class="layout">
+      <aside class="case-rail" aria-label="Verified cases">
+        <div class="rail-heading">
+          <p class="eyebrow">CASE INDEX</p>
+          <span id="case-count" class="count">—</span>
+        </div>
+        <div id="case-list" class="case-list" aria-live="polite"></div>
+      </aside>
+      <section id="case-view" class="case-view" aria-live="polite">
+        <div class="empty-state">
+          <p class="eyebrow">EVIDENCE FIRST</p>
+          <h2>Select a verified case</h2>
+          <p>This console displays local artifacts only. Candidate leads and similarity scores remain review inputs, never conclusions.</p>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>Captured HTML is served only as an attachment. Screenshots are local evidence previews.</span>
+      <span id="status-line">Loading local case index…</span>
+    </footer>
+  </body>
+</html>

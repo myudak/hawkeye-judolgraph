@@ -1,0 +1,777 @@
+"""Bounded evidence collection, same-site crawling, and V0.2 candidate generation."""
+
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from time import monotonic
+
+from bs4 import BeautifulSoup
+
+from hawkeye.candidates import CandidateGeneration, generate_candidates
+from hawkeye.classification import classify_capture
+from hawkeye.collector.playwright_collector import (
+    DEFAULT_MAX_DECLARED_RESPONSE_BYTES,
+    DEFAULT_MAX_TOTAL_REQUESTS,
+    DEFAULT_USER_AGENT,
+    BrowserCollector,
+    CollectionBudget,
+    CollectionError,
+)
+from hawkeye.collector.safety import SafetyPolicy, UnsafeUrlError
+from hawkeye.crawl import (
+    DEFAULT_MAX_HTML_BYTES,
+    MAX_CASE_TIMEOUT_SECONDS,
+    MAX_CRAWL_DEPTH,
+    MAX_CRAWL_PAGES,
+    MAX_PAGE_TIMEOUT_SECONDS,
+    DiscoveredLink,
+    crawl_hostname,
+    discover_anchor_links,
+    normalize_crawl_url,
+)
+from hawkeye.extraction import extract_entities
+from hawkeye.graph import build_graph
+from hawkeye.models import (
+    CaseRecord,
+    CrawlConfiguration,
+    CrawlFrontierRecord,
+    CrawlPageRecord,
+    EvidenceRecord,
+    ExtractedEntity,
+    InvestigationResult,
+    RedirectRecord,
+)
+from hawkeye.storage import CaseStorage, make_case_id
+
+MAX_DISCOVERED_LINKS_PER_PAGE = 200
+
+
+@dataclass(frozen=True)
+class _CrawlTarget:
+    """A queued page id together with the frontier event that created it."""
+
+    page_id: str
+    frontier_id: str
+
+
+def investigate(
+    seed_url: str,
+    *,
+    output: Path | str = Path("cases"),
+    timeout_seconds: float = 30.0,
+    case_timeout_seconds: float = MAX_CASE_TIMEOUT_SECONDS,
+    max_pages: int = MAX_CRAWL_PAGES,
+    max_depth: int = MAX_CRAWL_DEPTH,
+    max_html_bytes: int = DEFAULT_MAX_HTML_BYTES,
+    max_total_requests: int = DEFAULT_MAX_TOTAL_REQUESTS,
+    max_declared_response_bytes: int = DEFAULT_MAX_DECLARED_RESPONSE_BYTES,
+    headed: bool = False,
+    case_id: str | None = None,
+    max_redirects: int = 5,
+    user_agent: str | None = None,
+    safety_policy: SafetyPolicy | None = None,
+    corpus_root: Path | str | None = None,
+) -> InvestigationResult:
+    """Collect a seed plus a deterministic, same-host, depth-one BFS frontier.
+
+    The crawl is intentionally fixed at no more than five HTML pages, depth one, a single
+    synchronous browser page at a time, and an overall two-minute case budget. It never clicks,
+    submits forms, or follows external navigation targets. A failed child is persisted and does
+    not stop later queued children. After collection, V0.2 produces local evidence-based pending
+    candidates only; candidates are never automatically navigated.
+    """
+
+    _validate_crawl_limits(
+        timeout_seconds=timeout_seconds,
+        case_timeout_seconds=case_timeout_seconds,
+        max_pages=max_pages,
+        max_depth=max_depth,
+        max_html_bytes=max_html_bytes,
+        max_total_requests=max_total_requests,
+        max_declared_response_bytes=max_declared_response_bytes,
+        max_redirects=max_redirects,
+    )
+    safety = safety_policy or SafetyPolicy()
+    validated_seed = safety.validate_crawl_url(seed_url)
+    normalized_seed = validated_seed.normalized_url
+    chosen_case_id = case_id or make_case_id()
+    storage = CaseStorage.create(Path(output), chosen_case_id)
+    started_at = datetime.now(UTC)
+    configuration = CrawlConfiguration(
+        max_depth=max_depth,
+        max_pages_total=max_pages,
+        max_redirects_per_page=max_redirects,
+        page_timeout_seconds=timeout_seconds,
+        case_timeout_seconds=case_timeout_seconds,
+        max_html_bytes=max_html_bytes,
+        max_total_requests=max_total_requests,
+        max_declared_response_bytes=max_declared_response_bytes,
+        allowed_crawl_hosts=[validated_seed.hostname],
+    )
+    case = CaseRecord(
+        case_id=chosen_case_id,
+        seed_url=normalized_seed,
+        status="running",
+        started_at=started_at,
+        crawl_configuration=configuration,
+        allowed_crawl_hosts=[validated_seed.hostname],
+    )
+    pages = [
+        CrawlPageRecord(
+            id="page-001",
+            url=normalized_seed,
+            normalized_url=normalized_seed,
+            depth=0,
+            state="queued",
+            discovery_method="seed",
+        )
+    ]
+    frontier = [
+        CrawlFrontierRecord(
+            id="frontier-0001",
+            depth=0,
+            state="queued",
+            normalized_url=normalized_seed,
+            discovery_method="seed",
+            target_page_id="page-001",
+        )
+    ]
+    evidence: list[EvidenceRecord] = []
+    entities: list[ExtractedEntity] = []
+    queue: deque[_CrawlTarget] = deque([_CrawlTarget("page-001", "frontier-0001")])
+    known_urls = {normalized_seed}
+    allowed_hosts = {validated_seed.hostname}
+    content_hashes: dict[str, str] = {}
+    traffic_budget = CollectionBudget(
+        max_total_requests=max_total_requests,
+        max_declared_response_bytes=max_declared_response_bytes,
+    )
+    deadline = monotonic() + case_timeout_seconds
+
+    storage.write_json("case.json", case.model_dump(mode="json"))
+    storage.log(f"case_started seed_url={normalized_seed}")
+
+    while queue:
+        target = queue.popleft()
+        current = _page_by_id(pages, target.page_id)
+        if traffic_budget.exhausted_reason is not None:
+            _replace_page(
+                pages,
+                target.page_id,
+                state="skipped",
+                skip_reason=traffic_budget.exhausted_reason,
+                error="Shared browser traffic budget exhausted before navigation",
+            )
+            _replace_frontier(
+                frontier,
+                target.frontier_id,
+                state="skipped",
+                skip_reason=traffic_budget.exhausted_reason,
+            )
+            storage.log(
+                f"page_skipped page_id={target.page_id} reason={traffic_budget.exhausted_reason}"
+            )
+            continue
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            _replace_page(
+                pages,
+                target.page_id,
+                state="skipped",
+                skip_reason="case_timeout",
+                error="Overall case timeout reached before navigation",
+            )
+            _replace_frontier(
+                frontier,
+                target.frontier_id,
+                state="skipped",
+                skip_reason="case_timeout",
+            )
+            storage.log(f"page_skipped page_id={target.page_id} reason=case_timeout")
+            continue
+
+        _replace_page(pages, target.page_id, state="visiting")
+        _replace_frontier(frontier, target.frontier_id, state="visiting")
+        page_timeout = min(timeout_seconds, remaining)
+        try:
+            collector = BrowserCollector(
+                safety=safety,
+                timeout_seconds=page_timeout,
+                max_redirects=max_redirects,
+                max_html_bytes=max_html_bytes,
+                budget=traffic_budget,
+                allowed_navigation_hosts=(None if current.depth == 0 else sorted(allowed_hosts)),
+                headed=headed,
+                user_agent=user_agent or DEFAULT_USER_AGENT,
+            )
+            collected = collector.collect(current.normalized_url)
+        except Exception as error:  # Child failures must be recorded and not stop the frontier.
+            redirect_evidence_id = _save_redirect_observations(
+                storage=storage,
+                evidence=evidence,
+                page=current,
+                error=error,
+            )
+            _record_collection_failure(
+                pages,
+                frontier,
+                target,
+                error,
+                redirect_evidence_id=redirect_evidence_id,
+            )
+            if redirect_evidence_id is not None:
+                _record_blocked_redirect_destinations(
+                    frontier=frontier,
+                    page=current,
+                    error=error,
+                    redirect_evidence_id=redirect_evidence_id,
+                )
+            storage.log(
+                "page_failed "
+                f"page_id={target.page_id} reason={_failure_reason(error)} error={error}"
+            )
+            if current.depth == 0:
+                break
+            continue
+
+        if current.depth == 0:
+            final_hostname = crawl_hostname(collected.final_url)
+            if final_hostname is None:
+                _record_collection_failure(
+                    pages,
+                    frontier,
+                    target,
+                    CollectionError("Collected final URL has no hostname"),
+                )
+                storage.log(f"page_failed page_id={target.page_id} reason=navigation_error")
+                break
+            allowed_hosts.add(final_hostname)
+        canonical_page_url = normalize_crawl_url(collected.final_url, collected.final_url)
+        if canonical_page_url is not None:
+            known_urls.add(canonical_page_url)
+
+        redirect_evidence_id = _save_redirect_records(
+            storage=storage,
+            evidence=evidence,
+            page=current,
+            redirects=collected.redirects,
+        )
+        html_evidence = storage.save_html(
+            collected.html,
+            source_url=collected.final_url,
+            collected_at=collected.collected_at,
+            page_id=current.id,
+        )
+        screenshot_evidence = storage.save_screenshot(
+            collected.screenshot,
+            source_url=collected.final_url,
+            collected_at=collected.collected_at,
+            viewport=collected.viewport,
+            image_dimensions=collected.image_dimensions,
+            page_id=current.id,
+        )
+        evidence.extend((html_evidence, screenshot_evidence))
+        classification = classify_capture(
+            title=collected.title,
+            final_url=collected.final_url,
+            visible_text=_visible_text_from_html(collected.html),
+            navigation_status="captured",
+        )
+        page_entities: list[ExtractedEntity] = []
+        if classification.content_usable:
+            page_entities = extract_entities(
+                collected.html,
+                seed_url=normalized_seed,
+                final_url=collected.final_url,
+                source_evidence_id=html_evidence.id,
+                entity_id_start=len(entities) + 1,
+            )
+            entities.extend(page_entities)
+
+        duplicate_of = content_hashes.get(html_evidence.sha256)
+        if duplicate_of is None:
+            content_hashes[html_evidence.sha256] = current.id
+        completion_reason = "duplicate_content" if duplicate_of else None
+        _replace_page(
+            pages,
+            target.page_id,
+            state="completed",
+            final_url=collected.final_url,
+            redirects=collected.redirects,
+            navigation_status="captured",
+            capture_outcome=classification.outcome,
+            content_usable=classification.content_usable,
+            classification_reasons=classification.reasons,
+            page_title=collected.title,
+            html_evidence_id=html_evidence.id,
+            screenshot_evidence_id=screenshot_evidence.id,
+            redirect_evidence_id=redirect_evidence_id,
+            content_sha256=html_evidence.sha256,
+            content_type=collected.content_type,
+            blocked_requests=collected.blocked_requests,
+            blocked_popup_count=collected.blocked_popup_count,
+            blocked_download_count=collected.blocked_download_count,
+            duplicate_of_page_id=duplicate_of,
+            skip_reason=completion_reason,
+            error=None,
+        )
+        _replace_frontier(
+            frontier,
+            target.frontier_id,
+            state="completed",
+            skip_reason=completion_reason,
+        )
+        storage.log(
+            "page_completed "
+            f"page_id={target.page_id} depth={current.depth} "
+            f"outcome={classification.outcome.value} "
+            f"usable={classification.content_usable} entities={len(page_entities)}"
+        )
+
+        completed_page = _page_by_id(pages, target.page_id)
+        if (
+            classification.content_usable
+            and duplicate_of is None
+            and completed_page.depth < max_depth
+        ):
+            _enqueue_discovered_links(
+                html=collected.html,
+                parent=completed_page,
+                parent_evidence_id=html_evidence.id,
+                allowed_hosts=allowed_hosts,
+                known_urls=known_urls,
+                safety=safety,
+                pages=pages,
+                frontier=frontier,
+                queue=queue,
+                max_pages=max_pages,
+                max_depth=max_depth,
+            )
+        else:
+            reason = (
+                "unusable_parent_page"
+                if not classification.content_usable
+                else "duplicate_content"
+                if duplicate_of is not None
+                else "depth_limit"
+            )
+            _record_nonexpanded_links(
+                html=collected.html,
+                parent=completed_page,
+                parent_evidence_id=html_evidence.id,
+                reason=reason,
+                frontier=frontier,
+            )
+
+    primary = pages[0]
+    case_status = "completed" if primary.state == "completed" else "failed"
+    completed_case = case.model_copy(
+        update={
+            "status": case_status,
+            "completed_at": datetime.now(UTC),
+            "final_url": primary.final_url,
+            "redirect_chain": [record.source_url for record in primary.redirects],
+            "redirects": primary.redirects,
+            "navigation_status": primary.navigation_status,
+            "capture_outcome": primary.capture_outcome,
+            "content_usable": primary.content_usable,
+            "classification_reasons": primary.classification_reasons,
+            "page_title": primary.page_title,
+            "page_count": sum(page.state == "completed" for page in pages),
+            "crawl_configuration": configuration.model_copy(
+                update={"allowed_crawl_hosts": sorted(allowed_hosts)}
+            ),
+            "allowed_crawl_hosts": sorted(allowed_hosts),
+            "total_request_count": traffic_budget.request_count,
+            "total_declared_response_bytes": traffic_budget.declared_response_bytes,
+            "budget_exhausted_reason": traffic_budget.exhausted_reason,
+            "error": primary.error if case_status == "failed" else None,
+        }
+    )
+    selected_corpus_root = (
+        Path(corpus_root).expanduser().resolve() if corpus_root is not None else storage.root.parent
+    )
+    candidate_generation = generate_candidates(
+        case=completed_case,
+        pages=pages,
+        evidence=evidence,
+        entities=entities,
+        frontier=frontier,
+        corpus_root=selected_corpus_root,
+        current_case_directory=storage.root,
+    )
+    completed_case = completed_case.model_copy(
+        update={"candidate_count": len(candidate_generation.document.candidates)}
+    )
+    _write_case_outputs(
+        storage=storage,
+        case=completed_case,
+        pages=pages,
+        frontier=frontier,
+        evidence=evidence,
+        entities=entities,
+        candidate_generation=candidate_generation,
+    )
+    storage.log(
+        "case_completed "
+        f"status={completed_case.status} pages={completed_case.page_count} "
+        f"frontier={len(frontier)} entities={len(entities)}"
+    )
+    return InvestigationResult(
+        case_directory=str(storage.root),
+        case=completed_case,
+        pages=pages,
+        frontier=frontier,
+        candidates=candidate_generation.document.candidates,
+    )
+
+
+def _validate_crawl_limits(
+    *,
+    timeout_seconds: float,
+    case_timeout_seconds: float,
+    max_pages: int,
+    max_depth: int,
+    max_html_bytes: int,
+    max_total_requests: int,
+    max_declared_response_bytes: int,
+    max_redirects: int,
+) -> None:
+    if not 0 < timeout_seconds <= MAX_PAGE_TIMEOUT_SECONDS:
+        raise ValueError(
+            f"timeout_seconds must be greater than zero and at most {MAX_PAGE_TIMEOUT_SECONDS}"
+        )
+    if not 0 < case_timeout_seconds <= MAX_CASE_TIMEOUT_SECONDS:
+        raise ValueError(
+            f"case_timeout_seconds must be greater than zero and at most {MAX_CASE_TIMEOUT_SECONDS}"
+        )
+    if not 1 <= max_pages <= MAX_CRAWL_PAGES:
+        raise ValueError(f"max_pages must be between one and {MAX_CRAWL_PAGES}")
+    if not 0 <= max_depth <= MAX_CRAWL_DEPTH:
+        raise ValueError(f"max_depth must be between zero and {MAX_CRAWL_DEPTH}")
+    if max_html_bytes <= 0:
+        raise ValueError("max_html_bytes must be positive")
+    if not 1 <= max_total_requests <= DEFAULT_MAX_TOTAL_REQUESTS:
+        raise ValueError(f"max_total_requests must be between one and {DEFAULT_MAX_TOTAL_REQUESTS}")
+    if not 1 <= max_declared_response_bytes <= DEFAULT_MAX_DECLARED_RESPONSE_BYTES:
+        raise ValueError(
+            "max_declared_response_bytes must be between one and "
+            f"{DEFAULT_MAX_DECLARED_RESPONSE_BYTES}"
+        )
+    if not 0 <= max_redirects <= 5:
+        raise ValueError("max_redirects must be between zero and five")
+
+
+def _enqueue_discovered_links(
+    *,
+    html: str,
+    parent: CrawlPageRecord,
+    parent_evidence_id: str,
+    allowed_hosts: set[str],
+    known_urls: set[str],
+    safety: SafetyPolicy,
+    pages: list[CrawlPageRecord],
+    frontier: list[CrawlFrontierRecord],
+    queue: deque[_CrawlTarget],
+    max_pages: int,
+    max_depth: int,
+) -> None:
+    for index, link in enumerate(
+        _sorted_links(html, parent.final_url or parent.normalized_url), start=1
+    ):
+        frontier_id = _next_frontier_id(frontier)
+        record = CrawlFrontierRecord(
+            id=frontier_id,
+            depth=parent.depth + 1,
+            state="discovered",
+            original_href=link.original_href,
+            normalized_url=link.normalized_url,
+            source_page_id=parent.id,
+            source_evidence_id=parent_evidence_id,
+            discovery_method="html_anchor",
+            anchor_text=link.anchor_text or None,
+        )
+        frontier.append(record)
+        if index > MAX_DISCOVERED_LINKS_PER_PAGE:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="frontier_limit")
+            continue
+        if link.normalized_url is None:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="malformed_url")
+            continue
+        if parent.depth + 1 > max_depth:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="depth_limit")
+            continue
+        hostname = crawl_hostname(link.normalized_url)
+        if hostname is None:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="malformed_url")
+            continue
+        if hostname not in allowed_hosts:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="external_host")
+            continue
+        if link.normalized_url in known_urls:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="duplicate_url")
+            continue
+        try:
+            validated = safety.validate_crawl_url(link.normalized_url)
+        except UnsafeUrlError:
+            _replace_frontier(
+                frontier, frontier_id, state="skipped", skip_reason="unsafe_destination"
+            )
+            continue
+        if len(pages) >= max_pages:
+            _replace_frontier(frontier, frontier_id, state="skipped", skip_reason="page_budget")
+            continue
+
+        normalized_url = validated.normalized_url
+        known_urls.add(normalized_url)
+        page_id = _next_page_id(pages)
+        pages.append(
+            CrawlPageRecord(
+                id=page_id,
+                url=link.normalized_url,
+                normalized_url=normalized_url,
+                depth=parent.depth + 1,
+                state="queued",
+                parent_page_id=parent.id,
+                source_evidence_id=parent_evidence_id,
+                original_href=link.original_href,
+                discovery_method="html_anchor",
+                anchor_text=link.anchor_text or None,
+            )
+        )
+        _replace_frontier(frontier, frontier_id, state="queued", target_page_id=page_id)
+        queue.append(_CrawlTarget(page_id=page_id, frontier_id=frontier_id))
+
+
+def _record_nonexpanded_links(
+    *,
+    html: str,
+    parent: CrawlPageRecord,
+    parent_evidence_id: str,
+    reason: str,
+    frontier: list[CrawlFrontierRecord],
+) -> None:
+    """Keep link observations auditable when policy deliberately prevents expansion."""
+
+    for index, link in enumerate(
+        _sorted_links(html, parent.final_url or parent.normalized_url), start=1
+    ):
+        frontier.append(
+            CrawlFrontierRecord(
+                id=_next_frontier_id(frontier),
+                depth=parent.depth + 1,
+                state="skipped",
+                original_href=link.original_href,
+                normalized_url=link.normalized_url,
+                source_page_id=parent.id,
+                source_evidence_id=parent_evidence_id,
+                discovery_method="html_anchor",
+                anchor_text=link.anchor_text or None,
+                skip_reason=reason if index <= MAX_DISCOVERED_LINKS_PER_PAGE else "frontier_limit",
+            )
+        )
+
+
+def _sorted_links(html: str, base_url: str) -> list[DiscoveredLink]:
+    return sorted(
+        discover_anchor_links(html, base_url),
+        key=lambda link: (
+            link.normalized_url is None,
+            link.normalized_url or "",
+            link.original_href,
+            link.anchor_text,
+        ),
+    )
+
+
+def _save_redirect_observations(
+    *,
+    storage: CaseStorage,
+    evidence: list[EvidenceRecord],
+    page: CrawlPageRecord,
+    error: Exception,
+) -> str | None:
+    if not isinstance(error, CollectionError) or not error.redirects:
+        return None
+    return _save_redirect_records(
+        storage=storage,
+        evidence=evidence,
+        page=page,
+        redirects=error.redirects,
+    )
+
+
+def _save_redirect_records(
+    *,
+    storage: CaseStorage,
+    evidence: list[EvidenceRecord],
+    page: CrawlPageRecord,
+    redirects: list[RedirectRecord],
+) -> str | None:
+    """Persist every observed document redirect as network evidence for later candidate review."""
+
+    if not redirects:
+        return None
+    redirect_evidence = storage.save_network_event(
+        [record.model_dump(mode="json") for record in redirects],
+        source_url=page.normalized_url,
+        collected_at=datetime.now(UTC),
+        page_id=page.id,
+    )
+    evidence.append(redirect_evidence)
+    return redirect_evidence.id
+
+
+def _record_blocked_redirect_destinations(
+    *,
+    frontier: list[CrawlFrontierRecord],
+    page: CrawlPageRecord,
+    error: Exception,
+    redirect_evidence_id: str,
+) -> None:
+    """Keep blocked redirect targets available to V0.2 without ever navigating them."""
+
+    if not isinstance(error, CollectionError):
+        return
+    for redirect in error.redirects:
+        normalized_target = normalize_crawl_url(redirect.destination_url, redirect.source_url)
+        frontier.append(
+            CrawlFrontierRecord(
+                id=_next_frontier_id(frontier),
+                depth=page.depth,
+                state="skipped",
+                original_href=redirect.destination_url,
+                normalized_url=normalized_target or redirect.destination_url,
+                source_page_id=page.id,
+                source_evidence_id=redirect_evidence_id,
+                discovery_method="redirect",
+                skip_reason=_failure_reason(error),
+                redirect_status_code=redirect.status_code,
+            )
+        )
+
+
+def _record_collection_failure(
+    pages: list[CrawlPageRecord],
+    frontier: list[CrawlFrontierRecord],
+    target: _CrawlTarget,
+    error: Exception,
+    *,
+    redirect_evidence_id: str | None = None,
+) -> None:
+    navigation_status = _navigation_status_for_error(error)
+    classification = classify_capture(
+        title=None,
+        final_url=None,
+        visible_text="",
+        navigation_status=navigation_status,
+        error_type="timeout" if navigation_status == "timed_out" else type(error).__name__,
+    )
+    blocked_requests = error.blocked_requests if isinstance(error, CollectionError) else []
+    blocked_popup_count = error.blocked_popup_count if isinstance(error, CollectionError) else 0
+    blocked_download_count = (
+        error.blocked_download_count if isinstance(error, CollectionError) else 0
+    )
+    redirects = error.redirects if isinstance(error, CollectionError) else []
+    reason = _failure_reason(error)
+    _replace_page(
+        pages,
+        target.page_id,
+        state="failed",
+        navigation_status=navigation_status,
+        capture_outcome=classification.outcome,
+        content_usable=classification.content_usable,
+        classification_reasons=classification.reasons,
+        redirects=redirects,
+        redirect_evidence_id=redirect_evidence_id,
+        blocked_requests=blocked_requests,
+        blocked_popup_count=blocked_popup_count,
+        blocked_download_count=blocked_download_count,
+        skip_reason=reason,
+        error=str(error),
+    )
+    _replace_frontier(frontier, target.frontier_id, state="failed", skip_reason=reason)
+
+
+def _failure_reason(error: Exception) -> str:
+    if isinstance(error, CollectionError):
+        return error.reason_code
+    return "timeout" if "timeout" in str(error).casefold() else "navigation_error"
+
+
+def _write_case_outputs(
+    *,
+    storage: CaseStorage,
+    case: CaseRecord,
+    pages: list[CrawlPageRecord],
+    frontier: list[CrawlFrontierRecord],
+    evidence: list[EvidenceRecord],
+    entities: list[ExtractedEntity],
+    candidate_generation: CandidateGeneration,
+) -> None:
+    storage.write_json("pages.json", [page.model_dump(mode="json") for page in pages])
+    storage.write_json("frontier.json", [record.model_dump(mode="json") for record in frontier])
+    storage.write_json("evidence.json", [record.model_dump(mode="json") for record in evidence])
+    storage.write_json("entities.json", [entity.model_dump(mode="json") for entity in entities])
+    storage.write_json("candidates.json", candidate_generation.document.model_dump(mode="json"))
+    storage.write_json(
+        "candidate_observations.json",
+        [observation.model_dump(mode="json") for observation in candidate_generation.observations],
+    )
+    if case.status == "completed":
+        graph = build_graph(case=case, evidence=evidence, entities=entities, pages=pages)
+        storage.write_json("graph.json", graph.model_dump(mode="json"))
+    storage.write_json("case.json", case.model_dump(mode="json"))
+
+
+def _visible_text_from_html(html: str) -> str:
+    """Extract bounded visible-like text without scripts/styles contaminating classification."""
+
+    soup = BeautifulSoup(html, "html.parser")
+    for element in soup(["script", "style", "noscript", "template"]):
+        element.decompose()
+    return soup.get_text(" ", strip=True)
+
+
+def _navigation_status_for_error(error: Exception) -> str:
+    if _failure_reason(error) == "timeout" or "timeout" in str(error).casefold():
+        return "timed_out"
+    return "failed"
+
+
+def _page_by_id(pages: list[CrawlPageRecord], page_id: str) -> CrawlPageRecord:
+    for page in pages:
+        if page.id == page_id:
+            return page
+    raise ValueError(f"Unknown crawl page id: {page_id}")
+
+
+def _replace_page(pages: list[CrawlPageRecord], page_id: str, **update: object) -> CrawlPageRecord:
+    for index, page in enumerate(pages):
+        if page.id == page_id:
+            replacement = page.model_copy(update=update)
+            pages[index] = replacement
+            return replacement
+    raise ValueError(f"Unknown crawl page id: {page_id}")
+
+
+def _replace_frontier(
+    frontier: list[CrawlFrontierRecord], frontier_id: str, **update: object
+) -> CrawlFrontierRecord:
+    for index, record in enumerate(frontier):
+        if record.id == frontier_id:
+            replacement = record.model_copy(update=update)
+            frontier[index] = replacement
+            return replacement
+    raise ValueError(f"Unknown frontier id: {frontier_id}")
+
+
+def _next_page_id(pages: list[CrawlPageRecord]) -> str:
+    return f"page-{len(pages) + 1:03d}"
+
+
+def _next_frontier_id(frontier: list[CrawlFrontierRecord]) -> str:
+    return f"frontier-{len(frontier) + 1:04d}"
