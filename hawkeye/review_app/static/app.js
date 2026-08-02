@@ -1,793 +1,1348 @@
-const caseList = document.getElementById("case-list");
-const caseView = document.getElementById("case-view");
-const caseCount = document.getElementById("case-count");
-const statusLine = document.getElementById("status-line");
+"use strict";
 
-function node(tag, className, text) {
+const refs = {
+  scanForm: document.getElementById("scan-form"),
+  seedInput: document.getElementById("seed-url"),
+  scanButton: document.getElementById("scan-button"),
+  workspaceSelector: document.getElementById("workspace-selector"),
+  capabilityState: document.getElementById("capability-state"),
+  intelContent: document.getElementById("intel-content"),
+  graphCanvas: document.getElementById("graph-canvas"),
+  graphEmpty: document.getElementById("graph-empty"),
+  graphTooltip: document.getElementById("graph-tooltip"),
+  graphA11y: document.getElementById("graph-a11y"),
+  graphCount: document.getElementById("graph-count"),
+  graphModeLabel: document.getElementById("graph-mode-label"),
+  graphSearch: document.getElementById("graph-search"),
+  inspectorContent: document.getElementById("inspector-content"),
+  timelineTrack: document.getElementById("timeline-track"),
+  replayButton: document.getElementById("replay-button"),
+  pauseButton: document.getElementById("pause-button"),
+  timelineSpeed: document.getElementById("timeline-speed"),
+  zoomOut: document.getElementById("zoom-out"),
+  zoomIn: document.getElementById("zoom-in"),
+  fitGraph: document.getElementById("fit-graph"),
+  statusLine: document.getElementById("status-line"),
+  toastRegion: document.getElementById("toast-region"),
+};
+
+const evidenceSemantics = {
+  candidate: "Relationship: not determined",
+  comparison: "Evidence-similarity score",
+  accessibility: "accessible relationship table",
+  current: "aria-current",
+};
+
+const ctx = refs.graphCanvas.getContext("2d", { alpha: true });
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const colors = {
+  case: "#70b7ff",
+  domain: "#58e9b0",
+  page: "#68b4ff",
+  seed_page: "#68b4ff",
+  collected_page: "#5cecad",
+  screenshot: "#ef80c2",
+  document: "#aa91ff",
+  readiness: "#63dce9",
+  observation: "#ffbd68",
+  public_contact: "#ffbd68",
+  external_destination: "#f09a63",
+  redirect_target: "#f09a63",
+  candidate: "#ffb75a",
+  candidate_domain: "#ffb75a",
+  claimed_brand: "#d894ff",
+  default: "#aab5c1",
+};
+
+const view = {
+  cases: [],
+  runs: [],
+  currentKind: null,
+  currentDetails: null,
+  nodes: [],
+  edges: [],
+  nodeById: new Map(),
+  timeline: [],
+  selectedId: null,
+  hoverId: null,
+  searchIds: new Set(),
+  query: "",
+  playbackCutoff: Number.POSITIVE_INFINITY,
+  replayTimer: null,
+  replayPaused: false,
+  replayPosition: 0,
+  camera: { x: 0, y: 0, zoom: 0.82, targetX: 0, targetY: 0, targetZoom: 0.82 },
+  width: 0,
+  height: 0,
+  dpr: 1,
+  pointer: null,
+  dragNode: null,
+  frameTime: performance.now(),
+};
+
+function el(tag, className, text) {
   const element = document.createElement(tag);
   if (className) element.className = className;
   if (text !== undefined && text !== null) element.textContent = String(text);
   return element;
 }
 
-function artifactUrl(caseId, evidenceId) {
-  return `/api/cases/${encodeURIComponent(caseId)}/artifacts/${encodeURIComponent(evidenceId)}`;
+function valueOr(value, fallback = "Not recorded") {
+  return value === undefined || value === null || value === "" ? fallback : String(value);
 }
 
-function artifactReference(caseId, evidenceId, available, label) {
-  const display = label || `${caseId} / ${evidenceId}`;
-  if (!available || !caseId) {
-    return node("span", "missing-reference", `${display} · unavailable in this console`);
+function titleCase(value) {
+  return valueOr(value).replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function shortText(value, length = 34) {
+  const text = valueOr(value, "Untitled");
+  return text.length <= length ? text : `${text.slice(0, length - 1)}…`;
+}
+
+function formatTime(value) {
+  if (!value) return "time not recorded";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(parsed);
+}
+
+function hostnameFrom(value) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return valueOr(value, "saved evidence").split("/")[0];
   }
-  const link = node("a", "artifact-link", display);
-  link.href = artifactUrl(caseId, evidenceId);
-  link.title = "Open the verified local artifact in its safe response representation";
-  return link;
-}
-
-async function requestJson(path) {
-  const response = await fetch(path, { credentials: "same-origin", cache: "no-store" });
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
-  return response.json();
 }
 
 function setStatus(message) {
-  statusLine.textContent = message;
+  refs.statusLine.textContent = message;
 }
 
-function renderError(message) {
-  caseView.replaceChildren(node("div", "error-card", message));
+function toast(message, kind = "") {
+  const item = el("div", `toast ${kind}`.trim(), message);
+  refs.toastRegion.append(item);
+  window.setTimeout(() => item.remove(), 4200);
 }
 
-function renderCaseIndex(cases) {
-  caseList.replaceChildren();
-  caseCount.textContent = cases.length;
-  for (const entry of cases) {
-    const button = node("button", "case-button");
-    button.type = "button";
-    button.append(node("span", "case-id", entry.case_id));
-    if (entry.integrity === "error") {
-      button.classList.add("error");
-      button.disabled = true;
-      button.append(node("span", "case-meta", "INTEGRITY ERROR · NOT DISPLAYED"));
-    } else {
-      button.append(node("span", "case-meta", entry.final_url_display || "NO FINAL URL"));
-      button.addEventListener("click", () => loadCase(entry.case_id, button));
-    }
-    caseList.append(button);
-  }
-}
-
-function metric(label, value, detail) {
-  const card = node("div", "metric");
-  card.append(node("span", "metric-label", label), node("strong", "", value));
-  if (detail) card.append(node("span", "metric-detail", detail));
-  return card;
-}
-
-function panel(title, subtitle, id) {
-  const section = node("section", "panel");
-  if (id) section.setAttribute("aria-labelledby", id);
-  const heading = node("div", "panel-heading");
-  const headingText = node("div", "");
-  const headingElement = node("h3", "", title);
-  if (id) headingElement.id = id;
-  headingText.append(headingElement);
-  if (subtitle) headingText.append(node("p", "panel-subtitle", subtitle));
-  heading.append(headingText);
-  section.append(heading);
-  return section;
-}
-
-function table(headers, rows, className) {
-  const wrapper = node("div", "table-wrap");
-  const element = node("table", className || "data-table");
-  const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  for (const header of headers) headRow.append(node("th", "", header));
-  head.append(headRow);
-  const body = document.createElement("tbody");
-  for (const values of rows) {
-    const row = document.createElement("tr");
-    for (const value of values) {
-      const cell = document.createElement("td");
-      if (value instanceof Node) cell.append(value);
-      else cell.textContent = value === null || value === undefined ? "—" : String(value);
-      row.append(cell);
-    }
-    body.append(row);
-  }
-  element.append(head, body);
-  wrapper.append(element);
-  return wrapper;
-}
-
-function note(kind, title, message) {
-  const aside = node("aside", `notice ${kind}`);
-  aside.setAttribute("role", "note");
-  aside.append(node("strong", "", title), node("p", "", message));
-  return aside;
-}
-
-function textList(items, emptyMessage) {
-  if (!items || items.length === 0) return node("p", "muted", emptyMessage);
-  const list = node("ul", "text-list");
-  for (const item of items) list.append(node("li", "", item));
-  return list;
-}
-
-function formatScore(value) {
-  return typeof value === "number" ? value.toFixed(1) : "—";
-}
-
-function contentState(details) {
-  if (details.content_usable === true) return "Usable canonical content is available.";
-  if (details.content_usable === false) return "No usable target content was classified; evidence remains preserved.";
-  return "Canonical content usability was not recorded.";
-}
-
-function limitText(limits) {
-  if (!limits) return "No crawl-configuration record is available in this package.";
-  return `Bounded to depth ${limits.max_depth}, ${limits.max_pages_total} pages, and ${limits.max_redirects_per_page} redirects per page.`;
-}
-
-function renderCaseHeader(details) {
-  const header = node("header", "case-header");
-  const heading = node("div", "");
-  heading.append(node("p", "eyebrow", "VERIFIED EVIDENCE PACKAGE"));
-  heading.append(node("h2", "", details.case_id));
-  heading.append(node("p", "case-url", details.final_url_display || "No final URL recorded"));
-  const stamp = node("div", "stamp-group");
-  stamp.append(node("span", "stamp", "REVIEW STATUS: NEEDS REVIEW"));
-  stamp.append(node("span", "stamp-note", "No human conclusion is recorded here."));
-  header.append(heading, stamp);
-  return header;
-}
-
-function renderInvestigationPath(details) {
-  const workflow = panel(
-    "Investigation path",
-    "A display of recorded stages—not an instruction to collect, compare, or conclude.",
-    "investigation-path",
-  );
-  const path = node("ol", "investigation-path");
-  const comparisonSummary = details.comparisons.length
-    ? `${details.comparisons.length} stored offline comparison result(s) are available.`
-    : "No stored offline comparison result is attached; this console will not create one.";
-  const stages = [
-    ["01", "Seed", details.seed_url_display || "No safe seed URL is available.", "Recorded as a local case input; the console does not revisit it."],
-    ["02", "Bounded capture", contentState(details), limitText(details.collection_limits)],
-    ["03", "Extracted observations", `${details.entities.length} deterministic observation(s) displayed.`, "No entity appears unless it was derived from verified saved evidence."],
-    ["04", "Evidence graph", details.graph ? `${details.graph.edge_count} relationship record(s) are available.` : "No graph artifact is available.", "Graph rows distinguish structural records from observed-evidence relationships."],
-    ["05", "Pending leads", `${details.candidates.length} pending lead(s) are available.`, "Relationship: not determined. A lead does not authorize navigation."],
-    ["06", "Offline comparisons", comparisonSummary, "Evidence-similarity scores remain inputs for review, never ownership probabilities."],
-    ["07", "Human review", "Review status: needs review.", "This console records no conclusion, ownership claim, or legal finding."],
-  ];
-  for (const [number, title, happened, limit] of stages) {
-    const item = node("li", "path-step");
-    item.append(node("span", "path-number", number));
-    const content = node("div", "path-content");
-    content.append(node("h4", "", title), node("p", "", happened), node("p", "path-limit", limit));
-    item.append(content);
-    path.append(item);
-  }
-  workflow.append(path);
-  return workflow;
-}
-
-function renderWarnings(details) {
-  const notices = [];
-  if (details.content_usable === false) {
-    notices.push(note("warning", "Capture limitation", "This case has no usable canonical target content. Missing observations must not be read as absence of activity."));
-  }
-  if (details.classification_reasons.length) {
-    notices.push(note("neutral", "Recorded capture reasons", details.classification_reasons.join(" · ")));
-  }
-  if (details.diagnostic) {
-    const diagnostic = details.diagnostic;
-    notices.push(note(
-      "diagnostic",
-      `Separate render diagnostic: ${diagnostic.status}`,
-      `${diagnostic.checkpoint_count} fixed checkpoint(s), ${diagnostic.diagnostic_wait_budget_ms} ms wait budget, ${diagnostic.collection_mode} mode. This is noncanonical observational data.`,
-    ));
-  }
-  if (details.diagnostic_integrity_warning) {
-    notices.push(note("warning", "Diagnostic integrity warning", details.diagnostic_integrity_warning));
-  }
-  if (details.comparison_integrity_warning) {
-    notices.push(note("warning", "Comparison integrity warning", "One or more configured comparison documents could not be verified and are not displayed."));
-  }
-  if (!notices.length) return null;
-  const section = node("section", "notice-stack");
-  section.setAttribute("aria-label", "Case limitations and integrity notices");
-  section.append(...notices);
-  return section;
-}
-
-function renderOverview(details) {
-  const grid = node("div", "overview-grid");
-  grid.append(
-    metric("CAPTURE OUTCOME", details.capture_outcome || "unknown", `Navigation: ${details.navigation_status}`),
-    metric("CANONICAL CONTENT", details.content_usable === true ? "USABLE" : "LIMITED", details.content_usable === true ? "Evidence may support extraction." : "Review capture limitations."),
-    metric("PENDING LEADS", details.candidates.length, "Relationship: not determined."),
-    metric("GRAPH RECORDS", details.graph ? details.graph.edge_count : 0, "Evidence graph relationships."),
-  );
-  return grid;
-}
-
-function renderPages(details) {
-  const section = panel("Capture ledger", "Page-level outcome and artifact references from the verified case manifest.", "capture-ledger");
-  const rows = details.pages.map((page) => [
-    page.id,
-    `Depth ${page.depth} · ${page.state}`,
-    page.capture_outcome || "unknown",
-    page.content_usable === true ? "usable" : "limited",
-    page.html_evidence_id
-      ? artifactReference(details.case_id, page.html_evidence_id, true, `HTML · ${page.html_evidence_id}`)
-      : "No HTML artifact",
-    page.screenshot_evidence_id
-      ? artifactReference(details.case_id, page.screenshot_evidence_id, true, `Screenshot · ${page.screenshot_evidence_id}`)
-      : "No screenshot artifact",
-  ]);
-  section.append(table(["Page", "Bounded state", "Outcome", "Content", "HTML evidence", "Screenshot evidence"], rows));
-  return section;
-}
-
-function renderEvidence(details) {
-  const section = panel("Evidence inventory", "Every artifact route resolves through a fresh verified manifest check.", "evidence-inventory");
-  const rows = details.evidence.map((record) => [
-    record.id,
-    record.type,
-    record.page_id || "—",
-    record.source_url_display || "[invalid URL]",
-    artifactReference(details.case_id, record.id, record.artifact_available, "Open safe artifact"),
-  ]);
-  section.append(table(["Evidence ID", "Type", "Page", "Inert source display", "Artifact"], rows));
-  return section;
-}
-
-function renderScreenshot(details) {
-  const screenshotPage = details.pages.find((page) => page.screenshot_evidence_id);
-  if (!screenshotPage) return null;
-  const section = panel("Rendered evidence preview", "A local screenshot artifact, not a live page and not an interactive surface.", "rendered-evidence");
-  const frame = node("div", "screenshot-frame");
-  const image = document.createElement("img");
-  image.alt = `Stored screenshot evidence for ${screenshotPage.id}`;
-  image.referrerPolicy = "no-referrer";
-  image.src = artifactUrl(details.case_id, screenshotPage.screenshot_evidence_id);
-  image.addEventListener("error", () => {
-    frame.replaceChildren(note("warning", "Preview unavailable", "The screenshot artifact could not be rendered; inspect its verified local reference instead."));
-  });
-  frame.append(image);
-  section.append(
-    frame,
-    node("p", "artifact-note", "Captured HTML is exposed only as a text/plain attachment. The console never inserts captured HTML into this page."),
-  );
-  return section;
-}
-
-function renderEntities(details) {
-  const section = panel("Observed entities", "Deterministic extraction from saved HTML only. Display values are redacted and inert.", "observed-entities");
-  if (!details.entities.length) {
-    section.append(node("p", "muted", "No usable target-content entities were extracted from this package."));
-    return section;
-  }
-  const rows = details.entities.map((entity) => [
-    entity.id,
-    entity.type,
-    entity.display_value,
-    artifactReference(details.case_id, entity.source_evidence_id, true, entity.source_evidence_id),
-    entity.source_page_id || "—",
-    entity.confidence.toFixed(2),
-  ]);
-  section.append(table(["Observation", "Type", "Inert display", "Supporting evidence", "Page", "Confidence"], rows));
-  return section;
-}
-
-function renderGraph(details) {
-  const section = panel("Evidence graph — accessible relationship table", "A deterministic table is the primary readable graph representation; color is not required to interpret it.", "evidence-graph");
-  if (!details.graph || !details.graph.edges.length) {
-    section.append(node("p", "muted", "No verified graph relationships are available in this case package."));
-    return section;
-  }
-  const rows = details.graph.edges.map((edge) => [
-    `${edge.source.label} (${edge.source.type})`,
-    edge.type,
-    `${edge.target.label} (${edge.target.type})`,
-    edge.evidence
-      ? artifactReference(edge.evidence.case_id, edge.evidence.evidence_id, edge.evidence.available, edge.evidence.evidence_id)
-      : "Structural record · no extracted observation",
-    edge.relationship_status === "observed_evidence" ? "Observed evidence" : "Structural record",
-  ]);
-  section.append(table(["Source node", "Relationship", "Target node", "Supporting evidence", "Relationship status"], rows, "graph-table"));
-  return section;
-}
-
-function renderEvidenceRefs(refs) {
-  const list = node("ul", "reference-list");
-  if (!refs.length) {
-    list.append(node("li", "", "No supporting artifact reference was recorded."));
-    return list;
-  }
-  for (const reference of refs) {
-    const label = reference.case_id
-      ? `${reference.case_id} / ${reference.evidence_id}`
-      : reference.evidence_id;
-    const item = document.createElement("li");
-    item.append(artifactReference(reference.case_id, reference.evidence_id, reference.available, label));
-    if (reference.observation_id) item.append(node("span", "reference-note", ` · observation ${reference.observation_id}`));
-    list.append(item);
-  }
-  return list;
-}
-
-function renderCandidates(details) {
-  const section = panel("Pending candidate leads", "Priority is a deterministic triage input. Relationship: not determined.", "pending-leads");
-  if (details.candidate_policy_version) {
-    section.append(node("p", "policy-note", `Candidate policy: ${details.candidate_policy_version}`));
-  }
-  if (!details.candidates.length) {
-    section.append(node("p", "muted", "No pending candidate leads are present in this verified package."));
-    return section;
-  }
-  for (const candidate of details.candidates) {
-    const article = node("article", "candidate");
-    const top = node("div", "candidate-topline");
-    const title = node("div", "");
-    title.append(node("h4", "candidate-host", candidate.hostname), node("p", "candidate-status", "Pending lead · Relationship: not determined"));
-    top.append(title, node("span", "priority", `TRIAGE ${candidate.priority_score}`));
-    article.append(top);
-    const reasons = node("div", "reason-list");
-    for (const reason of candidate.reasons) {
-      const detail = node("details", "reason-detail");
-      const summary = node("summary", "", `${reason.reason_type} · weight ${reason.weight}`);
-      detail.append(summary, renderEvidenceRefs(reason.evidence_refs));
-      if (reason.observation_ids.length) detail.append(node("p", "reference-note", `Observation IDs: ${reason.observation_ids.join(", ")}`));
-      reasons.append(detail);
-    }
-    article.append(reasons);
-    section.append(article);
-  }
-  return section;
-}
-
-function renderDiagnostic(details) {
-  if (!details.diagnostic) return null;
-  const diagnostic = details.diagnostic;
-  const section = panel("Render diagnostic (separate from canonical evidence)", "This bounded measurement cannot replace stored HTML, screenshots, extraction, graph, or scoring.", "render-diagnostic");
-  const rows = [
-    ["Diagnostic status", diagnostic.status],
-    ["Collection mode", diagnostic.collection_mode],
-    ["Source page", diagnostic.source_page_id],
-    ["Fixed checkpoint count", diagnostic.checkpoint_count],
-    ["Diagnostic wait budget", `${diagnostic.diagnostic_wait_budget_ms} ms`],
-  ];
-  section.append(table(["Field", "Recorded value"], rows));
-  const evidenceHeading = node("p", "policy-note", "Canonical evidence references used only to tie this separate observation to the case:");
-  section.append(evidenceHeading, renderEvidenceRefs(diagnostic.evidence_refs));
-  return section;
-}
-
-function renderComparisons(details) {
-  const section = panel("Offline comparison results", "Evidence-similarity scores are deterministic review inputs, never ownership probabilities.", "offline-comparisons");
-  if (!details.comparisons.length) {
-    section.append(node("p", "muted", "No separately stored, locally verified comparison document is configured for this case."));
-    section.append(node("p", "policy-note", "The console never runs a comparison automatically and never contacts either domain."));
-    return section;
-  }
-  for (const comparison of details.comparisons) {
-    const card = node("article", "comparison");
-    card.append(node("h4", "", `${comparison.left_case_id} ↔ ${comparison.right_case_id}`));
-    const summary = node("div", "comparison-summary");
-    summary.append(
-      metric("EVIDENCE-SIMILARITY SCORE", `${formatScore(comparison.evidence_similarity_score)} / 100`, "Not a probability or ownership claim."),
-      metric("REVIEW STATUS", comparison.review_status.toUpperCase(), "Human conclusion not recorded."),
-    );
-    card.append(summary);
-    card.append(node("p", "policy-note", `Comparator: ${comparison.comparator_version} · Policy: ${comparison.scoring_policy_version}`));
-    const rows = comparison.components.map((component) => [
-      component.name,
-      `${formatScore(component.score)} · weight ${component.weight.toFixed(2)}`,
-      component.available ? component.status : `unavailable · ${component.status}`,
-      component.evidence_refs.length
-        ? artifactReference(
-            component.evidence_refs[0].case_id,
-            component.evidence_refs[0].evidence_id,
-            component.evidence_refs[0].available,
-            `${component.evidence_refs.length} evidence ref(s)`,
-          )
-        : "No evidence reference",
-      component.entity_refs.length
-        ? component.entity_refs.map((reference) => `${reference.entity_id} (${reference.type})`).join(", ")
-        : "No entity reference",
-    ]);
-    card.append(table(["Component", "Score", "Availability", "Artifact provenance", "Entity provenance"], rows));
-    if (comparison.warnings.length) card.append(textList(comparison.warnings, ""));
-    card.append(node("p", "comparison-manifest", `Input manifests: ${comparison.left_case_manifest_sha256} · ${comparison.right_case_manifest_sha256}`));
-    section.append(card);
-  }
-  return section;
-}
-
-function renderIntegrity(details) {
-  const section = panel("Integrity chain and review boundary", "Every displayed fact is traceable to a verified local package or a separately verified companion document.", "integrity-chain");
-  const rows = [
-    ["Case ID", details.case_id],
-    ["Case manifest", details.case_manifest_sha256],
-    ["Canonical evidence", `${details.evidence.length} artifact record(s) verified before display`],
-    ["Graph artifact", details.graph ? `${details.graph.schema_version || "schema not recorded"} · ${details.graph.node_count} nodes / ${details.graph.edge_count} edges` : "Not available"],
-    ["Human conclusion", "Not recorded · review status remains needs review"],
-  ];
-  section.append(table(["Provenance field", "Value"], rows));
-  section.append(note("neutral", "Limit of this console", "It does not collect, navigate, submit, fetch external sources, infer ownership, or record a human decision."));
-  return section;
-}
-
-function renderCase(details) {
-  caseView.replaceChildren();
-  caseView.append(renderCaseHeader(details));
-  const warnings = renderWarnings(details);
-  if (warnings) caseView.append(warnings);
-  caseView.append(renderOverview(details));
-  caseView.append(renderInvestigationPath(details));
-  caseView.append(renderPages(details));
-  caseView.append(renderEvidence(details));
-  const screenshot = renderScreenshot(details);
-  if (screenshot) caseView.append(screenshot);
-  caseView.append(renderEntities(details));
-  caseView.append(renderGraph(details));
-  caseView.append(renderCandidates(details));
-  const diagnostic = renderDiagnostic(details);
-  if (diagnostic) caseView.append(diagnostic);
-  caseView.append(renderComparisons(details));
-  caseView.append(renderIntegrity(details));
-}
-
-async function loadCase(caseId, activeButton) {
-  for (const button of caseList.querySelectorAll("button")) {
-    button.classList.remove("active");
-    button.removeAttribute("aria-current");
-  }
-  if (activeButton) {
-    activeButton.classList.add("active");
-    activeButton.setAttribute("aria-current", "true");
-  }
-  setStatus(`Verifying ${caseId}…`);
-  try {
-    renderCase(await requestJson(`/api/cases/${encodeURIComponent(caseId)}`));
-    caseView.focus({ preventScroll: true });
-    setStatus(`Verified local case: ${caseId}`);
-  } catch (error) {
-    renderError("This case could not be displayed because its local evidence integrity check failed.");
-    setStatus(error.message);
-  }
-}
-
-async function bootstrap() {
-  try {
-    const payload = await requestJson("/api/cases");
-    renderCaseIndex(payload.cases);
-    const first = payload.cases.find((entry) => entry.integrity === "verified");
-    if (first) {
-      const firstButton = caseList.querySelector("button:not([disabled])");
-      loadCase(first.case_id, firstButton);
-    } else {
-      setStatus("No verified completed cases found.");
-    }
-  } catch (error) {
-    renderError("The local evidence index could not be loaded.");
-    setStatus(error.message);
-  }
-}
-
-bootstrap();
-
-const mvpWorkspace = document.getElementById("mvp-workspace");
-const mvpRunForm = document.getElementById("mvp-run-form");
-const mvpScenario = document.getElementById("mvp-scenario");
-const mvpRunList = document.getElementById("mvp-run-list");
-const mvpRunView = document.getElementById("mvp-run-view");
-let selectedMvpRun = null;
-
-async function mutateJson(path, payload) {
+async function requestJson(path, options = {}) {
   const response = await fetch(path, {
-    method: "POST",
     credentials: "same-origin",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {}),
+    ...options,
   });
-  if (!response.ok) throw new Error(`Mutation rejected (${response.status})`);
+  if (!response.ok) {
+    let detail = `Request failed (${response.status})`;
+    try {
+      const payload = await response.json();
+      detail = payload.error || payload.detail || detail;
+    } catch {
+      // The status code remains the safe failure detail.
+    }
+    throw new Error(detail);
+  }
   return response.json();
 }
 
-function mvpBadge(label, value) {
-  return metric(label, value || "—", "Persisted, replayable state");
-}
-
-function renderMvpGraph(details, query = "") {
-  const section = panel(
-    "Progressive evidence graph",
-    "Graph truth is reduced from stored events; animations are a separate queue.",
-    "mvp-graph",
-  );
-  const controls = node("div", "graph-controls");
-  const search = document.createElement("input");
-  search.type = "search";
-  search.placeholder = "Search/focus graph nodes";
-  search.value = query;
-  search.setAttribute("aria-label", "Search graph nodes");
-  controls.append(search, node("span", "policy-note", "Reduced-motion follows system preference"));
-  section.append(controls);
-  const normalizedQuery = query.trim().toLowerCase();
-  const visibleNodes = details.graph.nodes.filter((item) =>
-    !normalizedQuery || `${item.label} ${item.kind} ${item.status}`.toLowerCase().includes(normalizedQuery)
-  );
-  const visibleIds = new Set(visibleNodes.map((item) => item.id));
-  const minimap = node("div", "graph-minimap");
-  minimap.setAttribute("aria-label", "Graph minimap");
-  for (const item of visibleNodes) {
-    const chip = node("span", `graph-node ${item.status}`, `${item.kind}: ${item.label}`);
-    chip.dataset.nodeId = item.id;
-    minimap.append(chip);
-  }
-  section.append(minimap);
-  const edges = details.graph.edges.filter((edge) =>
-    !normalizedQuery || visibleIds.has(edge.source) || visibleIds.has(edge.target)
-  );
-  section.append(table(
-    ["Source", "Relation", "Target", "Appearance", "Evidence"],
-    edges.map((edge) => [
-      edge.source,
-      edge.relation,
-      edge.target,
-      edge.appearance,
-      edge.supporting_observation_ids.join(", ") || edge.supporting_event_ids.join(", "),
-    ]),
-    "graph-table",
-  ));
-  search.addEventListener("input", () => {
-    const replacement = renderMvpGraph(details, search.value);
-    section.replaceWith(replacement);
-    replacement.querySelector("input")?.focus();
+function postJson(path, payload) {
+  return requestJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
-  return section;
 }
 
-function renderMvpObservations(details) {
-  const section = panel(
-    "Evidence inspector",
-    "Normalized observations retain source event and artifact IDs; fixture artifacts are inert JSON.",
-    "mvp-evidence",
-  );
-  const observations = details.events.filter((event) => event.kind === "observation.created");
-  section.append(table(
-    ["Observation", "Type", "Normalized value", "Artifact", "Event"],
-    observations.map((event) => [
-      event.payload.observation_id,
-      event.payload.observation_type,
-      event.payload.normalized_value,
-      event.payload.artifact_id,
-      `#${event.sequence} · ${event.event_id}`,
-    ]),
-  ));
-  const artifacts = node("div", "artifact-actions");
-  for (const artifact of details.artifacts) {
-    const link = node("a", "artifact-link", `${artifact.name} · ${artifact.bytes} bytes`);
-    link.href = `/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/artifacts/${encodeURIComponent(artifact.name)}`;
-    artifacts.append(link);
+function caseArtifactUrl(caseId, evidenceId) {
+  return `/api/cases/${encodeURIComponent(caseId)}/artifacts/${encodeURIComponent(evidenceId)}`;
+}
+
+function runArtifactUrl(workspaceId, name) {
+  return `/api/mvp/runs/${encodeURIComponent(workspaceId)}/artifacts/${encodeURIComponent(name)}`;
+}
+
+function hash(value) {
+  let result = 2166136261;
+  for (const character of String(value)) {
+    result ^= character.charCodeAt(0);
+    result = Math.imul(result, 16777619);
   }
-  section.append(artifacts);
-  return section;
+  return result >>> 0;
 }
 
-function renderMvpTimeline(details) {
-  const section = panel(
-    "Agent and tool event timeline",
-    "Monotonic events are persisted before this view is rendered.",
-    "mvp-timeline",
-  );
-  section.append(table(
-    ["Seq", "Kind", "Causation", "Recorded payload"],
-    details.events.map((event) => [
-      event.sequence,
-      event.kind,
-      event.causation_event_id || "root",
-      JSON.stringify(event.payload).slice(0, 240),
-    ]),
-  ));
-  return section;
+function seededUnit(value) {
+  return (hash(value) % 10000) / 10000;
 }
 
-function renderMvpCausalPath(details) {
-  const section = panel(
-    "Causal tree / path",
-    "Every child points to the event that caused it when a direct cause exists.",
-    "mvp-causal",
-  );
-  section.append(table(
-    ["Event", "Caused by"],
-    details.graph.causal_links.map((item) => [item.event_id, item.causation_event_id || "root"]),
-  ));
-  return section;
+function nodeKind(rawType) {
+  const type = String(rawType || "default").toLowerCase();
+  if (type.includes("screenshot")) return "screenshot";
+  if (type.includes("readiness")) return "readiness";
+  if (type.includes("html") || type.includes("text") || type.includes("network")) return "document";
+  if (type.includes("candidate")) return "candidate_domain";
+  return type;
 }
 
-function renderMvpReview(details) {
-  const section = panel(
-    "Candidate assertion and human review",
-    "Verified means the selected evidence supports only the stated relationship.",
-    "mvp-review",
-  );
-  if (details.lead_status === "waiting_for_approval") {
-    section.append(note(
-      "warning",
-      "Candidate waiting for approval",
-      "Real-world mode does not recollect Page B automatically.",
-    ));
-    const approve = node("button", "action-button", "Approve recollection boundary");
-    approve.type = "button";
-    approve.addEventListener("click", async () => {
-      await mutateJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/approve`, {});
-      await loadMvpRun(details.workspace_id);
+function clusterFor(kind) {
+  if (["case", "domain", "page", "seed_page", "collected_page"].includes(kind)) return "Captured pages";
+  if (["screenshot", "document", "readiness"].includes(kind)) return "Evidence artifacts";
+  if (["observation", "public_contact", "claimed_brand"].includes(kind)) return "Observed signals";
+  if (["candidate", "candidate_domain", "external_destination", "redirect_target"].includes(kind)) return "Pending leads";
+  return "Evidence graph";
+}
+
+function nodeCode(kind) {
+  const codes = {
+    case: "CASE",
+    domain: "DOM",
+    page: "PG",
+    seed_page: "A",
+    collected_page: "B",
+    screenshot: "IMG",
+    document: "DOC",
+    readiness: "RDY",
+    observation: "OBS",
+    public_contact: "TEL",
+    external_destination: "EXT",
+    redirect_target: "301",
+    candidate: "LEAD",
+    candidate_domain: "LEAD",
+    claimed_brand: "BR",
+  };
+  return codes[kind] || "EV";
+}
+
+function radiusFor(kind, primary) {
+  if (primary) return 19;
+  if (["case", "domain", "page", "seed_page", "collected_page"].includes(kind)) return 14;
+  return 11;
+}
+
+function normalizeNode(raw, index, extras = {}) {
+  const kind = nodeKind(raw.kind || raw.type);
+  return {
+    id: String(raw.id),
+    kind,
+    label: valueOr(raw.label, raw.id),
+    status: raw.status || extras.status || "observed",
+    attributes: raw.attributes || extras.attributes || {},
+    cluster: extras.cluster || clusterFor(kind),
+    sequence: Number(extras.sequence || raw.sequence || index + 1),
+    primary: Boolean(extras.primary),
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    tx: 0,
+    ty: 0,
+    pinned: false,
+    birth: performance.now() + index * 38,
+    radius: radiusFor(kind, Boolean(extras.primary)),
+  };
+}
+
+function normalizeEdge(raw, index, extras = {}) {
+  const source = typeof raw.source === "object" ? raw.source.id : raw.source;
+  const target = typeof raw.target === "object" ? raw.target.id : raw.target;
+  return {
+    id: String(raw.id || `edge-${index}`),
+    source: String(source),
+    target: String(target),
+    relation: valueOr(raw.relation || raw.type, "recorded relation"),
+    appearance: raw.appearance || extras.appearance || "solid",
+    sequence: Number(extras.sequence || raw.sequence || index + 2),
+    evidence: raw.evidence || null,
+    birth: performance.now() + 160 + index * 44,
+    seed: seededUnit(raw.id || `${source}-${target}`),
+  };
+}
+
+function addUniqueNode(nodes, node) {
+  if (!nodes.some((item) => item.id === node.id)) nodes.push(node);
+}
+
+function addUniqueEdge(edges, edge) {
+  if (!edges.some((item) => item.id === edge.id)) edges.push(edge);
+}
+
+function buildCaseProjection(details) {
+  const nodes = [];
+  const edges = [];
+  const timeline = [];
+  const sourceNodes = details.graph?.nodes || [];
+  const primarySource = sourceNodes.find((item) => item.type === "page") || sourceNodes.find((item) => item.type === "domain") || sourceNodes[0];
+  sourceNodes.forEach((raw, index) => {
+    addUniqueNode(nodes, normalizeNode(raw, index, {
+      primary: raw.id === primarySource?.id,
+      sequence: 1,
+      attributes: { source: "persisted graph node", raw },
+    }));
+  });
+  (details.graph?.edges || []).forEach((raw, index) => {
+    addUniqueEdge(edges, normalizeEdge(raw, index, {
+      sequence: 2 + index,
+      appearance: raw.relationship_status === "observed_evidence" ? "solid_emphasized" : "solid",
+    }));
+  });
+
+  if (!nodes.length) {
+    const caseNode = normalizeNode({ id: `case:${details.case_id}`, type: "case", label: details.case_id }, 0, { primary: true, sequence: 1 });
+    addUniqueNode(nodes, caseNode);
+    (details.pages || []).forEach((page, index) => {
+      const pageNode = normalizeNode({ id: `page:${page.id}`, type: "page", label: page.final_url_display }, index + 1, { sequence: index + 2, attributes: { page } });
+      addUniqueNode(nodes, pageNode);
+      addUniqueEdge(edges, normalizeEdge({ id: `case-page:${page.id}`, source: caseNode.id, target: pageNode.id, relation: "contains captured page" }, edges.length, { sequence: index + 2 }));
     });
-    section.append(approve);
-    return section;
   }
-  if (!details.assertion) {
-    section.append(node("p", "muted", "No evidence-backed candidate assertion was proposed."));
-    return section;
+
+  const pageNodes = new Map();
+  nodes.filter((item) => item.kind === "page").forEach((item) => {
+    const pageId = item.id.startsWith("page:") ? item.id.slice(5) : item.id;
+    pageNodes.set(pageId, item.id);
+  });
+  let sequence = Math.max(3, edges.length + 2);
+  (details.evidence || []).forEach((record, index) => {
+    sequence += 1;
+    const evidenceNode = normalizeNode({
+      id: `evidence:${record.id}`,
+      type: record.type,
+      label: titleCase(record.type),
+    }, nodes.length, {
+      sequence,
+      attributes: { evidence: record },
+    });
+    addUniqueNode(nodes, evidenceNode);
+    const sourceId = pageNodes.get(record.page_id) || primarySource?.id || nodes[0]?.id;
+    if (sourceId) {
+      addUniqueEdge(edges, normalizeEdge({
+        id: `captured:${record.id}`,
+        source: sourceId,
+        target: evidenceNode.id,
+        relation: "captured as",
+      }, edges.length, { sequence }));
+    }
+    timeline.push({
+      sequence,
+      label: titleCase(record.type),
+      detail: formatTime(record.collected_at),
+      occurredAt: record.collected_at,
+      targetId: evidenceNode.id,
+    });
+  });
+
+  (details.observations || []).forEach((observation) => {
+    sequence += 1;
+    const observationNode = normalizeNode({
+      id: `observation:${observation.id}`,
+      type: observation.type || "observation",
+      label: observation.display_value,
+    }, nodes.length, { sequence, attributes: { observation } });
+    observationNode.kind = observationNode.kind === "default" ? "observation" : observationNode.kind;
+    observationNode.cluster = "Observed signals";
+    addUniqueNode(nodes, observationNode);
+    const sourceId = `evidence:${observation.source_artifact_id}`;
+    if (nodes.some((item) => item.id === sourceId)) {
+      addUniqueEdge(edges, normalizeEdge({ id: `supports:${observation.id}`, source: sourceId, target: observationNode.id, relation: "supports observation" }, edges.length, { sequence }));
+    }
+    timeline.push({ sequence, label: titleCase(observation.type), detail: "Semantic observation recorded", targetId: observationNode.id });
+  });
+
+  (details.candidates || []).forEach((candidate) => {
+    sequence += 1;
+    const candidateId = `candidate:${candidate.candidate_id}`;
+    addUniqueNode(nodes, normalizeNode({ id: candidateId, type: "candidate_domain", label: candidate.hostname }, nodes.length, {
+      sequence,
+      status: "lead",
+      attributes: { candidate },
+    }));
+    const reason = candidate.reasons?.[0];
+    const sourceEvidenceId = reason?.evidence_refs?.[0]?.evidence_id;
+    const sourceId = sourceEvidenceId && nodes.some((item) => item.id === `evidence:${sourceEvidenceId}`)
+      ? `evidence:${sourceEvidenceId}`
+      : primarySource?.id || nodes[0]?.id;
+    if (sourceId) addUniqueEdge(edges, normalizeEdge({ id: `lead:${candidate.candidate_id}`, source: sourceId, target: candidateId, relation: "pending candidate lead" }, edges.length, { sequence, appearance: "dashed" }));
+    timeline.push({ sequence, label: "Candidate recorded", detail: evidenceSemantics.candidate, targetId: candidateId });
+  });
+
+  timeline.unshift({ sequence: 1, label: "Capture started", detail: formatTime(details.started_at), occurredAt: details.started_at, targetId: primarySource?.id || nodes[0]?.id });
+  sequence += 1;
+  timeline.push({
+    sequence,
+    label: details.capture_adequacy === "adequate" ? "Capture adequate" : "Capture limited",
+    detail: formatTime(details.completed_at),
+    occurredAt: details.completed_at,
+    targetId: primarySource?.id || nodes[0]?.id,
+  });
+  return { nodes, edges, timeline, mode: "Saved public observation" };
+}
+
+function buildRunProjection(details) {
+  const eventSequence = new Map((details.events || []).map((event) => [event.event_id, event.sequence]));
+  const animationSequence = new Map();
+  (details.graph?.animations || []).forEach((animation) => {
+    const existing = animationSequence.get(animation.target_id) || Number.POSITIVE_INFINITY;
+    animationSequence.set(animation.target_id, Math.min(existing, animation.sequence));
+  });
+  const nodes = (details.graph?.nodes || []).map((raw, index) => normalizeNode(raw, index, {
+    primary: raw.kind === "seed_page",
+    sequence: animationSequence.get(raw.id) || index + 1,
+    attributes: raw.attributes || {},
+  }));
+  const edges = (details.graph?.edges || []).map((raw, index) => normalizeEdge(raw, index, {
+    sequence: Math.min(...(raw.supporting_event_ids || []).map((id) => eventSequence.get(id) || 999), index + 2),
+  }));
+  const timeline = (details.events || []).map((event) => ({
+    sequence: event.sequence,
+    label: titleCase(event.kind.replaceAll(".", " ")),
+    detail: formatTime(event.occurred_at),
+    occurredAt: event.occurred_at,
+    targetId: (details.graph?.animations || []).find((item) => item.sequence === event.sequence)?.target_id || null,
+    event,
+  }));
+  return { nodes, edges, timeline, mode: "Event-driven investigation" };
+}
+
+function applyLayoutTargets() {
+  const buckets = new Map();
+  view.nodes.forEach((item) => {
+    if (!buckets.has(item.cluster)) buckets.set(item.cluster, []);
+    buckets.get(item.cluster).push(item);
+  });
+  const centers = {
+    "Captured pages": { x: -70, y: 0 },
+    "Evidence artifacts": { x: -250, y: 80 },
+    "Observed signals": { x: 210, y: -100 },
+    "Pending leads": { x: 285, y: 115 },
+    "Evidence graph": { x: 0, y: 0 },
+  };
+  for (const [cluster, items] of buckets) {
+    const center = centers[cluster] || centers["Evidence graph"];
+    items.forEach((item, index) => {
+      if (item.primary) {
+        item.tx = 0;
+        item.ty = 0;
+      } else {
+        const angle = (index / Math.max(1, items.length)) * Math.PI * 2 + seededUnit(item.id) * 0.8;
+        const ring = 58 + Math.min(180, items.length * 17) + (index % 2) * 34;
+        item.tx = center.x + Math.cos(angle) * ring;
+        item.ty = center.y + Math.sin(angle) * ring * 0.72;
+      }
+      if (item.x === 0 && item.y === 0 && !item.primary) {
+        item.x = item.tx * 0.42 + (seededUnit(`${item.id}:x`) - 0.5) * 100;
+        item.y = item.ty * 0.42 + (seededUnit(`${item.id}:y`) - 0.5) * 100;
+      }
+    });
   }
-  section.append(table(
-    ["Assertion", "Relation", "Subject", "Object", "Status"],
-    [[
-      details.assertion.assertion_id,
-      details.assertion.assertion_type,
-      details.assertion.subject,
-      details.assertion.object,
-      details.current_assertion_status,
-    ]],
-  ));
-  section.append(node(
-    "p",
-    "policy-note",
-    `Supporting observations: ${details.assertion.supporting_observation_ids.join(", ")}`,
-  ));
-  const form = node("form", "review-form");
-  const label = document.createElement("input");
-  label.required = true;
-  label.maxLength = 200;
-  label.placeholder = "Reviewer label";
-  label.setAttribute("aria-label", "Reviewer label");
-  const reason = document.createElement("textarea");
+}
+
+function setGraph(projection) {
+  stopReplay();
+  view.nodes = projection.nodes;
+  view.edges = projection.edges.filter((edge) => projection.nodes.some((node) => node.id === edge.source) && projection.nodes.some((node) => node.id === edge.target));
+  view.nodeById = new Map(view.nodes.map((item) => [item.id, item]));
+  view.timeline = projection.timeline.sort((a, b) => a.sequence - b.sequence);
+  view.playbackCutoff = Number.POSITIVE_INFINITY;
+  view.selectedId = view.nodes.find((item) => item.primary)?.id || view.nodes[0]?.id || null;
+  view.hoverId = null;
+  view.searchIds.clear();
+  applyLayoutTargets();
+  refs.graphModeLabel.textContent = projection.mode;
+  refs.graphCount.textContent = `${view.nodes.length} nodes · ${view.edges.length} links`;
+  refs.graphEmpty.hidden = view.nodes.length > 0;
+  renderTimeline();
+  renderAccessibleGraph();
+  window.setTimeout(fitGraph, 80);
+}
+
+function renderAccessibleGraph() {
+  const title = el("h2", "", evidenceSemantics.accessibility);
+  const description = el("p", "", `${view.nodes.length} nodes and ${view.edges.length} recorded links.`);
+  const list = el("ul");
+  view.edges.forEach((edge) => {
+    const source = view.nodeById.get(edge.source);
+    const target = view.nodeById.get(edge.target);
+    list.append(el("li", "", `${source?.label || edge.source} — ${edge.relation} — ${target?.label || edge.target}`));
+  });
+  refs.graphA11y.replaceChildren(title, description, list);
+}
+
+function resizeCanvas() {
+  const rect = refs.graphCanvas.getBoundingClientRect();
+  view.dpr = Math.min(1.75, window.devicePixelRatio || 1);
+  view.width = Math.max(320, rect.width);
+  view.height = Math.max(360, rect.height);
+  refs.graphCanvas.width = Math.floor(view.width * view.dpr);
+  refs.graphCanvas.height = Math.floor(view.height * view.dpr);
+  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+}
+
+function worldToScreen(item, time = 0) {
+  const float = reduceMotion ? 0 : Math.sin(time * 0.0012 + seededUnit(item.id) * Math.PI * 2) * 2.4;
+  return {
+    x: (item.x - view.camera.x) * view.camera.zoom + view.width / 2,
+    y: (item.y + float - view.camera.y) * view.camera.zoom + view.height / 2,
+  };
+}
+
+function screenToWorld(x, y) {
+  return {
+    x: (x - view.width / 2) / view.camera.zoom + view.camera.x,
+    y: (y - view.height / 2) / view.camera.zoom + view.camera.y,
+  };
+}
+
+function isVisible(item) {
+  return item.sequence <= view.playbackCutoff;
+}
+
+function physicsStep(delta) {
+  const step = Math.min(2, delta / 16.67);
+  for (const item of view.nodes) {
+    if (item.pinned) continue;
+    item.vx += (item.tx - item.x) * 0.0018 * step;
+    item.vy += (item.ty - item.y) * 0.0018 * step;
+  }
+  for (let left = 0; left < view.nodes.length; left += 1) {
+    for (let right = left + 1; right < view.nodes.length; right += 1) {
+      const a = view.nodes[left];
+      const b = view.nodes[right];
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      const distanceSquared = Math.max(180, dx * dx + dy * dy);
+      const distance = Math.sqrt(distanceSquared);
+      dx /= distance;
+      dy /= distance;
+      const force = Math.min(0.52, 720 / distanceSquared) * step;
+      if (!a.pinned) { a.vx -= dx * force; a.vy -= dy * force; }
+      if (!b.pinned) { b.vx += dx * force; b.vy += dy * force; }
+    }
+  }
+  view.edges.forEach((edge) => {
+    const a = view.nodeById.get(edge.source);
+    const b = view.nodeById.get(edge.target);
+    if (!a || !b) return;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const desired = 118;
+    const pull = (distance - desired) * 0.00035 * step;
+    if (!a.pinned) { a.vx += dx * pull; a.vy += dy * pull; }
+    if (!b.pinned) { b.vx -= dx * pull; b.vy -= dy * pull; }
+  });
+  view.nodes.forEach((item) => {
+    if (item.pinned) return;
+    item.vx *= 0.91;
+    item.vy *= 0.91;
+    item.x += item.vx * step;
+    item.y += item.vy * step;
+  });
+}
+
+function roundedLabel(text, x, y, selected) {
+  ctx.font = "600 10px 'Cascadia Mono', Consolas, monospace";
+  const label = shortText(text, 27);
+  const width = Math.min(190, ctx.measureText(label).width + 16);
+  ctx.fillStyle = selected ? "rgba(18,31,39,.94)" : "rgba(5,9,13,.82)";
+  ctx.strokeStyle = selected ? "rgba(95,226,239,.68)" : "rgba(156,177,194,.15)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x - width / 2, y, width, 22, 7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = selected ? "#f5fbff" : "#a4adb8";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x, y + 11, width - 10);
+}
+
+function drawClusters(time) {
+  const groups = new Map();
+  view.nodes.filter(isVisible).forEach((item) => {
+    if (!groups.has(item.cluster)) groups.set(item.cluster, []);
+    groups.get(item.cluster).push(item);
+  });
+  for (const [name, items] of groups) {
+    if (items.length < 2) continue;
+    const points = items.map((item) => worldToScreen(item, time));
+    const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+    const cy = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+    const rx = Math.max(70, ...points.map((point) => Math.abs(point.x - cx) + 40));
+    const ry = Math.max(56, ...points.map((point) => Math.abs(point.y - cy) + 38));
+    ctx.save();
+    ctx.strokeStyle = name === "Pending leads" ? "rgba(255,183,90,.16)" : "rgba(92,183,238,.13)";
+    ctx.fillStyle = name === "Pending leads" ? "rgba(255,183,90,.012)" : "rgba(71,148,207,.012)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(128,144,158,.58)";
+    ctx.font = "600 9px 'Cascadia Mono', Consolas, monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(name.toUpperCase(), cx - rx + 14, cy - ry + 20);
+    ctx.restore();
+  }
+}
+
+function curvePoints(edge, time) {
+  const source = view.nodeById.get(edge.source);
+  const target = view.nodeById.get(edge.target);
+  if (!source || !target) return null;
+  const a = worldToScreen(source, time);
+  const b = worldToScreen(target, time);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const bend = (edge.seed - 0.5) * Math.min(72, length * 0.18);
+  return { a, b, c: { x: (a.x + b.x) / 2 - (dy / length) * bend, y: (a.y + b.y) / 2 + (dx / length) * bend } };
+}
+
+function quadraticPoint(points, progress) {
+  const inverse = 1 - progress;
+  return {
+    x: inverse * inverse * points.a.x + 2 * inverse * progress * points.c.x + progress * progress * points.b.x,
+    y: inverse * inverse * points.a.y + 2 * inverse * progress * points.c.y + progress * progress * points.b.y,
+  };
+}
+
+function drawEdges(time) {
+  view.edges.filter(isVisible).forEach((edge) => {
+    const points = curvePoints(edge, time);
+    if (!points) return;
+    const age = reduceMotion ? 1 : Math.min(1, Math.max(0, (time - edge.birth) / 650));
+    const selected = edge.source === view.selectedId || edge.target === view.selectedId;
+    const searchDimmed = view.query && !view.searchIds.has(edge.source) && !view.searchIds.has(edge.target);
+    ctx.save();
+    ctx.globalAlpha = (searchDimmed ? 0.08 : selected ? 0.96 : 0.48) * age;
+    ctx.strokeStyle = edge.appearance === "solid_emphasized" ? "#57edae" : edge.appearance === "dashed" ? "#ffb75a" : "#6ab9f4";
+    ctx.lineWidth = edge.appearance === "solid_emphasized" ? 2.6 : selected ? 1.8 : 1.15;
+    if (edge.appearance === "dashed") ctx.setLineDash([7, 6]);
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.shadowBlur = selected || edge.appearance === "solid_emphasized" ? 8 : 0;
+    const end = quadraticPoint(points, age);
+    ctx.beginPath();
+    ctx.moveTo(points.a.x, points.a.y);
+    ctx.quadraticCurveTo(points.c.x, points.c.y, end.x, end.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (!reduceMotion && age === 1 && !searchDimmed) {
+      const particle = quadraticPoint(points, (time * 0.00012 + edge.seed) % 1);
+      ctx.globalAlpha = selected ? 1 : 0.72;
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, selected ? 2.4 : 1.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+function drawNodes(time) {
+  view.nodes.filter(isVisible).forEach((item) => {
+    const point = worldToScreen(item, time);
+    const age = reduceMotion ? 1 : Math.min(1, Math.max(0, (time - item.birth) / 420));
+    const selected = item.id === view.selectedId;
+    const hovered = item.id === view.hoverId;
+    const searchDimmed = view.query && !view.searchIds.has(item.id);
+    const color = colors[item.kind] || colors.default;
+    const radius = item.radius * view.camera.zoom + 3;
+    const pulse = reduceMotion ? 0 : Math.sin(time * 0.003 + seededUnit(item.id) * 6) * 2;
+    ctx.save();
+    ctx.globalAlpha = (searchDimmed ? 0.13 : 1) * age;
+    ctx.translate(point.x, point.y);
+    ctx.scale(0.45 + age * 0.55, 0.45 + age * 0.55);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = selected ? 22 : hovered ? 15 : 8;
+    ctx.fillStyle = `${color}16`;
+    ctx.strokeStyle = selected ? "#ffffff" : color;
+    ctx.lineWidth = selected ? 2.1 : item.status === "lead" ? 1.5 : 1.1;
+    if (item.status === "lead") ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 6 + pulse * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#0b141c";
+    ctx.strokeStyle = `${color}aa`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(radius * 0.45, -radius * 0.45, Math.max(2.2, radius * 0.18), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#f4f8fb";
+    ctx.font = `700 ${Math.max(7, Math.min(10, radius * 0.58))}px 'Cascadia Mono', Consolas, monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(nodeCode(item.kind), 0, 0);
+    ctx.restore();
+    if (!searchDimmed && (selected || hovered || item.primary || view.camera.zoom > 0.74)) roundedLabel(item.label, point.x, point.y + radius + 10, selected);
+  });
+}
+
+function drawFrame(time) {
+  const delta = Math.min(40, time - view.frameTime);
+  view.frameTime = time;
+  physicsStep(delta);
+  view.camera.x += (view.camera.targetX - view.camera.x) * 0.09;
+  view.camera.y += (view.camera.targetY - view.camera.y) * 0.09;
+  view.camera.zoom += (view.camera.targetZoom - view.camera.zoom) * 0.1;
+  ctx.clearRect(0, 0, view.width, view.height);
+  drawClusters(time);
+  drawEdges(time);
+  drawNodes(time);
+  window.requestAnimationFrame(drawFrame);
+}
+
+function graphBounds() {
+  const visible = view.nodes.filter(isVisible);
+  if (!visible.length) return { minX: -100, maxX: 100, minY: -100, maxY: 100 };
+  return {
+    minX: Math.min(...visible.map((item) => item.x)),
+    maxX: Math.max(...visible.map((item) => item.x)),
+    minY: Math.min(...visible.map((item) => item.y)),
+    maxY: Math.max(...visible.map((item) => item.y)),
+  };
+}
+
+function fitGraph() {
+  if (!view.nodes.length) return;
+  const bounds = graphBounds();
+  const width = Math.max(200, bounds.maxX - bounds.minX + 130);
+  const height = Math.max(180, bounds.maxY - bounds.minY + 130);
+  view.camera.targetX = (bounds.minX + bounds.maxX) / 2;
+  view.camera.targetY = (bounds.minY + bounds.maxY) / 2;
+  view.camera.targetZoom = Math.max(0.38, Math.min(1.35, Math.min(view.width / width, view.height / height) * 0.9));
+}
+
+function focusNode(item) {
+  if (!item) return;
+  view.camera.targetX = item.x;
+  view.camera.targetY = item.y;
+  view.camera.targetZoom = Math.max(0.82, Math.min(1.35, view.camera.targetZoom));
+}
+
+function findNodeAt(x, y) {
+  let result = null;
+  let closest = Number.POSITIVE_INFINITY;
+  view.nodes.filter(isVisible).forEach((item) => {
+    const point = worldToScreen(item, performance.now());
+    const distance = Math.hypot(point.x - x, point.y - y);
+    const radius = item.radius * view.camera.zoom + 15;
+    if (distance <= radius && distance < closest) {
+      result = item;
+      closest = distance;
+    }
+  });
+  return result;
+}
+
+function canvasPoint(event) {
+  const rect = refs.graphCanvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function selectNode(item, shouldFocus = false) {
+  if (!item) return;
+  view.selectedId = item.id;
+  if (shouldFocus) focusNode(item);
+  if (view.currentKind === "case") renderCaseInspector(view.currentDetails, item);
+  else if (view.currentKind === "run") renderRunInspector(view.currentDetails, item);
+}
+
+function updateHover(point) {
+  const item = findNodeAt(point.x, point.y);
+  view.hoverId = item?.id || null;
+  refs.graphCanvas.style.cursor = view.pointer ? "grabbing" : item ? "pointer" : "grab";
+  if (item) {
+    refs.graphTooltip.textContent = `${titleCase(item.kind)} · ${item.label}`;
+    refs.graphTooltip.style.left = `${Math.min(view.width - 235, point.x + 14)}px`;
+    refs.graphTooltip.style.top = `${Math.min(view.height - 50, point.y + 14)}px`;
+    refs.graphTooltip.classList.add("visible");
+  } else {
+    refs.graphTooltip.classList.remove("visible");
+  }
+}
+
+function renderTimeline() {
+  refs.timelineTrack.replaceChildren();
+  view.timeline.forEach((item, index) => {
+    const card = el("button", "timeline-card");
+    card.type = "button";
+    card.dataset.sequence = String(item.sequence);
+    card.append(el("b", "", item.label), el("span", "", item.detail));
+    card.addEventListener("click", () => {
+      stopReplay();
+      setActiveTimeline(index);
+      const target = view.nodeById.get(item.targetId);
+      if (target) selectNode(target, true);
+    });
+    refs.timelineTrack.append(card);
+  });
+  setActiveTimeline(view.timeline.length ? view.timeline.length - 1 : -1);
+}
+
+function setActiveTimeline(index) {
+  [...refs.timelineTrack.children].forEach((card, cardIndex) => {
+    card.classList.toggle("active", cardIndex === index);
+    if (cardIndex === index) {
+      card.setAttribute("aria-current", "step");
+      card.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+    } else {
+      card.removeAttribute("aria-current");
+    }
+  });
+}
+
+function stopReplay() {
+  if (view.replayTimer) window.clearTimeout(view.replayTimer);
+  view.replayTimer = null;
+  view.replayPaused = false;
+  refs.pauseButton.textContent = "Ⅱ";
+}
+
+function replayStep() {
+  if (view.replayPaused || view.replayPosition >= view.timeline.length) {
+    if (view.replayPosition >= view.timeline.length) stopReplay();
+    return;
+  }
+  const item = view.timeline[view.replayPosition];
+  view.playbackCutoff = item.sequence;
+  setActiveTimeline(view.replayPosition);
+  const target = view.nodeById.get(item.targetId);
+  if (target) {
+    view.selectedId = target.id;
+    focusNode(target);
+  }
+  view.replayPosition += 1;
+  view.replayTimer = window.setTimeout(replayStep, Number(refs.timelineSpeed.value));
+}
+
+function startReplay() {
+  stopReplay();
+  if (!view.timeline.length) return;
+  view.replayPosition = 0;
+  view.playbackCutoff = 0;
+  if (reduceMotion) {
+    view.playbackCutoff = Number.POSITIVE_INFINITY;
+    setActiveTimeline(view.timeline.length - 1);
+    return;
+  }
+  replayStep();
+}
+
+function statusPill(label, tone = "") {
+  return el("span", `status-pill ${tone}`.trim(), titleCase(label));
+}
+
+function metricCard(value, label) {
+  const card = el("div", "stat-card");
+  card.append(el("strong", "", value), el("span", "", label));
+  return card;
+}
+
+function intelSection(title, content) {
+  const section = el("section", "intel-section");
+  section.append(el("h2", "", title), content);
+  return section;
+}
+
+function renderCaseIntel(details) {
+  const host = hostnameFrom(details.final_url_display || details.seed_url_display);
+  const hero = el("section", "intel-hero");
+  hero.append(
+    el("h1", "", host),
+    el("p", "", "Saved one-page public observation. The graph connects only captured pages, verified artifacts, extracted observations, and pending leads."),
+  );
+  const statuses = el("div", "status-row");
+  const adequacyTone = details.capture_adequacy === "adequate" ? "good" : "warn";
+  statuses.append(
+    statusPill(details.public_status || "saved", details.public_status === "captured" ? "good" : "warn"),
+    statusPill(details.capture_adequacy || "legacy capture", adequacyTone),
+    statusPill(details.access_outcome || details.capture_outcome || "observed", details.access_outcome === "content" ? "good" : "warn"),
+  );
+  hero.append(statuses);
+
+  const stats = el("div", "stat-grid");
+  stats.append(
+    metricCard(details.pages?.length || 0, "Captured pages"),
+    metricCard(details.evidence?.length || 0, "Verified artifacts"),
+    metricCard(details.observations?.length || 0, "Semantic observations"),
+    metricCard(details.candidates?.length || 0, "Pending leads"),
+  );
+
+  const limitations = el("ul", "limitation-list");
+  const limitValues = [...(details.limitation_reasons || [])];
+  if (details.extraction_skip_reason) limitValues.push(details.extraction_skip_reason);
+  if (!limitValues.length) limitValues.push("One public page only; no authentication, CAPTCHA bypass, or candidate crawling.");
+  limitValues.forEach((reason) => limitations.append(el("li", "", reason)));
+
+  const policy = el("p", "policy-copy", "A candidate is a pending lead, never a confirmed operator or mirror. Similarity is evidence comparison, not ownership probability. Human review remains required.");
+  refs.intelContent.replaceChildren(
+    hero,
+    intelSection("Capture facts", stats),
+    intelSection("Known limits", limitations),
+    intelSection("Interpretation boundary", policy),
+  );
+}
+
+function renderRunIntel(details) {
+  const hero = el("section", "intel-hero");
+  hero.append(
+    el("h1", "", valueOr(details.case_id, "Investigation")),
+    el("p", "", "A deterministic, append-only investigation replay. Dashed edges are leads; emphasized edges exist only after a recorded human decision."),
+  );
+  const statuses = el("div", "status-row");
+  statuses.append(
+    statusPill(details.agent_mode || "deterministic fallback", details.agent_mode === "codex" ? "good" : "warn"),
+    statusPill(details.lead_status || "recorded", details.lead_status === "recollected" ? "good" : "warn"),
+    statusPill(details.current_assertion_status || "no assertion", details.current_assertion_status === "verified" ? "good" : "warn"),
+  );
+  hero.append(statuses);
+  const stats = el("div", "stat-grid");
+  stats.append(
+    metricCard(details.graph?.nodes?.length || 0, "Graph nodes"),
+    metricCard(details.graph?.edges?.length || 0, "Graph links"),
+    metricCard(details.events?.length || 0, "Persisted events"),
+    metricCard(details.reviews?.length || 0, "Review versions"),
+  );
+  const policy = el("p", "policy-copy", "Replay animation is a projection of persisted events. Reloading reconstructs the same graph truth; animation never creates evidence.");
+  refs.intelContent.replaceChildren(hero, intelSection("Run facts", stats), intelSection("Evidence rule", policy));
+}
+
+function factList(entries) {
+  const list = el("dl", "fact-list");
+  entries.forEach(([label, value]) => {
+    const row = el("div", "fact-row");
+    row.append(el("dt", "", label), el("dd", "", valueOr(value)));
+    list.append(row);
+  });
+  return list;
+}
+
+function evidenceLink(caseId, record) {
+  const link = el("a", "artifact-link", titleCase(record.type));
+  link.href = caseArtifactUrl(caseId, record.id);
+  link.title = `Open verified artifact ${record.id}`;
+  return link;
+}
+
+function inspectorHeader(kicker, title, copy) {
+  const header = el("header", "inspector-header");
+  header.append(el("span", "", kicker), el("h2", "", title));
+  if (copy) header.append(el("p", "", copy));
+  return header;
+}
+
+function evidenceBlock(title, content) {
+  const section = el("section", "evidence-block");
+  section.append(el("h3", "", title), content);
+  return section;
+}
+
+function findScreenshot(details, selected) {
+  const selectedEvidence = selected?.attributes?.evidence;
+  if (selectedEvidence && String(selectedEvidence.type).includes("screenshot")) return selectedEvidence;
+  const page = details.pages?.find((item) => `page:${item.id}` === selected?.id) || details.pages?.[0];
+  const preferred = page?.screenshot_evidence_id || page?.full_page_screenshot_evidence_id || page?.initial_screenshot_evidence_id;
+  return details.evidence?.find((item) => item.id === preferred)
+    || details.evidence?.find((item) => String(item.type).includes("screenshot"))
+    || null;
+}
+
+function renderCaseInspector(details, selected) {
+  const screenshot = findScreenshot(details, selected);
+  const selectedEvidence = selected?.attributes?.evidence;
+  const header = inspectorHeader(
+    selected ? titleCase(selected.kind) : "Capture evidence",
+    selected?.label || hostnameFrom(details.final_url_display),
+    selected?.kind === "candidate_domain" ? evidenceSemantics.candidate : "Evidence shown here is loaded from the verified local case manifest.",
+  );
+  const children = [header];
+  if (screenshot) {
+    const preview = el("figure", "evidence-preview");
+    const image = el("img");
+    image.src = caseArtifactUrl(details.case_id, screenshot.id);
+    image.alt = `Captured screenshot evidence for ${hostnameFrom(details.final_url_display)}`;
+    image.loading = "eager";
+    preview.append(image, el("figcaption", "preview-label", details.capture_adequacy === "adequate" ? "Captured evidence" : "Limited capture"));
+    children.push(preview);
+  }
+
+  const facts = factList([
+    ["Public state", titleCase(details.public_status)],
+    ["Adequacy", titleCase(details.capture_adequacy || "legacy capture")],
+    ["Access", titleCase(details.access_outcome || details.capture_outcome)],
+    ["Extraction", details.extraction_eligible ? "Eligible" : `Withheld · ${valueOr(details.extraction_skip_reason, "capture limit")}`],
+    ["Captured", formatTime(selectedEvidence?.collected_at || details.completed_at)],
+    ["Dimensions", screenshot?.image_dimensions ? `${screenshot.image_dimensions.width} × ${screenshot.image_dimensions.height}` : null],
+  ]);
+  children.push(evidenceBlock("Evidence status", facts));
+
+  const artifacts = el("div", "artifact-grid");
+  (details.evidence || []).forEach((record) => artifacts.append(evidenceLink(details.case_id, record)));
+  children.push(evidenceBlock("Verified artifacts", artifacts));
+
+  const observations = el("div");
+  if (details.observations?.length) {
+    details.observations.forEach((observation) => {
+      const card = el("article", "observation-card");
+      card.append(
+        el("b", "", titleCase(observation.type)),
+        el("strong", "", observation.display_value),
+        el("span", "", `${Math.round(observation.confidence * 100)}% confidence · ${titleCase(observation.evidence_strength)}`),
+      );
+      observations.append(card);
+    });
+  } else {
+    observations.append(el("p", "policy-copy", "Extraction withheld or no semantic observation recorded. This is not an absence claim."));
+  }
+  children.push(evidenceBlock("Semantic evidence", observations));
+
+  if (details.candidates?.length) {
+    const candidates = el("div");
+    details.candidates.forEach((candidate) => {
+      const card = el("article", "observation-card");
+      card.append(el("b", "", "Pending candidate"), el("strong", "", candidate.hostname), el("span", "", evidenceSemantics.candidate));
+      candidates.append(card);
+    });
+    children.push(evidenceBlock("Pending leads", candidates));
+  }
+  refs.inspectorContent.replaceChildren(...children);
+}
+
+function renderReviewForm(details) {
+  const form = el("form", "review-form");
+  const reviewer = el("input");
+  reviewer.name = "reviewer_label";
+  reviewer.placeholder = "Reviewer label";
+  reviewer.required = true;
+  reviewer.maxLength = 200;
+  const outcome = el("select");
+  ["verified", "rejected", "needs_more_evidence", "duplicate", "uncertain"].forEach((value) => {
+    const option = el("option", "", titleCase(value));
+    option.value = value;
+    outcome.append(option);
+  });
+  const reason = el("textarea");
+  reason.name = "reason";
+  reason.placeholder = "Evidence-bounded reason";
   reason.required = true;
   reason.maxLength = 2000;
-  reason.placeholder = "Evidence-based review reason";
-  reason.setAttribute("aria-label", "Review reason");
-  const outcome = document.createElement("select");
-  for (const value of ["verified", "rejected", "needs_more_evidence", "duplicate", "uncertain"]) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value.replaceAll("_", " ");
-    outcome.append(option);
-  }
-  const submit = node("button", "action-button", "Append review event");
+  const submit = el("button", "", "Append review decision");
   submit.type = "submit";
-  form.append(label, outcome, reason, submit);
+  form.append(reviewer, outcome, reason, submit);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     submit.disabled = true;
+    submit.textContent = "Saving…";
     try {
-      await mutateJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/reviews`, {
+      await postJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/reviews`, {
         assertion_id: details.assertion.assertion_id,
         outcome: outcome.value,
-        reviewer_label: label.value,
+        reviewer_label: reviewer.value,
         reason: reason.value,
       });
-      await loadMvpRun(details.workspace_id);
-    } finally {
+      await loadRun(details.workspace_id);
+      toast("Append-only review version saved.", "success");
+    } catch (error) {
+      toast(error.message, "error");
       submit.disabled = false;
+      submit.textContent = "Append review decision";
     }
   });
-  section.append(form);
-  if (details.reviews.length) {
-    section.append(table(
-      ["Version", "Outcome", "Reviewer", "Reason", "Timestamp"],
-      details.reviews.map((review) => [
-        `${review.previous_version} → ${review.new_version}`,
-        review.outcome,
-        review.reviewer_label,
-        review.reason,
-        review.occurred_at,
-      ]),
-    ));
-  }
-  return section;
+  return form;
 }
 
-function renderMvpRun(details) {
-  const header = node("header", "case-header");
-  const heading = node("div", "");
-  heading.append(
-    node("p", "eyebrow", "SYNTHETIC · EVENT-BUILT · REVIEWABLE"),
-    node("h2", "", details.case_id),
-    node("p", "case-url", details.run_id),
+function renderRunInspector(details, selected) {
+  const header = inspectorHeader(
+    selected ? titleCase(selected.kind) : "Investigation node",
+    selected?.label || details.case_id,
+    selected?.status === "lead" ? evidenceSemantics.candidate : "This node is reconstructed from the append-only event stream.",
   );
-  header.append(heading, node("span", "stamp", `STATUS: ${details.current_assertion_status || details.lead_status || "completed"}`));
-  const metrics = node("div", "overview-grid");
-  metrics.append(
-    mvpBadge("AGENT MODE", details.agent_mode),
-    mvpBadge("PAGE B", details.lead_status),
-    mvpBadge("EVENTS", details.events.length),
-    mvpBadge("GRAPH EDGES", details.graph.edges.length),
-  );
-  mvpRunView.replaceChildren(
-    header,
-    metrics,
-    renderMvpGraph(details),
-    renderMvpObservations(details),
-    renderMvpReview(details),
-    renderMvpTimeline(details),
-    renderMvpCausalPath(details),
-  );
-}
+  const attributes = selected?.attributes || {};
+  const facts = factList([
+    ["Node state", titleCase(selected?.status)],
+    ["Agent", titleCase(details.agent_mode)],
+    ["Lead", titleCase(details.lead_status)],
+    ["Assertion", titleCase(details.current_assertion_status || "not proposed")],
+    ["Run", details.run_id],
+  ]);
+  const artifactGrid = el("div", "artifact-grid");
+  (details.artifacts || []).forEach((artifact) => {
+    const link = el("a", "artifact-link", `${artifact.name} · ${artifact.bytes} B`);
+    link.href = runArtifactUrl(details.workspace_id, artifact.name);
+    artifactGrid.append(link);
+  });
+  const children = [header, evidenceBlock("Persisted state", facts)];
+  if (Object.keys(attributes).length) children.push(evidenceBlock("Node evidence", factList(Object.entries(attributes).slice(0, 8))));
+  children.push(evidenceBlock("Run artifacts", artifactGrid));
 
-async function loadMvpRun(workspaceId) {
-  selectedMvpRun = workspaceId;
-  const details = await requestJson(`/api/mvp/runs/${encodeURIComponent(workspaceId)}`);
-  renderMvpRun(details);
-}
-
-async function refreshMvpRuns() {
-  const payload = await requestJson("/api/mvp/runs");
-  mvpRunList.replaceChildren();
-  for (const run of payload.runs) {
-    const button = node("button", "case-button");
-    button.type = "button";
-    button.append(
-      node("span", "case-id", run.case_id),
-      node("span", "case-meta", `${run.agent_mode} · ${run.lead_status || "no lead"}`),
-    );
-    button.addEventListener("click", () => loadMvpRun(run.workspace_id));
-    mvpRunList.append(button);
-  }
-}
-
-async function bootstrapMvp() {
-  try {
-    const payload = await requestJson("/api/mvp/scenarios");
-    mvpWorkspace.hidden = false;
-    for (const scenario of payload.scenarios) {
-      const option = document.createElement("option");
-      option.value = scenario.scenario_id;
-      option.textContent = `${scenario.ordinal}. ${scenario.name}`;
-      mvpScenario.append(option);
-    }
-    await refreshMvpRuns();
-    mvpRunForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const button = mvpRunForm.querySelector("button");
-      button.disabled = true;
-      button.textContent = "Collecting…";
+  if (details.lead_status === "waiting_for_approval") {
+    const approve = el("button", "", "Approve bounded Page B recollection");
+    approve.type = "button";
+    approve.className = "artifact-link";
+    approve.addEventListener("click", async () => {
+      approve.disabled = true;
+      approve.textContent = "Collecting approved fixture…";
       try {
-        const created = await mutateJson("/api/mvp/runs", {
-          scenario_id: mvpScenario.value,
-          collection_mode: "synthetic_fixture",
-        });
-        await refreshMvpRuns();
-        await loadMvpRun(created.workspace_id);
+        await postJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/approve`, {});
+        await loadRun(details.workspace_id);
+        toast("Approval recorded before bounded recollection.", "success");
       } catch (error) {
-        mvpRunView.replaceChildren(node("div", "error-card", error.message));
-      } finally {
-        button.disabled = false;
-        button.textContent = "Collect + expand safely";
+        toast(error.message, "error");
+        approve.disabled = false;
+        approve.textContent = "Approve bounded Page B recollection";
       }
     });
-    setInterval(() => {
-      if (selectedMvpRun && !document.hidden) loadMvpRun(selectedMvpRun).catch(() => {});
-    }, 3000);
-  } catch (_error) {
-    mvpWorkspace.hidden = true;
+    children.push(evidenceBlock("Approval boundary", approve));
+  }
+  if (details.assertion) children.push(evidenceBlock("Append human review", renderReviewForm(details)));
+  refs.inspectorContent.replaceChildren(...children);
+}
+
+function renderError(message) {
+  refs.inspectorContent.replaceChildren(inspectorHeader("Unable to load", "Evidence unavailable", message));
+  refs.intelContent.replaceChildren(el("section", "intel-hero", message));
+  setStatus(message);
+}
+
+async function loadCase(caseId) {
+  setStatus("Verifying local evidence package…");
+  try {
+    const details = await requestJson(`/api/cases/${encodeURIComponent(caseId)}`);
+    view.currentKind = "case";
+    view.currentDetails = details;
+    renderCaseIntel(details);
+    setGraph(buildCaseProjection(details));
+    selectNode(view.nodeById.get(view.selectedId));
+    refs.seedInput.value = details.final_url_display || details.seed_url_display || refs.seedInput.value;
+    refs.workspaceSelector.value = `case:${caseId}`;
+    setStatus(`${hostnameFrom(details.final_url_display)} · manifest verified · ${details.evidence?.length || 0} artifacts`);
+  } catch (error) {
+    renderError(error.message);
   }
 }
 
-bootstrapMvp();
+async function loadRun(workspaceId) {
+  setStatus("Reconstructing append-only event graph…");
+  try {
+    const details = await requestJson(`/api/mvp/runs/${encodeURIComponent(workspaceId)}`);
+    view.currentKind = "run";
+    view.currentDetails = details;
+    renderRunIntel(details);
+    setGraph(buildRunProjection(details));
+    selectNode(view.nodeById.get(view.selectedId));
+    refs.workspaceSelector.value = `run:${workspaceId}`;
+    setStatus(`${details.case_id} · ${details.events?.length || 0} persisted events · ${titleCase(details.lead_status)}`);
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+function renderSelector() {
+  refs.workspaceSelector.replaceChildren();
+  const cases = view.cases.filter((item) => item.integrity === "verified");
+  if (cases.length) {
+    const group = el("optgroup");
+    group.label = "Saved public captures";
+    cases.forEach((item) => {
+      const option = el("option", "", `${hostnameFrom(item.final_url_display)} · ${titleCase(item.capture_adequacy || "legacy")}`);
+      option.value = `case:${item.case_id}`;
+      group.append(option);
+    });
+    refs.workspaceSelector.append(group);
+  }
+  if (view.runs.length) {
+    const group = el("optgroup");
+    group.label = "Reviewable investigations";
+    view.runs.forEach((item) => {
+      const option = el("option", "", `${valueOr(item.case_id)} · ${titleCase(item.lead_status)}`);
+      option.value = `run:${item.workspace_id}`;
+      group.append(option);
+    });
+    refs.workspaceSelector.append(group);
+  }
+  if (!cases.length && !view.runs.length) {
+    const option = el("option", "", "No saved evidence yet");
+    option.value = "";
+    refs.workspaceSelector.append(option);
+  }
+}
+
+async function refreshIndexes() {
+  const [casesResult, runsResult] = await Promise.allSettled([
+    requestJson("/api/cases"),
+    requestJson("/api/mvp/runs"),
+  ]);
+  view.cases = casesResult.status === "fulfilled" ? casesResult.value.cases || [] : [];
+  view.runs = runsResult.status === "fulfilled" ? runsResult.value.runs || [] : [];
+  renderSelector();
+}
+
+async function loadCapability() {
+  try {
+    const status = await requestJson("/api/mvp/capabilities");
+    if (status.state === "codex_ready") {
+      refs.capabilityState.classList.add("ready");
+      refs.capabilityState.lastChild.textContent = "Codex ready";
+    } else {
+      refs.capabilityState.classList.remove("ready");
+      refs.capabilityState.lastChild.textContent = "Safe fallback";
+    }
+  } catch {
+    refs.capabilityState.classList.remove("ready");
+    refs.capabilityState.lastChild.textContent = "Local only";
+  }
+}
+
+async function boot() {
+  refs.seedInput.value = ["https", "://", "qq101xfw.com"].join("");
+  await refreshIndexes();
+  void loadCapability();
+  const verified = view.cases.filter((item) => item.integrity === "verified");
+  const preferred = verified.find((item) => item.final_url_display?.includes("qq101xfw.com"))
+    || verified.find((item) => item.final_url_display?.includes("qq888bet4cv.com"))
+    || verified[0];
+  if (preferred) await loadCase(preferred.case_id);
+  else if (view.runs[0]) await loadRun(view.runs[0].workspace_id);
+  else setStatus("Enter one public URL to create a bounded observation.");
+}
+
+refs.scanForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const seedUrl = refs.seedInput.value.trim();
+  refs.scanButton.disabled = true;
+  refs.scanButton.textContent = "Scanning…";
+  setStatus("One page · no clicks · no candidate crawling…");
+  try {
+    const details = await postJson("/api/cases", { seed_url: seedUrl });
+    await refreshIndexes();
+    await loadCase(details.case_id);
+    toast("Bounded public capture saved and verified.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+    setStatus(`Capture stopped safely · ${error.message}`);
+  } finally {
+    refs.scanButton.disabled = false;
+    refs.scanButton.replaceChildren(el("span", "", "→"), document.createTextNode(" Scan"));
+  }
+});
+
+refs.workspaceSelector.addEventListener("change", () => {
+  const [kind, id] = refs.workspaceSelector.value.split(":", 2);
+  if (kind === "case" && id) void loadCase(id);
+  if (kind === "run" && id) void loadRun(id);
+});
+
+refs.graphSearch.addEventListener("input", () => {
+  view.query = refs.graphSearch.value.trim().toLowerCase();
+  view.searchIds.clear();
+  if (!view.query) return;
+  view.nodes.forEach((item) => {
+    const haystack = `${item.label} ${item.kind} ${item.status} ${item.cluster}`.toLowerCase();
+    if (haystack.includes(view.query)) view.searchIds.add(item.id);
+  });
+  const first = view.nodes.find((item) => view.searchIds.has(item.id));
+  if (first) focusNode(first);
+});
+
+refs.graphCanvas.addEventListener("pointerdown", (event) => {
+  const point = canvasPoint(event);
+  const item = findNodeAt(point.x, point.y);
+  refs.graphCanvas.setPointerCapture(event.pointerId);
+  view.pointer = {
+    id: event.pointerId,
+    startX: point.x,
+    startY: point.y,
+    cameraX: view.camera.targetX,
+    cameraY: view.camera.targetY,
+    moved: false,
+  };
+  view.dragNode = item;
+  if (item) item.pinned = true;
+  refs.graphCanvas.classList.add("dragging");
+});
+
+refs.graphCanvas.addEventListener("pointermove", (event) => {
+  const point = canvasPoint(event);
+  if (!view.pointer || view.pointer.id !== event.pointerId) {
+    updateHover(point);
+    return;
+  }
+  const dx = point.x - view.pointer.startX;
+  const dy = point.y - view.pointer.startY;
+  view.pointer.moved ||= Math.hypot(dx, dy) > 4;
+  if (view.dragNode) {
+    const world = screenToWorld(point.x, point.y);
+    view.dragNode.x = world.x;
+    view.dragNode.y = world.y;
+    view.dragNode.tx = world.x;
+    view.dragNode.ty = world.y;
+  } else {
+    view.camera.targetX = view.pointer.cameraX - dx / view.camera.zoom;
+    view.camera.targetY = view.pointer.cameraY - dy / view.camera.zoom;
+  }
+});
+
+function endPointer(event) {
+  if (!view.pointer || view.pointer.id !== event.pointerId) return;
+  const selected = view.dragNode;
+  const wasMoved = view.pointer.moved;
+  if (selected) selected.pinned = wasMoved;
+  view.pointer = null;
+  view.dragNode = null;
+  refs.graphCanvas.classList.remove("dragging");
+  if (selected && !wasMoved) selectNode(selected, false);
+}
+
+refs.graphCanvas.addEventListener("pointerup", endPointer);
+refs.graphCanvas.addEventListener("pointercancel", endPointer);
+refs.graphCanvas.addEventListener("pointerleave", () => {
+  if (!view.pointer) refs.graphTooltip.classList.remove("visible");
+});
+
+refs.graphCanvas.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const point = canvasPoint(event);
+  const before = screenToWorld(point.x, point.y);
+  const factor = event.deltaY > 0 ? 0.88 : 1.13;
+  const nextZoom = Math.max(0.26, Math.min(2.6, view.camera.targetZoom * factor));
+  view.camera.targetZoom = nextZoom;
+  const afterX = (point.x - view.width / 2) / nextZoom + view.camera.targetX;
+  const afterY = (point.y - view.height / 2) / nextZoom + view.camera.targetY;
+  view.camera.targetX += before.x - afterX;
+  view.camera.targetY += before.y - afterY;
+}, { passive: false });
+
+refs.zoomIn.addEventListener("click", () => { view.camera.targetZoom = Math.min(2.6, view.camera.targetZoom * 1.2); });
+refs.zoomOut.addEventListener("click", () => { view.camera.targetZoom = Math.max(0.26, view.camera.targetZoom / 1.2); });
+refs.fitGraph.addEventListener("click", fitGraph);
+refs.replayButton.addEventListener("click", startReplay);
+refs.pauseButton.addEventListener("click", () => {
+  if (!view.replayTimer && view.playbackCutoff === Number.POSITIVE_INFINITY) return;
+  view.replayPaused = !view.replayPaused;
+  refs.pauseButton.textContent = view.replayPaused ? "▶" : "Ⅱ";
+  if (!view.replayPaused) replayStep();
+});
+
+const resizeObserver = new ResizeObserver(() => {
+  resizeCanvas();
+  fitGraph();
+});
+resizeObserver.observe(refs.graphCanvas);
+resizeCanvas();
+window.requestAnimationFrame(drawFrame);
+void boot();

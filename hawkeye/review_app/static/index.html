@@ -4,68 +4,100 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <title>[NAMA PRODUK FINAL] — Evidence Console</title>
+    <title>Project HAWK-EYE — Public Evidence Graph</title>
     <link rel="stylesheet" href="/assets/styles.css">
     <script src="/assets/app.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#case-view">Skip to selected case</a>
-    <div class="grain" aria-hidden="true"></div>
-    <header class="masthead">
-      <div>
-        <p class="eyebrow">PROJECT HAWK-EYE · INTERNAL CODENAME</p>
-        <h1>[NAMA PRODUK FINAL]</h1>
-      </div>
-      <div class="mode-stack">
-        <p class="mode">LOCALHOST ONLY · BOUNDED · HUMAN REVIEW REQUIRED</p>
-        <p class="mode-detail">Synthetic MVP workspace is optional · legacy cases remain read only</p>
-      </div>
-    </header>
-    <section id="mvp-workspace" class="mvp-workspace" hidden aria-labelledby="mvp-title">
-      <div class="workspace-heading">
-        <div>
-          <p class="eyebrow">GEMASTIK PRELIMINARY MVP</p>
-          <h2 id="mvp-title">Bounded investigation workspace</h2>
-          <p>Run one authoritative synthetic scenario, inspect the event-built graph, and record an append-only review.</p>
-        </div>
-        <form id="mvp-run-form" class="workspace-form">
-          <label for="mvp-scenario">Controlled seed</label>
-          <select id="mvp-scenario" name="scenario"></select>
-          <button type="submit">Collect + expand safely</button>
+    <a class="skip-link" href="#graph-stage">Skip to evidence graph</a>
+    <a class="skip-link" href="#case-view">Skip to evidence inspector</a>
+
+    <div class="app-shell">
+      <header class="command-bar">
+        <a class="brand" href="#graph-stage" aria-label="Project HAWK-EYE home">
+          <span class="brand-orbit" aria-hidden="true"><i></i></span>
+          <span><strong>HAWK-EYE</strong><small>PUBLIC EVIDENCE GRAPH</small></span>
+        </a>
+
+        <form id="scan-form" class="scan-form">
+          <span class="link-icon" aria-hidden="true">⌁</span>
+          <label class="visually-hidden" for="seed-url">Public HTTP(S) URL</label>
+          <input id="seed-url" name="seed_url" type="url" maxlength="2048" placeholder="Enter a public domain" required autocomplete="off" spellcheck="false">
+          <button id="scan-button" type="submit"><span>→</span> Scan</button>
         </form>
-      </div>
-      <div class="workspace-grid">
-        <aside>
-          <p class="eyebrow">MVP RUNS</p>
-          <div id="mvp-run-list" class="case-list"></div>
-        </aside>
-        <div id="mvp-run-view" class="mvp-run-view" aria-live="polite">
-          <p class="muted">Create or select a synthetic run to inspect progressive evidence.</p>
+
+        <div class="command-actions">
+          <label class="visually-hidden" for="workspace-selector">Open saved evidence</label>
+          <select id="workspace-selector" aria-label="Open saved evidence"></select>
+          <span id="capability-state" class="agent-state"><i></i>Fallback</span>
         </div>
-      </div>
-    </section>
-    <main class="layout">
-      <aside class="case-rail" aria-label="Verified local cases">
-        <div class="rail-heading">
-          <div>
-            <p class="eyebrow">CASE INDEX</p>
-            <p class="rail-copy">Only completed packages that pass local integrity checks can be opened.</p>
+      </header>
+
+      <main class="evidence-layout">
+        <aside id="site-intel" class="glass-panel site-intel" aria-label="Site intelligence">
+          <div class="panel-label">Site intel</div>
+          <div id="intel-content" class="intel-content">
+            <div class="skeleton title"></div>
+            <div class="skeleton line"></div>
+            <div class="skeleton line short"></div>
           </div>
-          <span id="case-count" class="count" aria-label="Case count">—</span>
-        </div>
-        <div id="case-list" class="case-list" aria-live="polite"></div>
-      </aside>
-      <section id="case-view" class="case-view" aria-live="polite" tabindex="-1">
-        <div class="empty-state">
-          <p class="eyebrow">EVIDENCE FIRST</p>
-          <h2>Select a verified case</h2>
-          <p>This console keeps observed evidence, pending leads, evidence-similarity results, and human conclusions distinct.</p>
-        </div>
-      </section>
-    </main>
-    <footer>
-      <span>Captured HTML is available only as an inert text attachment. Screenshots are local evidence previews.</span>
-      <span id="status-line" aria-live="polite">Loading local case index…</span>
-    </footer>
+        </aside>
+
+        <section id="graph-stage" class="graph-stage" aria-label="Evidence graph">
+          <header class="graph-toolbar">
+            <div>
+              <span id="graph-mode-label" class="mode-label">Evidence relations</span>
+              <strong id="graph-count">0 nodes · 0 links</strong>
+            </div>
+            <div class="graph-tools">
+              <button id="zoom-out" type="button" aria-label="Zoom graph out">−</button>
+              <button id="zoom-in" type="button" aria-label="Zoom graph in">+</button>
+              <button id="fit-graph" type="button">Fit</button>
+            </div>
+          </header>
+          <div class="graph-canvas-wrap">
+            <canvas id="graph-canvas" class="graph-canvas" role="img" aria-label="Interactive public evidence relationship graph"></canvas>
+            <div id="graph-empty" class="graph-empty">
+              <span class="empty-orbit" aria-hidden="true"><i></i></span>
+              <strong>No saved evidence selected</strong>
+              <p>Scan one public URL or open a saved capture.</p>
+            </div>
+            <div id="graph-tooltip" class="graph-tooltip" role="status"></div>
+            <div id="graph-a11y" class="visually-hidden" aria-live="polite"></div>
+          </div>
+
+          <section id="timeline-dock" class="timeline-dock" aria-label="Capture and event timeline">
+            <div class="timeline-controls">
+              <button id="replay-button" type="button"><span>↶</span> Replay</button>
+              <button id="pause-button" type="button" aria-label="Pause timeline">Ⅱ</button>
+              <label for="timeline-speed">Speed</label>
+              <input id="timeline-speed" type="range" min="250" max="1200" step="50" value="650">
+            </div>
+            <div id="timeline-track" class="timeline-track"></div>
+          </section>
+        </section>
+
+        <aside id="case-view" class="glass-panel evidence-inspector" aria-label="Evidence inspector" tabindex="-1">
+          <div class="inspector-search">
+            <label class="visually-hidden" for="graph-search">Search evidence graph</label>
+            <span aria-hidden="true">⌕</span>
+            <input id="graph-search" type="search" placeholder="Find evidence, entity, relation…">
+          </div>
+          <div id="inspector-content" class="inspector-content">
+            <div class="inspector-empty">
+              <span class="empty-node" aria-hidden="true"><i></i></span>
+              <strong>Select evidence</strong>
+              <p>Click a graph node to inspect its saved screenshot, artifacts, observations, and limitations.</p>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div id="status-bar" class="status-bar">
+      <span><i></i>LOCALHOST · READ-ONLY PUBLIC COLLECTION</span>
+      <span id="status-line" aria-live="polite">Loading saved evidence…</span>
+    </div>
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

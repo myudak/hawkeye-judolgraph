@@ -309,6 +309,13 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
         "case_id": loaded.case.case_id,
         "integrity": "verified",
         "status": loaded.case.status,
+        "started_at": loaded.case.started_at.isoformat(),
+        "completed_at": (
+            loaded.case.completed_at.isoformat() if loaded.case.completed_at is not None else None
+        ),
+        "page_title": _safe_text(loaded.case.page_title, 256)
+        if loaded.case.page_title is not None
+        else None,
         "final_url_display": safe_display_url(loaded.case.final_url),
         "capture_outcome": (
             loaded.case.capture_outcome.value if loaded.case.capture_outcome is not None else None
@@ -324,6 +331,10 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
         "public_status": (
             loaded.case.public_status.value if loaded.case.public_status is not None else None
         ),
+        "limitation_reasons": [
+            _safe_text(reason, 256) for reason in loaded.case.limitation_reasons
+        ],
+        "extraction_skip_reason": loaded.case.extraction_skip_reason,
         "page_count": loaded.case.page_count,
         "candidate_count": loaded.case.candidate_count,
         "case_manifest_sha256": loaded.manifest_sha256,
@@ -394,6 +405,7 @@ def case_details(
                     "sha256": record.sha256,
                     "page_id": record.page_id,
                     "artifact_available": True,
+                    "image_dimensions": record.image_dimensions,
                 }
                 for record in sorted(loaded.evidence_by_id.values(), key=lambda item: item.id)
             ],
