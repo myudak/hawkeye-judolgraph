@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -15,6 +16,7 @@ from hawkeye.review_app.loader import (
     CaseNotFoundError,
     case_details,
 )
+from hawkeye.review_app.workspace import MvpWorkspace
 
 _STATIC_ROOT = Path(__file__).parent / "static"
 _CONTENT_SECURITY_POLICY = (
@@ -60,10 +62,28 @@ class _SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_headers)
 
 
-def create_app(cases_root: Path | str, *, comparisons_root: Path | str | None = None) -> FastAPI:
-    """Create a non-mutating localhost console over verified local case artifacts only."""
+class _CreateRunRequest(BaseModel):
+    scenario_id: str = Field(max_length=100)
+    collection_mode: str = Field(default="synthetic_fixture", max_length=30)
+
+
+class _ReviewRequest(BaseModel):
+    assertion_id: str = Field(max_length=100)
+    outcome: str = Field(max_length=50)
+    reviewer_label: str = Field(max_length=200)
+    reason: str = Field(max_length=2000)
+
+
+def create_app(
+    cases_root: Path | str,
+    *,
+    comparisons_root: Path | str | None = None,
+    workspace_root: Path | str | None = None,
+) -> FastAPI:
+    """Create the local console; optional MVP writes remain inside one explicit workspace."""
 
     loader = CaseLoader(cases_root, comparisons_root=comparisons_root)
+    workspace = MvpWorkspace(workspace_root) if workspace_root is not None else None
     app = FastAPI(
         title="JudolGraph HAWK-EYE Investigator Console",
         docs_url=None,
@@ -84,9 +104,16 @@ def create_app(cases_root: Path | str, *, comparisons_root: Path | str | None = 
     async def case_integrity_error(_: Request, __: CaseIntegrityError) -> JSONResponse:
         return JSONResponse(status_code=409, content={"error": "case_integrity_error"})
 
+    @app.exception_handler(ValueError)
+    async def bounded_input_error(_: Request, error: ValueError) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"error": str(error)[:500]})
+
     @app.get("/health", include_in_schema=False)
     def health() -> dict[str, object]:
-        return {"status": "ok", "mode": "local_read_only"}
+        return {
+            "status": "ok",
+            "mode": "local_bounded_workspace" if workspace else "local_read_only",
+        }
 
     @app.get("/", include_in_schema=False)
     def index() -> Response:
@@ -123,6 +150,53 @@ def create_app(cases_root: Path | str, *, comparisons_root: Path | str | None = 
             headers={"Content-Disposition": artifact.disposition},
         )
 
+    if workspace is not None:
+
+        @app.get("/api/mvp/scenarios", include_in_schema=False)
+        def mvp_scenarios() -> dict[str, object]:
+            return {"scenarios": workspace.scenarios()}
+
+        @app.get("/api/mvp/runs", include_in_schema=False)
+        def mvp_runs() -> dict[str, object]:
+            return {"runs": workspace.list_runs()}
+
+        @app.post("/api/mvp/runs", include_in_schema=False)
+        def mvp_create_run(payload: _CreateRunRequest, request: Request) -> dict[str, object]:
+            _require_same_origin(request)
+            return workspace.create_run(
+                payload.scenario_id, collection_mode=payload.collection_mode
+            )
+
+        @app.get("/api/mvp/runs/{workspace_id}", include_in_schema=False)
+        def mvp_run_details(workspace_id: str) -> dict[str, object]:
+            return workspace.details(workspace_id)
+
+        @app.post("/api/mvp/runs/{workspace_id}/reviews", include_in_schema=False)
+        def mvp_review(
+            workspace_id: str, payload: _ReviewRequest, request: Request
+        ) -> dict[str, object]:
+            _require_same_origin(request)
+            return workspace.review(
+                workspace_id,
+                assertion_id=payload.assertion_id,
+                outcome=payload.outcome,
+                reviewer_label=payload.reviewer_label,
+                reason=payload.reason,
+            )
+
+        @app.post("/api/mvp/runs/{workspace_id}/approve", include_in_schema=False)
+        def mvp_approve(workspace_id: str, request: Request) -> dict[str, object]:
+            _require_same_origin(request)
+            return workspace.approve_recollection(workspace_id)
+
+        @app.get("/api/mvp/runs/{workspace_id}/artifacts/{artifact_name}", include_in_schema=False)
+        def mvp_artifact(workspace_id: str, artifact_name: str) -> Response:
+            return Response(
+                content=workspace.artifact(workspace_id, artifact_name),
+                media_type="application/json",
+                headers={"Content-Disposition": f'attachment; filename="{artifact_name}"'},
+            )
+
     return app
 
 
@@ -135,3 +209,16 @@ def _static_response(filename: str, media_type: str) -> Response:
     except OSError as error:
         raise RuntimeError("Trusted review UI asset is unavailable") from error
     return Response(content=content, media_type=media_type)
+
+
+def _require_same_origin(request: Request) -> None:
+    """Reject browser cross-origin mutations even though the server is loopback-only."""
+
+    origin = request.headers.get("origin")
+    if origin is None:
+        return
+    expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
+    if origin.rstrip("/") != expected.rstrip("/"):
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")

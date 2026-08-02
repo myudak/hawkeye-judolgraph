@@ -128,3 +128,35 @@ evidence and never become navigation errors.
 G4B adds immutable semantic observations with artifact and screenshot provenance. Observations do
 not themselves assert ownership or relationship. Automatic semantic extraction is fail-closed for
 limited captures; visible branding is a `ClaimedBrandIdentity`, not verified ownership.
+
+## ADR-014 — Interactions use stable references and server policy
+
+**Status:** accepted
+
+G5 exposes six narrow tools over snapshot-bound element references. Every action passes server-side
+keyword, form, download, destination, and budget checks. The ten controlled scenarios are the
+authoritative interaction corpus; real chat widgets remain blocked by default.
+
+## ADR-015 — Codex is optional and capability-gated
+
+**Status:** accepted
+
+G6 enables a model path only when the fixed loopback probe advertises the structured capabilities
+needed for the tool loop. Unknown support is not guessed. Invalid schemas receive two bounded
+attempts before the deterministic fallback emits the same normalized decision shape.
+
+## ADR-016 — Recollection and review are append-only boundaries
+
+**Status:** accepted
+
+G7 allows automatic Page B recollection only for reserved synthetic fixtures. Real-world leads stop
+for explicit approval and approval does not itself perform collection. Assertions reference both
+page observations and artifacts; SQLite review history is append-only and current status is derived.
+
+## ADR-017 — Stored events build progressive graph truth
+
+**Status:** accepted
+
+G8 persists investigation events before reduction. Graph state is idempotently rebuilt from the
+event log and is independent of the optional animation queue. Search leads, collected evidence,
+candidate assertions, verified relations, and rejected relations remain visually distinct.

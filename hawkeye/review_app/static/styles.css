@@ -144,6 +144,67 @@ footer {
   min-height: calc(100vh - 170px);
 }
 
+.mvp-workspace {
+  position: relative;
+  z-index: 1;
+  padding: 1.6rem clamp(1.2rem, 4vw, 4.5rem) 2rem;
+  border-bottom: 2px solid var(--ink);
+  background: rgba(213, 232, 220, 0.38);
+}
+
+.workspace-heading,
+.workspace-grid,
+.workspace-form,
+.review-form,
+.graph-controls,
+.artifact-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.workspace-heading { align-items: end; justify-content: space-between; }
+.workspace-heading > div > p:last-child { max-width: 48rem; margin-top: 0.6rem; color: var(--muted); }
+.workspace-form { align-items: end; flex-wrap: wrap; }
+.workspace-form label { font-family: "Cascadia Mono", "Consolas", monospace; font-size: 0.7rem; }
+
+.workspace-form select,
+.workspace-form button,
+.review-form input,
+.review-form select,
+.review-form textarea,
+.review-form button,
+.action-button,
+.graph-controls input {
+  min-height: 2.65rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: rgba(255, 253, 246, 0.92);
+  font: 0.78rem/1.3 "Cascadia Mono", "Consolas", monospace;
+}
+
+.workspace-form button,
+.review-form button,
+.action-button { color: var(--paper); background: var(--ink); cursor: pointer; }
+.workspace-form button:disabled,
+.review-form button:disabled { opacity: 0.55; cursor: wait; }
+.workspace-grid { align-items: start; margin-top: 1.25rem; }
+.workspace-grid > aside { flex: 0 0 min(22rem, 32vw); }
+.mvp-run-view { min-width: 0; flex: 1 1 auto; }
+.mvp-run-view .panel,
+.mvp-run-view .overview-grid,
+.mvp-run-view .case-header { max-width: none; }
+.review-form { align-items: stretch; flex-wrap: wrap; margin: 1rem 0; }
+.review-form textarea { min-width: min(100%, 28rem); min-height: 5rem; resize: vertical; }
+.graph-controls { align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+.graph-controls input { width: min(26rem, 100%); }
+.graph-minimap { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; padding: 0.65rem; border: 1px solid var(--line); background: rgba(232, 224, 205, 0.35); }
+.graph-node { padding: 0.3rem 0.45rem; border: 1px solid var(--verified); font: 0.67rem/1.25 "Cascadia Mono", "Consolas", monospace; }
+.graph-node.lead { border-style: dashed; border-color: var(--signal); }
+.graph-node.verified { border-width: 2px; background: var(--verified-soft); }
+.graph-node.rejected { opacity: 0.48; text-decoration: line-through; }
+.artifact-actions { flex-wrap: wrap; margin-top: 0.8rem; }
+
 .case-rail {
   padding: 1.55rem;
   border-right: 1px solid var(--line);
@@ -517,6 +578,9 @@ footer span:last-child { text-align: right; }
   .case-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .case-list { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
   .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workspace-heading,
+  .workspace-grid { align-items: stretch; flex-direction: column; }
+  .workspace-grid > aside { flex-basis: auto; }
 }
 
 @media (max-width: 700px) {

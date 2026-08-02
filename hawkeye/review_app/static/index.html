@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <title>HAWK-EYE — Evidence Console</title>
+    <title>[NAMA PRODUK FINAL] — Evidence Console</title>
     <link rel="stylesheet" href="/assets/styles.css">
     <script src="/assets/app.js" defer></script>
   </head>
@@ -13,14 +13,37 @@
     <div class="grain" aria-hidden="true"></div>
     <header class="masthead">
       <div>
-        <p class="eyebrow">JUDOLGRAPH / HAWK-EYE</p>
-        <h1>Evidence Console</h1>
+        <p class="eyebrow">PROJECT HAWK-EYE · INTERNAL CODENAME</p>
+        <h1>[NAMA PRODUK FINAL]</h1>
       </div>
       <div class="mode-stack">
-        <p class="mode">LOCAL · READ ONLY · HUMAN REVIEW REQUIRED</p>
-        <p class="mode-detail">Verified artifacts only · no live collection from this view</p>
+        <p class="mode">LOCALHOST ONLY · BOUNDED · HUMAN REVIEW REQUIRED</p>
+        <p class="mode-detail">Synthetic MVP workspace is optional · legacy cases remain read only</p>
       </div>
     </header>
+    <section id="mvp-workspace" class="mvp-workspace" hidden aria-labelledby="mvp-title">
+      <div class="workspace-heading">
+        <div>
+          <p class="eyebrow">GEMASTIK PRELIMINARY MVP</p>
+          <h2 id="mvp-title">Bounded investigation workspace</h2>
+          <p>Run one authoritative synthetic scenario, inspect the event-built graph, and record an append-only review.</p>
+        </div>
+        <form id="mvp-run-form" class="workspace-form">
+          <label for="mvp-scenario">Controlled seed</label>
+          <select id="mvp-scenario" name="scenario"></select>
+          <button type="submit">Collect + expand safely</button>
+        </form>
+      </div>
+      <div class="workspace-grid">
+        <aside>
+          <p class="eyebrow">MVP RUNS</p>
+          <div id="mvp-run-list" class="case-list"></div>
+        </aside>
+        <div id="mvp-run-view" class="mvp-run-view" aria-live="polite">
+          <p class="muted">Create or select a synthetic run to inspect progressive evidence.</p>
+        </div>
+      </div>
+    </section>
     <main class="layout">
       <aside class="case-rail" aria-label="Verified local cases">
         <div class="rail-heading">

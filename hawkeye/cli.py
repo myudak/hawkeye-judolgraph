@@ -8,6 +8,8 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from hawkeye.agent import probe_codex_lb, write_capability_diagnostics
+from hawkeye.benchmark import run_benchmark
 from hawkeye.collector.safety import SafetyPolicy, UnsafeUrlError
 from hawkeye.comparison import ComparisonInputError, compare_cases, write_comparison
 from hawkeye.demo import build_demo
@@ -178,6 +180,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     serve_parser.add_argument(
+        "--workspace",
+        type=Path,
+        help=(
+            "Optional local directory enabling bounded synthetic runs and append-only reviews; "
+            "omit to preserve the legacy read-only console"
+        ),
+    )
+    serve_parser.add_argument(
         "--port", type=int, default=8760, help="Local loopback port (1024-65535)"
     )
 
@@ -193,6 +203,29 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("verification-output/gemastik-demo"),
         help="New demo output directory; it must not already exist",
+    )
+    probe_parser = subcommands.add_parser(
+        "codex-probe",
+        help="Probe the two fixed localhost codex-lb routes and persist secret-free diagnostics",
+    )
+    probe_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="New capability-diagnostics JSON path",
+    )
+    benchmark_parser = subcommands.add_parser(
+        "benchmark",
+        help="Run all ten controlled fixtures under static, rule-based, and agent-assisted modes",
+    )
+    benchmark_parser.add_argument(
+        "--output", type=Path, required=True, help="New benchmark report directory"
+    )
+    benchmark_parser.add_argument(
+        "--agent-attempts", type=int, default=3, help="Agent attempts per scenario (1-5)"
+    )
+    probe_parser.add_argument(
+        "--timeout", type=float, default=2.0, help="Per-route timeout in seconds (max: 5)"
     )
     return parser
 
@@ -219,6 +252,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_serve(args)
     if args.command == "demo":
         return _run_demo(args)
+    if args.command == "codex-probe":
+        return _run_codex_probe(args)
+    if args.command == "benchmark":
+        return _run_benchmark(args)
     raise AssertionError(f"Unexpected command: {args.command}")
 
 
@@ -444,7 +481,12 @@ def _run_serve(args: argparse.Namespace) -> int:
     """Launch the V1 view with no externally reachable host option and no mutating endpoints."""
 
     try:
-        run_local_server(args.cases, port=args.port, comparisons_root=args.comparisons)
+        run_local_server(
+            args.cases,
+            port=args.port,
+            comparisons_root=args.comparisons,
+            workspace_root=args.workspace,
+        )
     except (CaseIntegrityError, ValueError) as error:
         print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
         return 2
@@ -468,6 +510,53 @@ def _run_demo(args: argparse.Namespace) -> int:
                 "comparisons_directory": str(result.comparisons_directory),
                 "case_ids": result.case_ids,
                 "comparison_path": str(result.comparison_path),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _run_codex_probe(args: argparse.Namespace) -> int:
+    """Persist explicit unknowns rather than guessing unsupported local model capabilities."""
+
+    try:
+        diagnostics = probe_codex_lb(timeout_seconds=args.timeout)
+        destination = write_capability_diagnostics(diagnostics, args.output)
+    except (FileExistsError, OSError, ValueError) as error:
+        print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
+        return 2
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "diagnostics_path": str(destination),
+                "supported_route": diagnostics.supported_route,
+                "safe_to_enable_model_path": diagnostics.safe_to_enable_model_path,
+                "fallback_required": diagnostics.fallback_required,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _run_benchmark(args: argparse.Namespace) -> int:
+    try:
+        document = run_benchmark(args.output, agent_attempts=args.agent_attempts)
+    except (FileExistsError, OSError, ValueError) as error:
+        print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
+        return 2
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "output_directory": str(args.output.expanduser().resolve()),
+                "fixture_count": document.fixture_count,
+                "agent_attempts_per_scenario": document.agent_attempts_per_scenario,
+                "unsafe_action_block_rate": document.policy_safety["unsafe_action_block_rate"],
             },
             indent=2,
             sort_keys=True,

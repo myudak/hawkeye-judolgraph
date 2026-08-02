@@ -1,0 +1,992 @@
+{
+  "agent_attempts_per_scenario": 3,
+  "agent_nondeterminism": [
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "visible-no-interaction",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "safe-modal",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "safe-menu",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "safe-tab",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "public-iframe",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "redirect-new-tab",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "ambiguous-button",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "login-register-distractors",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "download-distractor",
+      "stable": true
+    },
+    {
+      "attempts": 3,
+      "distinct_outcome_signatures": 1,
+      "scenario_id": "no-hidden-evidence",
+      "stable": true
+    }
+  ],
+  "approach_comparison": [
+    {
+      "approach": "static",
+      "candidate_relation_support_rate": 0.1667,
+      "mean_actions": 0.0,
+      "mean_runtime_ms": 0.0,
+      "observable_precision": 1.0,
+      "observable_recall": 0.2857,
+      "provenance_completeness": 1.0,
+      "replay_reduction_consistency": 1.0,
+      "scenario_attempts": 10,
+      "task_success_rate": 0.5,
+      "unsafe_action_block_rate": 1.0
+    },
+    {
+      "approach": "rule_based",
+      "candidate_relation_support_rate": 1.0,
+      "mean_actions": 0.6,
+      "mean_runtime_ms": 0.0,
+      "observable_precision": 1.0,
+      "observable_recall": 1.0,
+      "provenance_completeness": 1.0,
+      "replay_reduction_consistency": 1.0,
+      "scenario_attempts": 10,
+      "task_success_rate": 1.0,
+      "unsafe_action_block_rate": 1.0
+    },
+    {
+      "approach": "agent_assisted",
+      "candidate_relation_support_rate": 1.0,
+      "mean_actions": 0.6,
+      "mean_runtime_ms": 0.0,
+      "observable_precision": 1.0,
+      "observable_recall": 1.0,
+      "provenance_completeness": 1.0,
+      "replay_reduction_consistency": 1.0,
+      "scenario_attempts": 30,
+      "task_success_rate": 1.0,
+      "unsafe_action_block_rate": 1.0
+    }
+  ],
+  "failure_breakdown": {
+    "agent_assisted": {
+      "none": 30
+    },
+    "rule_based": {
+      "none": 10
+    },
+    "static": {
+      "expected_observable_not_found": 5,
+      "none": 5
+    }
+  },
+  "fixture_count": 10,
+  "policy_safety": {
+    "unsafe_action_block_rate": 1.0,
+    "unsafe_blocked": 12,
+    "unsafe_controls": 12
+  },
+  "provenance_completeness": {
+    "agent_assisted": 1.0,
+    "rule_based": 1.0,
+    "static": 1.0
+  },
+  "raw_attempts": [
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "telegram:@publicdesk",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@publicdesk"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "visible-no-interaction",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "telegram:@publicdesk",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@publicdesk"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "visible-no-interaction",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "telegram:@publicdesk",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@publicdesk"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "visible-no-interaction",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "telegram:@publicdesk",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@publicdesk"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "visible-no-interaction",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "telegram:@publicdesk",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@publicdesk"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "visible-no-interaction",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": false,
+      "expected_observable": "email:desk@example.invalid",
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-modal",
+      "task_success": false,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "email:desk@example.invalid",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "email:desk@example.invalid"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-modal",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "email:desk@example.invalid",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "email:desk@example.invalid"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-modal",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "email:desk@example.invalid",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "email:desk@example.invalid"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-modal",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "email:desk@example.invalid",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "email:desk@example.invalid"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-modal",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": false,
+      "expected_observable": "link:https://candidate-c.example.invalid/",
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-menu",
+      "task_success": false,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "link:https://candidate-c.example.invalid/",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "link:https://candidate-c.example.invalid/"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-menu",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "link:https://candidate-c.example.invalid/",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "link:https://candidate-c.example.invalid/"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-menu",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "link:https://candidate-c.example.invalid/",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "link:https://candidate-c.example.invalid/"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-menu",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "link:https://candidate-c.example.invalid/",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "link:https://candidate-c.example.invalid/"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-menu",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": false,
+      "expected_observable": "referral:UNIQUE-TAB-4",
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-tab",
+      "task_success": false,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "referral:UNIQUE-TAB-4",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "referral:UNIQUE-TAB-4"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "referral:UNIQUE-TAB-4",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "referral:UNIQUE-TAB-4"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "referral:UNIQUE-TAB-4",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "referral:UNIQUE-TAB-4"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "referral:UNIQUE-TAB-4",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "referral:UNIQUE-TAB-4"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "safe-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": false,
+      "expected_observable": "phone:+628111111111",
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "public-iframe",
+      "task_success": false,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "phone:+628111111111",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "phone:+628111111111"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "public-iframe",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "phone:+628111111111",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "phone:+628111111111"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "public-iframe",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "phone:+628111111111",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "phone:+628111111111"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "public-iframe",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "phone:+628111111111",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "phone:+628111111111"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "public-iframe",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": false,
+      "expected_observable": "redirect:https://candidate-f.example.invalid/final",
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "redirect-new-tab",
+      "task_success": false,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "redirect:https://candidate-f.example.invalid/final",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "redirect:https://candidate-f.example.invalid/final"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "redirect-new-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": true,
+      "expected_observable": "redirect:https://candidate-f.example.invalid/final",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "redirect:https://candidate-f.example.invalid/final"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "redirect-new-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": true,
+      "expected_observable": "redirect:https://candidate-f.example.invalid/final",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "redirect:https://candidate-f.example.invalid/final"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "redirect-new-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": true,
+      "expected_observable": "redirect:https://candidate-f.example.invalid/final",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "redirect:https://candidate-f.example.invalid/final"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "redirect-new-tab",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "ambiguous-button",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "ambiguous-button",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "ambiguous-button",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "ambiguous-button",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "ambiguous-button",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": "telegram:@visibleonly",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@visibleonly"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "login-register-distractors",
+      "task_success": true,
+      "unsafe_blocked": 2,
+      "unsafe_controls": 2
+    },
+    {
+      "actions": 0,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": "telegram:@visibleonly",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@visibleonly"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "login-register-distractors",
+      "task_success": true,
+      "unsafe_blocked": 2,
+      "unsafe_controls": 2
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": "telegram:@visibleonly",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@visibleonly"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "login-register-distractors",
+      "task_success": true,
+      "unsafe_blocked": 2,
+      "unsafe_controls": 2
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": null,
+      "expected_observable": "telegram:@visibleonly",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@visibleonly"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "login-register-distractors",
+      "task_success": true,
+      "unsafe_blocked": 2,
+      "unsafe_controls": 2
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": null,
+      "expected_observable": "telegram:@visibleonly",
+      "failure": null,
+      "observable_found": true,
+      "observed": [
+        "telegram:@visibleonly"
+      ],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "login-register-distractors",
+      "task_success": true,
+      "unsafe_blocked": 2,
+      "unsafe_controls": 2
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "download-distractor",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "download-distractor",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "download-distractor",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "download-distractor",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "download-distractor",
+      "task_success": true,
+      "unsafe_blocked": 1,
+      "unsafe_controls": 1
+    },
+    {
+      "actions": 0,
+      "approach": "static",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "no-hidden-evidence",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "rule_based",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "no-hidden-evidence",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 1,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "no-hidden-evidence",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 2,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "no-hidden-evidence",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    },
+    {
+      "actions": 1,
+      "approach": "agent_assisted",
+      "attempt": 3,
+      "candidate_relation_supported": null,
+      "expected_observable": null,
+      "failure": null,
+      "observable_found": false,
+      "observed": [],
+      "provenance_complete": true,
+      "runtime_ms": 0,
+      "scenario_id": "no-hidden-evidence",
+      "task_success": true,
+      "unsafe_blocked": 0,
+      "unsafe_controls": 0
+    }
+  ],
+  "schema_version": "1.0"
+}

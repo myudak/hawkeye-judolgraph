@@ -481,3 +481,313 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+const mvpWorkspace = document.getElementById("mvp-workspace");
+const mvpRunForm = document.getElementById("mvp-run-form");
+const mvpScenario = document.getElementById("mvp-scenario");
+const mvpRunList = document.getElementById("mvp-run-list");
+const mvpRunView = document.getElementById("mvp-run-view");
+let selectedMvpRun = null;
+
+async function mutateJson(path, payload) {
+  const response = await fetch(path, {
+    method: "POST",
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!response.ok) throw new Error(`Mutation rejected (${response.status})`);
+  return response.json();
+}
+
+function mvpBadge(label, value) {
+  return metric(label, value || "—", "Persisted, replayable state");
+}
+
+function renderMvpGraph(details, query = "") {
+  const section = panel(
+    "Progressive evidence graph",
+    "Graph truth is reduced from stored events; animations are a separate queue.",
+    "mvp-graph",
+  );
+  const controls = node("div", "graph-controls");
+  const search = document.createElement("input");
+  search.type = "search";
+  search.placeholder = "Search/focus graph nodes";
+  search.value = query;
+  search.setAttribute("aria-label", "Search graph nodes");
+  controls.append(search, node("span", "policy-note", "Reduced-motion follows system preference"));
+  section.append(controls);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleNodes = details.graph.nodes.filter((item) =>
+    !normalizedQuery || `${item.label} ${item.kind} ${item.status}`.toLowerCase().includes(normalizedQuery)
+  );
+  const visibleIds = new Set(visibleNodes.map((item) => item.id));
+  const minimap = node("div", "graph-minimap");
+  minimap.setAttribute("aria-label", "Graph minimap");
+  for (const item of visibleNodes) {
+    const chip = node("span", `graph-node ${item.status}`, `${item.kind}: ${item.label}`);
+    chip.dataset.nodeId = item.id;
+    minimap.append(chip);
+  }
+  section.append(minimap);
+  const edges = details.graph.edges.filter((edge) =>
+    !normalizedQuery || visibleIds.has(edge.source) || visibleIds.has(edge.target)
+  );
+  section.append(table(
+    ["Source", "Relation", "Target", "Appearance", "Evidence"],
+    edges.map((edge) => [
+      edge.source,
+      edge.relation,
+      edge.target,
+      edge.appearance,
+      edge.supporting_observation_ids.join(", ") || edge.supporting_event_ids.join(", "),
+    ]),
+    "graph-table",
+  ));
+  search.addEventListener("input", () => {
+    const replacement = renderMvpGraph(details, search.value);
+    section.replaceWith(replacement);
+    replacement.querySelector("input")?.focus();
+  });
+  return section;
+}
+
+function renderMvpObservations(details) {
+  const section = panel(
+    "Evidence inspector",
+    "Normalized observations retain source event and artifact IDs; fixture artifacts are inert JSON.",
+    "mvp-evidence",
+  );
+  const observations = details.events.filter((event) => event.kind === "observation.created");
+  section.append(table(
+    ["Observation", "Type", "Normalized value", "Artifact", "Event"],
+    observations.map((event) => [
+      event.payload.observation_id,
+      event.payload.observation_type,
+      event.payload.normalized_value,
+      event.payload.artifact_id,
+      `#${event.sequence} · ${event.event_id}`,
+    ]),
+  ));
+  const artifacts = node("div", "artifact-actions");
+  for (const artifact of details.artifacts) {
+    const link = node("a", "artifact-link", `${artifact.name} · ${artifact.bytes} bytes`);
+    link.href = `/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/artifacts/${encodeURIComponent(artifact.name)}`;
+    artifacts.append(link);
+  }
+  section.append(artifacts);
+  return section;
+}
+
+function renderMvpTimeline(details) {
+  const section = panel(
+    "Agent and tool event timeline",
+    "Monotonic events are persisted before this view is rendered.",
+    "mvp-timeline",
+  );
+  section.append(table(
+    ["Seq", "Kind", "Causation", "Recorded payload"],
+    details.events.map((event) => [
+      event.sequence,
+      event.kind,
+      event.causation_event_id || "root",
+      JSON.stringify(event.payload).slice(0, 240),
+    ]),
+  ));
+  return section;
+}
+
+function renderMvpCausalPath(details) {
+  const section = panel(
+    "Causal tree / path",
+    "Every child points to the event that caused it when a direct cause exists.",
+    "mvp-causal",
+  );
+  section.append(table(
+    ["Event", "Caused by"],
+    details.graph.causal_links.map((item) => [item.event_id, item.causation_event_id || "root"]),
+  ));
+  return section;
+}
+
+function renderMvpReview(details) {
+  const section = panel(
+    "Candidate assertion and human review",
+    "Verified means the selected evidence supports only the stated relationship.",
+    "mvp-review",
+  );
+  if (details.lead_status === "waiting_for_approval") {
+    section.append(note(
+      "warning",
+      "Candidate waiting for approval",
+      "Real-world mode does not recollect Page B automatically.",
+    ));
+    const approve = node("button", "action-button", "Approve recollection boundary");
+    approve.type = "button";
+    approve.addEventListener("click", async () => {
+      await mutateJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/approve`, {});
+      await loadMvpRun(details.workspace_id);
+    });
+    section.append(approve);
+    return section;
+  }
+  if (!details.assertion) {
+    section.append(node("p", "muted", "No evidence-backed candidate assertion was proposed."));
+    return section;
+  }
+  section.append(table(
+    ["Assertion", "Relation", "Subject", "Object", "Status"],
+    [[
+      details.assertion.assertion_id,
+      details.assertion.assertion_type,
+      details.assertion.subject,
+      details.assertion.object,
+      details.current_assertion_status,
+    ]],
+  ));
+  section.append(node(
+    "p",
+    "policy-note",
+    `Supporting observations: ${details.assertion.supporting_observation_ids.join(", ")}`,
+  ));
+  const form = node("form", "review-form");
+  const label = document.createElement("input");
+  label.required = true;
+  label.maxLength = 200;
+  label.placeholder = "Reviewer label";
+  label.setAttribute("aria-label", "Reviewer label");
+  const reason = document.createElement("textarea");
+  reason.required = true;
+  reason.maxLength = 2000;
+  reason.placeholder = "Evidence-based review reason";
+  reason.setAttribute("aria-label", "Review reason");
+  const outcome = document.createElement("select");
+  for (const value of ["verified", "rejected", "needs_more_evidence", "duplicate", "uncertain"]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value.replaceAll("_", " ");
+    outcome.append(option);
+  }
+  const submit = node("button", "action-button", "Append review event");
+  submit.type = "submit";
+  form.append(label, outcome, reason, submit);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await mutateJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/reviews`, {
+        assertion_id: details.assertion.assertion_id,
+        outcome: outcome.value,
+        reviewer_label: label.value,
+        reason: reason.value,
+      });
+      await loadMvpRun(details.workspace_id);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  section.append(form);
+  if (details.reviews.length) {
+    section.append(table(
+      ["Version", "Outcome", "Reviewer", "Reason", "Timestamp"],
+      details.reviews.map((review) => [
+        `${review.previous_version} → ${review.new_version}`,
+        review.outcome,
+        review.reviewer_label,
+        review.reason,
+        review.occurred_at,
+      ]),
+    ));
+  }
+  return section;
+}
+
+function renderMvpRun(details) {
+  const header = node("header", "case-header");
+  const heading = node("div", "");
+  heading.append(
+    node("p", "eyebrow", "SYNTHETIC · EVENT-BUILT · REVIEWABLE"),
+    node("h2", "", details.case_id),
+    node("p", "case-url", details.run_id),
+  );
+  header.append(heading, node("span", "stamp", `STATUS: ${details.current_assertion_status || details.lead_status || "completed"}`));
+  const metrics = node("div", "overview-grid");
+  metrics.append(
+    mvpBadge("AGENT MODE", details.agent_mode),
+    mvpBadge("PAGE B", details.lead_status),
+    mvpBadge("EVENTS", details.events.length),
+    mvpBadge("GRAPH EDGES", details.graph.edges.length),
+  );
+  mvpRunView.replaceChildren(
+    header,
+    metrics,
+    renderMvpGraph(details),
+    renderMvpObservations(details),
+    renderMvpReview(details),
+    renderMvpTimeline(details),
+    renderMvpCausalPath(details),
+  );
+}
+
+async function loadMvpRun(workspaceId) {
+  selectedMvpRun = workspaceId;
+  const details = await requestJson(`/api/mvp/runs/${encodeURIComponent(workspaceId)}`);
+  renderMvpRun(details);
+}
+
+async function refreshMvpRuns() {
+  const payload = await requestJson("/api/mvp/runs");
+  mvpRunList.replaceChildren();
+  for (const run of payload.runs) {
+    const button = node("button", "case-button");
+    button.type = "button";
+    button.append(
+      node("span", "case-id", run.case_id),
+      node("span", "case-meta", `${run.agent_mode} · ${run.lead_status || "no lead"}`),
+    );
+    button.addEventListener("click", () => loadMvpRun(run.workspace_id));
+    mvpRunList.append(button);
+  }
+}
+
+async function bootstrapMvp() {
+  try {
+    const payload = await requestJson("/api/mvp/scenarios");
+    mvpWorkspace.hidden = false;
+    for (const scenario of payload.scenarios) {
+      const option = document.createElement("option");
+      option.value = scenario.scenario_id;
+      option.textContent = `${scenario.ordinal}. ${scenario.name}`;
+      mvpScenario.append(option);
+    }
+    await refreshMvpRuns();
+    mvpRunForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = mvpRunForm.querySelector("button");
+      button.disabled = true;
+      button.textContent = "Collecting…";
+      try {
+        const created = await mutateJson("/api/mvp/runs", {
+          scenario_id: mvpScenario.value,
+          collection_mode: "synthetic_fixture",
+        });
+        await refreshMvpRuns();
+        await loadMvpRun(created.workspace_id);
+      } catch (error) {
+        mvpRunView.replaceChildren(node("div", "error-card", error.message));
+      } finally {
+        button.disabled = false;
+        button.textContent = "Collect + expand safely";
+      }
+    });
+    setInterval(() => {
+      if (selectedMvpRun && !document.hidden) loadMvpRun(selectedMvpRun).catch(() => {});
+    }, 3000);
+  } catch (_error) {
+    mvpWorkspace.hidden = true;
+  }
+}
+
+bootstrapMvp();

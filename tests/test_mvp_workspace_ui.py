@@ -1,0 +1,88 @@
+"""Local MVP API workflow and same-origin mutation controls."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from hawkeye.review_app.app import create_app
+
+
+def _client(tmp_path: Path) -> TestClient:
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    return TestClient(
+        create_app(cases, workspace_root=tmp_path / "workspace"),
+        base_url="http://127.0.0.1",
+    )
+
+
+def test_full_synthetic_ui_api_flow_creates_graph_and_append_only_review(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        scenarios = client.get("/api/mvp/scenarios")
+        assert scenarios.status_code == 200
+        assert len(scenarios.json()["scenarios"]) == 10
+        created = client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab", "collection_mode": "synthetic_fixture"},
+        )
+        assert created.status_code == 200
+        workspace_id = created.json()["workspace_id"]
+        details = client.get(f"/api/mvp/runs/{workspace_id}")
+        assert details.status_code == 200
+        payload = details.json()
+        assert payload["agent_mode"] == "deterministic_fallback"
+        assert payload["lead_status"] == "recollected"
+        assert payload["current_assertion_status"] == "needs_review"
+        assert payload["graph"]["nodes"]
+        assert payload["graph"]["edges"]
+        assert payload["graph"]["timeline"]
+        review = client.post(
+            f"/api/mvp/runs/{workspace_id}/reviews",
+            json={
+                "assertion_id": "assertion-06",
+                "outcome": "verified",
+                "reviewer_label": "UI fixture reviewer",
+                "reason": "Selected evidence supports only the stated redirect-target relation.",
+            },
+        )
+        assert review.status_code == 200
+        reviewed = client.get(f"/api/mvp/runs/{workspace_id}").json()
+        assert reviewed["current_assertion_status"] == "verified"
+        assert reviewed["reviews"][0]["previous_version"] == 0
+        assert reviewed["reviews"][0]["new_version"] == 1
+        edge = next(
+            item for item in reviewed["graph"]["edges"] if item["id"] == "assertion:assertion-06"
+        )
+        assert edge["appearance"] == "solid_emphasized"
+
+
+def test_real_mode_exposes_approval_without_collecting_page_b(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        created = client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab", "collection_mode": "real_world"},
+        ).json()
+        workspace_id = created["workspace_id"]
+        details = client.get(f"/api/mvp/runs/{workspace_id}").json()
+        assert details["lead_status"] == "waiting_for_approval"
+        approval = client.post(f"/api/mvp/runs/{workspace_id}/approve", json={})
+        assert approval.status_code == 200
+        approved = client.get(f"/api/mvp/runs/{workspace_id}").json()
+        assert approved["lead_status"] == "approved_waiting_for_manual_collection"
+        assert approved["assertion"] is None
+
+
+def test_cross_origin_mutation_and_artifact_traversal_are_blocked(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        blocked = client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab"},
+            headers={"Origin": "https://attacker.invalid"},
+        )
+        assert blocked.status_code == 403
+        created = client.post("/api/mvp/runs", json={"scenario_id": "redirect-new-tab"}).json()
+        workspace_id = created["workspace_id"]
+        traversal = client.get(f"/api/mvp/runs/{workspace_id}/artifacts/..%2Fpage-a.json")
+        assert traversal.status_code in {400, 404}
