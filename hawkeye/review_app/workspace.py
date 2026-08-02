@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 from pathlib import Path
 
+from hawkeye.agent import CodexInvestigator, CodexLbClient, probe_codex_lb
+from hawkeye.agent.models import CapabilityDiagnostics
 from hawkeye.interaction import load_controlled_scenarios
 from hawkeye.investigation import InvestigationStore, reduce_events, run_fixture_investigation
 
@@ -17,6 +20,42 @@ class MvpWorkspace:
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root).expanduser().resolve()
         self.root.mkdir(parents=True, exist_ok=True)
+        self._capability_diagnostics: CapabilityDiagnostics | None = None
+        self._investigator: CodexInvestigator | None = None
+
+    def capability_status(self) -> dict[str, object]:
+        """Return one cached, secret-free probe and prepare the gated model client."""
+
+        if self._capability_diagnostics is None:
+            api_key = os.environ.get("HAWKEYE_CODEX_LB_API_KEY")
+            diagnostics = probe_codex_lb(timeout_seconds=0.75, api_key=api_key)
+            self._capability_diagnostics = diagnostics
+            probe_directory = self.root / "capability-probes"
+            probe_directory.mkdir(exist_ok=True)
+            probe_path = probe_directory / f"probe-{uuid.uuid4().hex[:12]}.json"
+            probe_path.write_text(
+                json.dumps(diagnostics.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            if diagnostics.safe_to_enable_model_path and diagnostics.supported_route is not None:
+                self._investigator = CodexInvestigator(
+                    CodexLbClient(
+                        diagnostics.supported_route,
+                        model=diagnostics.selected_model,
+                        api_key=api_key,
+                    )
+                )
+        diagnostics = self._capability_diagnostics
+        assert diagnostics is not None
+        reachable = any(item.reachable for item in diagnostics.endpoints)
+        state = (
+            "codex_ready"
+            if diagnostics.safe_to_enable_model_path
+            else "capability_unverified"
+            if reachable
+            else "endpoint_unavailable"
+        )
+        return {"state": state, **diagnostics.model_dump(mode="json")}
 
     def scenarios(self) -> list[dict[str, object]]:
         return [
@@ -35,10 +74,12 @@ class MvpWorkspace:
         run_directory_id = f"run-{scenario_id}-{uuid.uuid4().hex[:8]}"
         if not _RUN_ID.fullmatch(run_directory_id):
             raise ValueError("Scenario ID cannot be used as a bounded workspace directory")
+        self.capability_status()
         result = run_fixture_investigation(
             scenario_id,
             self.root / run_directory_id,
             collection_mode=collection_mode,
+            investigator=self._investigator,
         )
         return {"workspace_id": run_directory_id, **result.model_dump(mode="json")}
 

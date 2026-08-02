@@ -35,6 +35,7 @@ def run_fixture_investigation(
     output_directory: Path | str,
     *,
     collection_mode: str = "synthetic_fixture",
+    investigator: CodexInvestigator | None = None,
 ) -> FixtureInvestigationResult:
     scenarios = {item.scenario_id: item for item in load_controlled_scenarios()}
     if scenario_id not in scenarios:
@@ -122,7 +123,7 @@ def run_fixture_investigation(
         policy_budget=session.budget,
         evidence_gap="required public observable not yet preserved",
     )
-    step = CodexInvestigator(None).choose(context)
+    step = (investigator or CodexInvestigator(None)).choose(context)
     if step.mode == "deterministic_fallback":
         store.append_event(
             case_id=case_id,

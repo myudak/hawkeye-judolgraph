@@ -19,7 +19,14 @@ from .models import AgentDecision, AgentFailure, AgentStepResult, AgentVisibleCo
 class CodexLbClient:
     """Bounded localhost transport with no browser, filesystem, database, or shell handle."""
 
-    def __init__(self, endpoint: str, *, model: str | None, timeout_seconds: float = 10.0) -> None:
+    def __init__(
+        self,
+        endpoint: str,
+        *,
+        model: str | None,
+        timeout_seconds: float = 10.0,
+        api_key: str | None = None,
+    ) -> None:
         if endpoint not in {
             "http://127.0.0.1:2455/backend-api/codex",
             "http://127.0.0.1:2455/v1/responses",
@@ -30,6 +37,7 @@ class CodexLbClient:
         self.endpoint = endpoint
         self.model = model
         self.timeout_seconds = timeout_seconds
+        self._api_key = api_key
 
     def request_decision(self, context: AgentVisibleContext) -> object:
         schema = AgentDecision.model_json_schema()
@@ -51,11 +59,14 @@ class CodexLbClient:
         }
         if self.model:
             request_payload["model"] = self.model
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
         request = urllib.request.Request(
             self.endpoint,
             method="POST",
             data=json.dumps(request_payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=headers,
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:  # noqa: S310
@@ -63,8 +74,9 @@ class CodexLbClient:
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise RuntimeError(f"codex-lb request failed: {type(error).__name__}") from error
         payload = json.loads(body)
-        if isinstance(payload, dict) and isinstance(payload.get("output_parsed"), dict):
-            return payload["output_parsed"]
+        structured = _structured_response(payload)
+        if structured is not None:
+            return structured
         raise ValueError("codex-lb did not return validated structured output")
 
 
@@ -178,3 +190,35 @@ def _reference_policy_projection(reference: object) -> InteractiveElement:
         declared_behavior=behavior,
         destination_url=item.href,
     )
+
+
+def _structured_response(payload: object) -> dict[str, object] | None:
+    """Read only schema-requested JSON fields from supported response envelopes."""
+
+    if not isinstance(payload, dict):
+        return None
+    parsed = payload.get("output_parsed")
+    if isinstance(parsed, dict):
+        return parsed
+    output = payload.get("output")
+    if not isinstance(output, list):
+        return None
+    for item in output:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "output_text":
+                continue
+            text = block.get("text")
+            if not isinstance(text, str) or len(text) > 64_000:
+                continue
+            try:
+                decoded = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(decoded, dict):
+                return decoded
+    return None

@@ -78,7 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     smoke_parser = subcommands.add_parser(
-        "smoke-test", help="Run the bounded fixed ten-domain live robustness matrix"
+        "smoke-test", help="Run the one-pass bounded 12-domain qualitative observation matrix"
     )
     smoke_parser.add_argument(
         "--output", type=Path, default=Path("live-smoke-tests"), help="Smoke-test output root"
@@ -522,7 +522,10 @@ def _run_codex_probe(args: argparse.Namespace) -> int:
     """Persist explicit unknowns rather than guessing unsupported local model capabilities."""
 
     try:
-        diagnostics = probe_codex_lb(timeout_seconds=args.timeout)
+        diagnostics = probe_codex_lb(
+            timeout_seconds=args.timeout,
+            api_key=os.environ.get("HAWKEYE_CODEX_LB_API_KEY"),
+        )
         destination = write_capability_diagnostics(diagnostics, args.output)
     except (FileExistsError, OSError, ValueError) as error:
         print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
