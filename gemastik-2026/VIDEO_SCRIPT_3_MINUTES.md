@@ -26,5 +26,7 @@ Do not composite fake graph data or use a live site as the official demo.
 - Show actual artifacts, Page B, assertion evidence IDs, and review history.
 - Show deterministic fallback banner and current capability result.
 - Blur no data by relying only on reserved `.invalid` fixtures.
+- TODO — requires completed test: record and inspect the final three-minute video from the verified
+  fixture workspace after the human-owned identity and export settings are confirmed.
 - TODO — requires human confirmation: narrator, team credits, final product name, music rights,
   subtitle language, competition branding, and export specification.

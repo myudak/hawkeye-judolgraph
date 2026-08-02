@@ -5,7 +5,7 @@ This directory is the Markdown source of truth for the preliminary package of
 MVP and does not turn candidates, similarity, or human-reviewed relationships into ownership,
 operator, criminal, or legal conclusions.
 
-Start with `PRODUCT_AND_SUBMISSION_REQUIREMENTS.md` for the official 2026 rules, complete product
+Start with `../docs/PRODUCT_AND_SUBMISSION_REQUIREMENTS.md` for the official 2026 rules, complete product
 flow, UI/UX target, real-domain feedback loop, and acceptance gates. Then read `PROPOSAL.md`,
 `TECHNICAL_DOCUMENT.md`, and `IMPLEMENTATION_STATUS.md` to reproduce implementation claims.
 `BENCHMARK_RESULTS.md` summarizes the checked-in raw results at
@@ -17,7 +17,7 @@ count require human confirmation before export.
 
 ## Package map
 
-- `PRODUCT_AND_SUBMISSION_REQUIREMENTS.md` — official 2026 requirements, product specification,
+- `../docs/PRODUCT_AND_SUBMISSION_REQUIREMENTS.md` — official 2026 requirements, product specification,
   WebGraph reference audit, real-domain validation loop, and definition of done.
 - `PROPOSAL.md` — official nine-section proposal order and scoring coverage.
 - `TECHNICAL_DOCUMENT.md` — architecture, installation, use, security, and troubleshooting.

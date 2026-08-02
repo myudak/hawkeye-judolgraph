@@ -33,7 +33,7 @@ interpretation:
     interpretation or organizer clarification.
 
 The extracted requirements and project interpretation are consolidated in
-`PRODUCT_AND_SUBMISSION_REQUIREMENTS.md`.
+`../docs/PRODUCT_AND_SUBMISSION_REQUIREMENTS.md`.
 
 ## UI/UX implementation reference
 
