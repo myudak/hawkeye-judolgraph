@@ -488,6 +488,7 @@ class BrowserCollector:
                     )
                 checkpoints: list[CaptureCheckpoint] = []
                 checkpoint_screenshots: list[bytes] = []
+                artifact_timeout_ms = max(timeout_ms, 1_000)
                 visible_text = ""
                 html = ""
                 prior_elapsed = 0
@@ -501,7 +502,7 @@ class BrowserCollector:
                             blocked_download_count,
                         )
                     checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
-                        page, elapsed_ms=elapsed_ms, timeout_ms=timeout_ms
+                        page, elapsed_ms=elapsed_ms, timeout_ms=artifact_timeout_ms
                     )
                     checkpoints.append(checkpoint)
                     checkpoint_screenshots.append(checkpoint_screenshot)
@@ -526,7 +527,9 @@ class BrowserCollector:
                     html_omitted_reason = "canonical_html_exceeds_5_mb_persistence_limit"
                     limitation_reasons.append(html_omitted_reason)
                 full_page_screenshot, full_page_dimensions, full_page_reason = (
-                    _bounded_full_page_screenshot(page, final_checkpoint, timeout_ms=timeout_ms)
+                    _bounded_full_page_screenshot(
+                        page, final_checkpoint, timeout_ms=artifact_timeout_ms
+                    )
                 )
                 if full_page_reason is not None:
                     limitation_reasons.append(full_page_reason)

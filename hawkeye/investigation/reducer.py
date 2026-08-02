@@ -113,8 +113,20 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
             )
         elif event.kind == "assertion.proposed":
             assertion_id = str(payload["assertion_id"])
-            source = str(payload.get("subject_node_id", f"seed:{event.case_id}"))
-            target = str(payload.get("object_node_id", f"candidate-page:{event.sequence}"))
+            subject = str(payload.get("subject", ""))
+            object_value = str(payload.get("object", ""))
+            source = str(
+                payload.get(
+                    "subject_node_id",
+                    _node_id_with_label(nodes, subject) or f"seed:{event.case_id}",
+                )
+            )
+            target = str(
+                payload.get(
+                    "object_node_id",
+                    _node_id_with_label(nodes, object_value) or f"candidate-page:{event.sequence}",
+                )
+            )
             edge_id = f"assertion:{assertion_id}"
             assertion_edges[assertion_id] = edge_id
             edges[edge_id] = ProgressiveGraphEdge(
@@ -163,4 +175,13 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
         ],
         animations=animations,
         applied_event_ids=[event.event_id for event in timeline],
+    )
+
+
+def _node_id_with_label(nodes: dict[str, ProgressiveGraphNode], label: str) -> str | None:
+    """Resolve an assertion endpoint to an existing stable node without creating graph truth."""
+
+    matches = [node for node in nodes.values() if node.label == label]
+    return next((node.id for node in matches if node.status == "collected"), None) or next(
+        (node.id for node in matches), None
     )

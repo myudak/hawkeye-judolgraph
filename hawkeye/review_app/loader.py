@@ -34,7 +34,8 @@ _SENSITIVE_QUERY_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 _MAX_CASE_JSON_BYTES = 2_000_000
-_MAX_HTML_BYTES = 2_000_000
+_MAX_HTML_BYTES = 5_000_000
+_MAX_TEXT_BYTES = 5_000_000
 _MAX_SCREENSHOT_BYTES = 10_000_000
 _MAX_NETWORK_BYTES = 1_000_000
 _MAX_SCREENSHOT_PIXELS = 25_000_000
@@ -684,6 +685,41 @@ def _validate_page_and_entity_references(
             evidence_by_id, page.screenshot_evidence_id, "screenshot", page.id, required=False
         )
         _require_evidence_type(
+            evidence_by_id,
+            page.initial_screenshot_evidence_id,
+            "initial_screenshot",
+            page.id,
+            required=False,
+        )
+        _require_evidence_type(
+            evidence_by_id,
+            page.full_page_screenshot_evidence_id,
+            "full_page_screenshot",
+            page.id,
+            required=False,
+        )
+        _require_evidence_type(
+            evidence_by_id,
+            page.visible_text_evidence_id,
+            "visible_text",
+            page.id,
+            required=False,
+        )
+        _require_evidence_type(
+            evidence_by_id,
+            page.response_metadata_evidence_id,
+            "response_metadata",
+            page.id,
+            required=False,
+        )
+        _require_evidence_type(
+            evidence_by_id,
+            page.readiness_evidence_id,
+            "capture_readiness",
+            page.id,
+            required=False,
+        )
+        _require_evidence_type(
             evidence_by_id, page.redirect_evidence_id, "network_event", page.id, required=False
         )
     for entity in entities:
@@ -695,7 +731,16 @@ def _validate_page_and_entity_references(
 def _require_evidence_type(
     evidence_by_id: dict[str, EvidenceRecord],
     evidence_id: str | None,
-    expected_type: Literal["html_page", "screenshot", "network_event"],
+    expected_type: Literal[
+        "html_page",
+        "screenshot",
+        "initial_screenshot",
+        "full_page_screenshot",
+        "visible_text",
+        "response_metadata",
+        "capture_readiness",
+        "network_event",
+    ],
     page_id: str,
     *,
     required: bool | None,
@@ -727,27 +772,39 @@ def _read_verified_artifact(directory: Path, record: EvidenceRecord) -> bytes:
         raise CaseIntegrityError("Evidence artifact exceeds review size limit")
     if hashlib.sha256(content).hexdigest() != record.sha256:
         raise CaseIntegrityError("Evidence artifact integrity verification failed")
-    if record.type == "screenshot":
+    if record.type in {
+        "screenshot",
+        "initial_screenshot",
+        "full_page_screenshot",
+        "evidence_crop",
+    }:
         _validate_screenshot(content, record)
-    elif record.type == "html_page":
+    elif record.type in {"html_page", "visible_text"}:
         try:
             content.decode("utf-8")
         except UnicodeDecodeError as error:
-            raise CaseIntegrityError("HTML evidence is not UTF-8") from error
-    elif record.type == "network_event":
+            raise CaseIntegrityError("Text evidence is not UTF-8") from error
+    elif record.type in {"network_event", "response_metadata", "capture_readiness"}:
         try:
             json.loads(content)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise CaseIntegrityError("Network evidence is not valid JSON") from error
+            raise CaseIntegrityError("JSON evidence is not valid") from error
     return content
 
 
 def _artifact_byte_limit(record: EvidenceRecord) -> int:
     if record.type == "html_page":
         return _MAX_HTML_BYTES
-    if record.type == "screenshot":
+    if record.type in {
+        "screenshot",
+        "initial_screenshot",
+        "full_page_screenshot",
+        "evidence_crop",
+    }:
         return _MAX_SCREENSHOT_BYTES
-    if record.type == "network_event":
+    if record.type == "visible_text":
+        return _MAX_TEXT_BYTES
+    if record.type in {"network_event", "response_metadata", "capture_readiness"}:
         return _MAX_NETWORK_BYTES
     raise CaseIntegrityError("Evidence artifact type is not supported by the review console")
 
@@ -777,11 +834,18 @@ def _validate_screenshot(content: bytes, record: EvidenceRecord) -> None:
 
 
 def _artifact_response_policy(record: EvidenceRecord) -> tuple[str, str]:
-    if record.type == "screenshot":
+    if record.type in {
+        "screenshot",
+        "initial_screenshot",
+        "full_page_screenshot",
+        "evidence_crop",
+    }:
         return "image/png", 'inline; filename="evidence-screenshot.png"'
     if record.type == "html_page":
         return "text/plain; charset=utf-8", 'attachment; filename="evidence-page.html"'
-    if record.type == "network_event":
+    if record.type == "visible_text":
+        return "text/plain; charset=utf-8", 'attachment; filename="evidence-visible.txt"'
+    if record.type in {"network_event", "response_metadata", "capture_readiness"}:
         return "application/json; charset=utf-8", 'attachment; filename="evidence-network.json"'
     raise CaseIntegrityError("Evidence artifact type is not supported by the review console")
 

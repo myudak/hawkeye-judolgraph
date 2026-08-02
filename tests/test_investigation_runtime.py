@@ -87,7 +87,10 @@ def test_event_sequence_idempotence_and_graph_replay_consistency(tmp_path: Path)
     first = reduce_events(events)
     replayed = reduce_events([*events, *events])
     assert replayed == first
-    assert any(edge.appearance == "dashed" for edge in first.edges)
+    proposed_edge = next(edge for edge in first.edges if edge.id == "assertion:assertion-06")
+    assert proposed_edge.appearance == "dashed"
+    assert proposed_edge.source == "page:a"
+    assert proposed_edge.target == "page:b"
     store.append_review(
         "assertion-06",
         outcome="verified",

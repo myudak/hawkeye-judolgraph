@@ -61,7 +61,10 @@ def load_manifest(manifest_path: Path | str) -> LoadedManifest:
         raise EvaluationInputError("Evaluation manifest cannot be validated") from error
     fixture_path = _resolve_fixture_manifest(resolved_path, manifest.fixture_manifest_path)
     fixture_sha256 = _sha256_file(fixture_path)
-    if fixture_sha256 != manifest.fixture_manifest_sha256:
+    normalized_fixture_sha256 = hashlib.sha256(
+        fixture_path.read_bytes().replace(b"\r\n", b"\n")
+    ).hexdigest()
+    if manifest.fixture_manifest_sha256 not in {fixture_sha256, normalized_fixture_sha256}:
         raise EvaluationInputError("Evaluation fixture manifest SHA-256 does not match")
     return LoadedManifest(
         manifest=manifest,

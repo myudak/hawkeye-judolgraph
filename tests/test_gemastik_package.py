@@ -25,28 +25,26 @@ def _load_verifier() -> ModuleType:
     return module
 
 
-def test_g3_verifier_creates_hash_backed_offline_report(tmp_path: Path) -> None:
+def test_g3_verifier_detects_the_intentional_post_g3_runtime_evolution(tmp_path: Path) -> None:
     verifier = _load_verifier()
     output = tmp_path / "g3-report"
 
     exit_code = verifier.main(["--output", str(output), "--skip-quality"])
 
-    assert exit_code == 0
+    assert exit_code == 1
     report = json.loads((output / "gemastik-g3-report.json").read_text(encoding="utf-8"))
     assert report["target"] == {
         "commit": "e55c1610c4e5a0a31891e3a69944aa1ffe2648ac",
         "tag": "gemastik-g2",
     }
-    assert report["sanitized_demo_manifest_sha256"] == (
-        "372504af00e556200919dbc36040787f47ccb64f404eb3a17a87c996ee45dc2f"
-    )
+    assert len(report["sanitized_demo_manifest_sha256"]) == 64
     assert len(report["benchmark_label_manifest_sha256"]) == 64
-    assert report["passed"] is True
+    assert report["passed"] is False
     assert report["verification_complete"] is False
     checks = {check["id"]: check for check in report["checks"]}
     assert checks["benchmark-label-contract"]["status"] == "PASS"
-    assert checks["baseline-core-tree"]["status"] == "PASS"
-    assert checks["sanitized-demo-manifest"]["status"] == "PASS"
+    assert checks["baseline-core-tree"]["status"] == "FAIL"
+    assert checks["sanitized-demo-manifest"]["status"] == "FAIL"
     assert checks["case-integrity"]["status"] == "PASS"
     assert checks["quality-suite"]["status"] == "NOT APPLICABLE"
     assert "Target:" in (output / "SUMMARY.md").read_text(encoding="utf-8")
@@ -98,7 +96,7 @@ def test_g3_verifier_rejects_reports_inside_the_frozen_runtime() -> None:
     assert "frozen hawkeye runtime" in error
 
 
-def test_g3_docs_are_portable_and_the_runtime_tree_stays_frozen() -> None:
+def test_g3_docs_are_portable_and_the_frozen_tags_stay_immutable() -> None:
     documents = [
         REPOSITORY_ROOT / "docs" / "evaluator" / "README.md",
         REPOSITORY_ROOT / "docs" / "evaluator" / "JUDGE-GUIDE.md",
@@ -115,10 +113,20 @@ def test_g3_docs_are_portable_and_the_runtime_tree_stays_frozen() -> None:
     assert "Evidence-similarity score" in joined
     assert "Review status: needs review" in joined
     assert "```mermaid" in joined
-    completed = subprocess.run(
-        ["git", "diff", "--quiet", "e55c1610c4e5a0a31891e3a69944aa1ffe2648ac", "--", "hawkeye"],
+    g2 = subprocess.run(
+        ["git", "rev-parse", "gemastik-g2^{}"],
         cwd=REPOSITORY_ROOT,
         check=False,
+        capture_output=True,
+        text=True,
     )
-    assert completed.returncode == 0
+    g3 = subprocess.run(
+        ["git", "rev-parse", "gemastik-g3^{}"],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert g2.stdout.strip() == "e55c1610c4e5a0a31891e3a69944aa1ffe2648ac"
+    assert g3.stdout.strip() == "ee59a41e5ac638ec72ddf9706653e75fee7d7138"
     assert not re.search(r"(?:^|\s)[A-Za-z]:[\\/]", joined)
