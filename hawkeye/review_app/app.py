@@ -60,10 +60,10 @@ class _SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_headers)
 
 
-def create_app(cases_root: Path | str) -> FastAPI:
-    """Create a non-mutating localhost console over one configured local cases root."""
+def create_app(cases_root: Path | str, *, comparisons_root: Path | str | None = None) -> FastAPI:
+    """Create a non-mutating localhost console over verified local case artifacts only."""
 
-    loader = CaseLoader(cases_root)
+    loader = CaseLoader(cases_root, comparisons_root=comparisons_root)
     app = FastAPI(
         title="JudolGraph HAWK-EYE Investigator Console",
         docs_url=None,
@@ -106,7 +106,13 @@ def create_app(cases_root: Path | str) -> FastAPI:
 
     @app.get("/api/cases/{case_id}", include_in_schema=False)
     def get_case(case_id: str) -> dict[str, object]:
-        return case_details(loader.load(case_id))
+        loaded = loader.load(case_id)
+        comparisons, comparison_warning = loader.comparisons_for_case(loaded)
+        return case_details(
+            loaded,
+            comparisons=comparisons,
+            comparison_integrity_warning=comparison_warning,
+        )
 
     @app.get("/api/cases/{case_id}/artifacts/{evidence_id}", include_in_schema=False)
     def get_artifact(case_id: str, evidence_id: str) -> Response:

@@ -9,33 +9,40 @@
     <script src="/assets/app.js" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#case-view">Skip to selected case</a>
     <div class="grain" aria-hidden="true"></div>
     <header class="masthead">
       <div>
         <p class="eyebrow">JUDOLGRAPH / HAWK-EYE</p>
         <h1>Evidence Console</h1>
       </div>
-      <p class="mode">LOCAL · READ ONLY · HUMAN REVIEW REQUIRED</p>
+      <div class="mode-stack">
+        <p class="mode">LOCAL · READ ONLY · HUMAN REVIEW REQUIRED</p>
+        <p class="mode-detail">Verified artifacts only · no live collection from this view</p>
+      </div>
     </header>
     <main class="layout">
-      <aside class="case-rail" aria-label="Verified cases">
+      <aside class="case-rail" aria-label="Verified local cases">
         <div class="rail-heading">
-          <p class="eyebrow">CASE INDEX</p>
-          <span id="case-count" class="count">—</span>
+          <div>
+            <p class="eyebrow">CASE INDEX</p>
+            <p class="rail-copy">Only completed packages that pass local integrity checks can be opened.</p>
+          </div>
+          <span id="case-count" class="count" aria-label="Case count">—</span>
         </div>
         <div id="case-list" class="case-list" aria-live="polite"></div>
       </aside>
-      <section id="case-view" class="case-view" aria-live="polite">
+      <section id="case-view" class="case-view" aria-live="polite" tabindex="-1">
         <div class="empty-state">
           <p class="eyebrow">EVIDENCE FIRST</p>
           <h2>Select a verified case</h2>
-          <p>This console displays local artifacts only. Candidate leads and similarity scores remain review inputs, never conclusions.</p>
+          <p>This console keeps observed evidence, pending leads, evidence-similarity results, and human conclusions distinct.</p>
         </div>
       </section>
     </main>
     <footer>
-      <span>Captured HTML is served only as an attachment. Screenshots are local evidence previews.</span>
-      <span id="status-line">Loading local case index…</span>
+      <span>Captured HTML is available only as an inert text attachment. Screenshots are local evidence previews.</span>
+      <span id="status-line" aria-live="polite">Loading local case index…</span>
     </footer>
   </body>
 </html>

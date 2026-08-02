@@ -13,6 +13,12 @@ import httpx
 import pytest
 from PIL import Image
 
+from hawkeye.comparison import compare_cases, write_comparison
+from hawkeye.diagnostics.models import (
+    DiagnosticEvidenceReference,
+    RenderCheckpointMeasurement,
+    RenderDiagnosticsDocument,
+)
 from hawkeye.models import (
     CandidateCorpusSnapshot,
     CandidateDocument,
@@ -22,9 +28,13 @@ from hawkeye.models import (
     CandidateRecord,
     CaptureOutcome,
     CaseRecord,
+    CrawlConfiguration,
     CrawlPageRecord,
     EvidenceRecord,
     ExtractedEntity,
+    GraphDocument,
+    GraphEdge,
+    GraphNode,
 )
 from hawkeye.review_app import create_app
 from hawkeye.review_app.loader import CaseLoader, CaseNotFoundError, safe_display_url
@@ -79,6 +89,17 @@ def _write_case(root: Path, *, case_id: str = "review-case") -> Path:
         content_usable=True,
         page_count=1,
         candidate_count=1,
+        crawl_configuration=CrawlConfiguration(
+            max_depth=1,
+            max_pages_total=5,
+            max_redirects_per_page=5,
+            page_timeout_seconds=30,
+            case_timeout_seconds=120,
+            max_html_bytes=2_000_000,
+            max_total_requests=200,
+            max_declared_response_bytes=10_000_000,
+            allowed_crawl_hosts=["review.example"],
+        ),
     )
     page = CrawlPageRecord(
         id="page-001",
@@ -159,6 +180,39 @@ def _write_case(root: Path, *, case_id: str = "review-case") -> Path:
             generated_at=NOW,
         ),
     )
+    graph = GraphDocument(
+        nodes=[
+            GraphNode(id=f"case:{case_id}", type="case", label=case_id),
+            GraphNode(id="domain:review.example", type="domain", label="review.example"),
+            GraphNode(id="page:page-001", type="page", label="review.example /"),
+            GraphNode(id="domain:candidate.example", type="domain", label="candidate.example"),
+        ],
+        edges=[
+            GraphEdge(
+                id="edge-started-from",
+                source=f"case:{case_id}",
+                target="domain:review.example",
+                type="started_from",
+            ),
+            GraphEdge(
+                id="edge-contains-page",
+                source="domain:review.example",
+                target="page:page-001",
+                type="contains_page",
+            ),
+            GraphEdge(
+                id="edge-links-to",
+                source="page:page-001",
+                target="domain:candidate.example",
+                type="links_to",
+                evidence_id=html_evidence.id,
+                source_url=case.final_url,
+                extraction_method="fixture",
+                confidence=1.0,
+            ),
+        ],
+        metadata={"schema_version": "fixture-graph-1"},
+    )
     payloads = {
         "case.json": case.model_dump(mode="json"),
         "pages.json": [page.model_dump(mode="json")],
@@ -169,6 +223,7 @@ def _write_case(root: Path, *, case_id: str = "review-case") -> Path:
         "entities.json": [entity.model_dump(mode="json")],
         "candidates.json": candidates.model_dump(mode="json"),
         "candidate_observations.json": [observation.model_dump(mode="json")],
+        "graph.json": graph.model_dump(mode="json"),
     }
     for filename, payload in payloads.items():
         (directory / filename).write_text(
@@ -177,11 +232,65 @@ def _write_case(root: Path, *, case_id: str = "review-case") -> Path:
     return directory
 
 
+def _write_diagnostic(root: Path, case_id: str) -> None:
+    """Attach a valid, deliberately noncanonical G1 diagnostic to a fixture case."""
+
+    loaded = CaseLoader(root).load(case_id)
+    html = loaded.evidence_by_id["evidence-page-001"]
+    screenshot = loaded.evidence_by_id["evidence-screenshot-001"]
+    checkpoint = RenderCheckpointMeasurement(
+        elapsed_ms=0,
+        document_ready_state="complete",
+        html_bytes=100,
+        visible_text_chars=20,
+        element_count=4,
+        anchor_count=0,
+        image_count=0,
+        iframe_count=0,
+        canvas_count=0,
+        document_height=100,
+        screenshot_sha256="0" * 64,
+        screenshot_bytes=64,
+        screenshot_entropy=1.0,
+    )
+    diagnostic = RenderDiagnosticsDocument(
+        generated_at=NOW,
+        engine_version="fixture",
+        command="fixture",
+        collection_mode="fixture",
+        source_case_id=case_id,
+        source_case_manifest_sha256=loaded.manifest_sha256,
+        source_page_id="page-001",
+        source_url=loaded.case.final_url or loaded.case.seed_url,
+        source_evidence_refs=[
+            DiagnosticEvidenceReference(
+                evidence_id=html.id,
+                type=html.type,
+                sha256=html.sha256,
+            ),
+            DiagnosticEvidenceReference(
+                evidence_id=screenshot.id,
+                type=screenshot.type,
+                sha256=screenshot.sha256,
+            ),
+        ],
+        checkpoint_schedule_ms=[0, 500, 1500, 3000],
+        total_diagnostic_time_ms=3000,
+        status="continued_changing_at_budget_end",
+        checkpoints=[checkpoint],
+    )
+    destination = root / case_id / "diagnostics"
+    destination.mkdir()
+    (destination / "render-diagnostics.json").write_text(
+        f"{diagnostic.model_dump_json(indent=2)}\n", encoding="utf-8"
+    )
+
+
 class _Client:
     """Use HTTPX's ASGI transport directly so V1 tests do not depend on TestClient shims."""
 
-    def __init__(self, root: Path) -> None:
-        self._app = create_app(root)
+    def __init__(self, root: Path, comparisons_root: Path | None = None) -> None:
+        self._app = create_app(root, comparisons_root=comparisons_root)
 
     def get(self, path: str, *, headers: dict[str, str] | None = None) -> httpx.Response:
         async def request() -> httpx.Response:
@@ -194,8 +303,8 @@ class _Client:
         return asyncio.run(request())
 
 
-def _client(root: Path) -> _Client:
-    return _Client(root)
+def _client(root: Path, comparisons_root: Path | None = None) -> _Client:
+    return _Client(root, comparisons_root)
 
 
 def test_read_only_api_uses_verified_ids_redacts_display_values_and_sets_csp(
@@ -328,15 +437,183 @@ def test_loader_rejects_nonopaque_case_ids_and_unknown_evidence_ids(tmp_path: Pa
     assert client.get("/api/cases/review-case/artifacts/missing-evidence").status_code == 404
 
 
+def test_case_detail_exposes_traceable_graph_leads_and_noncanonical_diagnostics(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "cases"
+    _write_case(root)
+    _write_diagnostic(root, "review-case")
+    payload = _client(root).get("/api/cases/review-case").json()
+
+    assert payload["seed_url_display"] == "https://review.example/"
+    assert payload["collection_limits"] == {
+        "max_depth": 1,
+        "max_pages_total": 5,
+        "max_redirects_per_page": 5,
+        "page_timeout_seconds": 30.0,
+        "case_timeout_seconds": 120.0,
+    }
+    assert payload["entities"][0]["source_evidence_id"] == "evidence-page-001"
+    assert payload["candidates"][0]["status"] == "pending"
+    assert payload["candidates"][0]["relationship"] is None
+    reason_ref = payload["candidates"][0]["reasons"][0]["evidence_refs"][0]
+    assert reason_ref == {
+        "case_id": "review-case",
+        "evidence_id": "evidence-page-001",
+        "observation_id": "candidate-observation-001",
+        "available": True,
+    }
+    assert payload["graph"]["edge_count"] == 3
+    observed_edge = next(
+        edge for edge in payload["graph"]["edges"] if edge["id"] == "edge-links-to"
+    )
+    assert observed_edge["relationship_status"] == "observed_evidence"
+    assert observed_edge["evidence"]["evidence_id"] == "evidence-page-001"
+    assert payload["diagnostic"] == {
+        "status": "continued_changing_at_budget_end",
+        "collection_mode": "fixture",
+        "source_page_id": "page-001",
+        "checkpoint_count": 1,
+        "diagnostic_wait_budget_ms": 3000,
+        "evidence_refs": [
+            {
+                "case_id": "review-case",
+                "evidence_id": "evidence-page-001",
+                "observation_id": None,
+                "available": True,
+            },
+            {
+                "case_id": "review-case",
+                "evidence_id": "evidence-screenshot-001",
+                "observation_id": None,
+                "available": True,
+            },
+        ],
+    }
+    assert payload["diagnostic_integrity_warning"] is None
+
+
+def test_unusable_case_and_corrupt_diagnostic_are_visible_as_limits_not_silent_facts(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "cases"
+    case_directory = _write_case(root)
+    case = json.loads((case_directory / "case.json").read_text(encoding="utf-8"))
+    case.update(
+        {
+            "capture_outcome": "bot_challenge",
+            "content_usable": False,
+            "candidate_count": 0,
+            "classification_reasons": ["fixture restriction message"],
+        }
+    )
+    (case_directory / "case.json").write_text(
+        f"{json.dumps(case, indent=2, sort_keys=True)}\n", encoding="utf-8"
+    )
+    page = json.loads((case_directory / "pages.json").read_text(encoding="utf-8"))
+    page[0].update(
+        {
+            "capture_outcome": "bot_challenge",
+            "content_usable": False,
+            "classification_reasons": ["fixture restriction message"],
+        }
+    )
+    (case_directory / "pages.json").write_text(
+        f"{json.dumps(page, indent=2, sort_keys=True)}\n", encoding="utf-8"
+    )
+    (case_directory / "entities.json").write_text("[]\n", encoding="utf-8")
+    (case_directory / "candidates.json").unlink()
+    (case_directory / "candidate_observations.json").unlink()
+    diagnostic_directory = case_directory / "diagnostics"
+    diagnostic_directory.mkdir()
+    (diagnostic_directory / "render-diagnostics.json").write_text("{invalid", encoding="utf-8")
+
+    response = _client(root).get("/api/cases/review-case")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["content_usable"] is False
+    assert payload["capture_outcome"] == "bot_challenge"
+    assert payload["entities"] == []
+    assert payload["candidates"] == []
+    assert payload["diagnostic"] is None
+    assert "cannot be verified" in payload["diagnostic_integrity_warning"]
+
+
+def test_verified_comparison_projection_and_invalid_companion_warning(tmp_path: Path) -> None:
+    root = tmp_path / "cases"
+    left = _write_case(root, case_id="left-case")
+    right = _write_case(root, case_id="right-case")
+    comparison_root = tmp_path / "comparisons"
+    comparison_root.mkdir()
+    comparison = compare_cases(left, right)
+    write_comparison(comparison, comparison_root / "left-right.json")
+    (comparison_root / "corrupt.json").write_text("{invalid", encoding="utf-8")
+
+    response = _client(root, comparison_root).get("/api/cases/left-case")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["comparison_integrity_warning"] is True
+    assert len(payload["comparisons"]) == 1
+    displayed = payload["comparisons"][0]
+    assert displayed["review_status"] == "needs_review"
+    assert displayed["scoring_policy_version"] == "v0.3-offline-comparison-1"
+    assert displayed["components"]
+    assert all(
+        reference["available"]
+        for component in displayed["components"]
+        for reference in component["evidence_refs"]
+    )
+
+
+def test_hostile_display_values_are_bounded_inert_text_inputs(tmp_path: Path) -> None:
+    root = tmp_path / "cases"
+    case_directory = _write_case(root)
+    candidates = json.loads((case_directory / "candidates.json").read_text(encoding="utf-8"))
+    candidates["candidates"][0]["hostname"] = "<script>window.pwned=1</script>" + "x" * 300
+    candidates["candidates"][0]["registrable_domain"] = "xn--bcher-kva.example"
+    (case_directory / "candidates.json").write_text(
+        f"{json.dumps(candidates, indent=2, sort_keys=True)}\n", encoding="utf-8"
+    )
+    entities = json.loads((case_directory / "entities.json").read_text(encoding="utf-8"))
+    entities[0].update(
+        {
+            "type": "telegram",
+            "value": "\u0000'=SUM(1,1) <img src=x onerror=alert(1)>",
+            "normalized_value": "\u0000'=SUM(1,1) <img src=x onerror=alert(1)>",
+        }
+    )
+    (case_directory / "entities.json").write_text(
+        f"{json.dumps(entities, indent=2, sort_keys=True)}\n", encoding="utf-8"
+    )
+
+    payload = _client(root).get("/api/cases/review-case").json()
+
+    assert payload["candidates"][0]["hostname"].endswith("…")
+    assert len(payload["candidates"][0]["hostname"]) == 256
+    assert "\x00" not in payload["entities"][0]["display_value"]
+    assert payload["entities"][0]["display_value"].startswith("'=SUM")
+
+
 def test_ui_assets_do_not_use_html_injection_or_external_navigation() -> None:
     static_root = Path(__file__).parents[1] / "hawkeye" / "review_app" / "static"
     script = (static_root / "app.js").read_text(encoding="utf-8")
     html = (static_root / "index.html").read_text(encoding="utf-8")
+    styles = (static_root / "styles.css").read_text(encoding="utf-8")
 
     assert "innerHTML" not in script
     assert "window.open" not in script
-    assert "http://" not in script + html
-    assert "https://" not in script + html
+    assert "http://" not in script + html + styles
+    assert "https://" not in script + html + styles
+    assert "textContent" in script
+    assert "Relationship: not determined" in script
+    assert "Evidence-similarity score" in script
+    assert "accessible relationship table" in script
+    assert "aria-current" in script
+    assert 'href="#case-view"' in html
+    assert "prefers-reduced-motion" in styles
+    assert ":focus-visible" in styles
 
 
 def test_server_runner_is_hard_bound_to_loopback(

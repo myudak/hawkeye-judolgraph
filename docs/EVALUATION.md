@@ -76,6 +76,20 @@ sparse output; canvas-heavy output; DOM growth with unchanged pixels; and pixel 
 DOM. Their tests use relational assertions rather than exact screenshot byte sizes or live-site
 values.
 
+## Investigator workflow and demo protocol (G2)
+
+The local console displays only cases accepted by `CaseLoader`. G2 presentation does not cause a
+browser collection, DNS lookup, external fetch, candidate crawl, comparison run, or persistent
+human decision. It renders captured values as bounded text and serves saved HTML as an inert
+attachment. Optional comparison documents are displayed only when their case manifests, evidence
+references, and entity references verify against the configured local cases root; invalid documents
+surface an integrity warning.
+
+The reproducible judge walkthrough is documented in `docs/DEMO.md`. Build it with `python -m
+hawkeye demo --output <new-directory>`, then serve its `cases/` and `comparisons/` subdirectories
+through the existing loopback-only console. The fixture uses reserved `.invalid` labels and generic
+static images. It is a local demonstration input, not live availability or competition truth.
+
 ## Live collection protocol
 
 - Use a fresh, unauthenticated browser context where practical.

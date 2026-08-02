@@ -77,3 +77,20 @@ neutral measurements at `0`, `500`, `1500`, and `3000` milliseconds. The three-s
 is fixed and does not adapt to a page. Diagnostics reference canonical evidence but do not modify
 or replace canonical HTML, screenshots, classification, entities, graph edges, candidates, or
 comparison scores. They do not determine why a page changed.
+
+## ADR-010 — G2 presents verified artifacts without creating review facts
+
+**Status:** accepted
+
+G2 may improve the localhost investigator console only by projecting already verified local case
+data. Every shown entity, graph edge, candidate reason, and comparison component carries a visible
+case/evidence/observation reference when it is locally available. Captured HTML remains an inert
+`text/plain` attachment and all hostile artifact values are bounded text, never inserted as HTML or
+converted to remote links.
+
+Optional comparison documents live in a separately configured local directory. Before display, the
+console verifies both referenced case manifests, each evidence path/hash, and entity references;
+an invalid document becomes an integrity warning rather than a displayed score. Optional G1
+diagnostics are separately validated against the current case manifest and remain explicitly
+noncanonical. The UI has no write route, review-decision store, remote asset, external fetch,
+collection trigger, scoring change, or public bind.

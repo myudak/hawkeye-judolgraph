@@ -16,10 +16,12 @@ from urllib.parse import parse_qsl, quote, urlsplit, urlunsplit
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
+from hawkeye.diagnostics.models import RenderDiagnosticsDocument
 from hawkeye.models import (
     CandidateDocument,
     CandidateObservation,
     CaseRecord,
+    ComparisonDocument,
     CrawlPageRecord,
     EvidenceRecord,
     ExtractedEntity,
@@ -36,6 +38,10 @@ _MAX_HTML_BYTES = 2_000_000
 _MAX_SCREENSHOT_BYTES = 10_000_000
 _MAX_NETWORK_BYTES = 1_000_000
 _MAX_SCREENSHOT_PIXELS = 25_000_000
+_MAX_COMPARISON_BYTES = 2_000_000
+_DIAGNOSTIC_WARNING = (
+    "A render diagnostic artifact is present but cannot be verified against this local case."
+)
 
 
 class CaseNotFoundError(KeyError):
@@ -59,6 +65,8 @@ class LoadedCase:
     candidate_observations: list[CandidateObservation]
     graph: GraphDocument | None
     manifest_sha256: str
+    diagnostics: RenderDiagnosticsDocument | None
+    diagnostic_warning: str | None
 
 
 @dataclass(frozen=True)
@@ -73,7 +81,9 @@ class ArtifactPayload:
 class CaseLoader:
     """Resolve case and artifact IDs through verified manifests only; never accept paths."""
 
-    def __init__(self, cases_root: Path | str) -> None:
+    def __init__(
+        self, cases_root: Path | str, *, comparisons_root: Path | str | None = None
+    ) -> None:
         requested_root = Path(cases_root).expanduser()
         if _is_reparse_point(requested_root):
             raise CaseIntegrityError("Configured cases root must not be a reparse point")
@@ -84,6 +94,7 @@ class CaseLoader:
         if not root.is_dir():
             raise CaseIntegrityError("Configured cases root does not exist or is not a directory")
         self._root = root
+        self._comparisons_root = self._resolve_comparisons_root(comparisons_root)
 
     def list_cases(self) -> list[dict[str, Any]]:
         """List immediate case directories, marking corrupt packages without exposing contents."""
@@ -134,6 +145,14 @@ class CaseLoader:
         _verify_all_evidence_artifacts(directory, evidence)
         graph = _load_graph(directory, evidence_by_id)
         candidates, candidate_observations = _load_candidates(directory, case, evidence_by_id)
+        manifest_sha256 = _case_manifest(case, pages, evidence, entities)
+        diagnostics, diagnostic_warning = _load_diagnostics(
+            directory,
+            case_id=case.case_id,
+            manifest_sha256=manifest_sha256,
+            pages=pages,
+            evidence_by_id=evidence_by_id,
+        )
         return LoadedCase(
             directory=directory,
             case=case,
@@ -143,7 +162,9 @@ class CaseLoader:
             candidates=candidates,
             candidate_observations=sorted(candidate_observations, key=lambda item: item.id),
             graph=graph,
-            manifest_sha256=_case_manifest(case, pages, evidence, entities),
+            manifest_sha256=manifest_sha256,
+            diagnostics=diagnostics,
+            diagnostic_warning=diagnostic_warning,
         )
 
     def artifact(self, case_id: str, evidence_id: str) -> ArtifactPayload:
@@ -171,6 +192,105 @@ class CaseLoader:
             raise CaseNotFoundError("Case ID was not found")
         return resolved
 
+    def comparisons_for_case(self, loaded: LoadedCase) -> tuple[list[ComparisonDocument], bool]:
+        """Return only comparison documents whose persisted inputs still verify locally.
+
+        Comparisons are optional display companions kept in a separately configured directory. They
+        never change a case package, and an invalid companion produces a visible warning instead of
+        becoming a comparison fact.
+        """
+
+        if self._comparisons_root is None:
+            return [], False
+        try:
+            paths = sorted(self._comparisons_root.iterdir(), key=lambda path: path.name)
+        except OSError as error:
+            raise CaseIntegrityError("Unable to enumerate configured comparison root") from error
+
+        documents: list[ComparisonDocument] = []
+        warning = False
+        for path in paths:
+            if path.suffix.casefold() != ".json":
+                continue
+            if _is_reparse_point(path) or not path.is_file():
+                warning = True
+                continue
+            try:
+                document = _read_comparison_document(path)
+            except (CaseIntegrityError, OSError, TypeError, ValueError, json.JSONDecodeError):
+                warning = True
+                continue
+            if loaded.case.case_id not in {document.left_case_id, document.right_case_id}:
+                continue
+            try:
+                self._verify_comparison_document(document)
+            except CaseIntegrityError:
+                warning = True
+                continue
+            documents.append(document)
+        return documents, warning
+
+    def _resolve_comparisons_root(self, comparisons_root: Path | str | None) -> Path | None:
+        if comparisons_root is None:
+            return None
+        requested_root = Path(comparisons_root).expanduser()
+        if _is_reparse_point(requested_root):
+            raise CaseIntegrityError("Configured comparison root must not be a reparse point")
+        try:
+            root = requested_root.resolve()
+        except OSError as error:
+            raise CaseIntegrityError("Unable to resolve configured comparison root") from error
+        if not root.is_dir() or root == self._root:
+            raise CaseIntegrityError(
+                "Configured comparison root must be a separate existing directory"
+            )
+        return root
+
+    def _verify_comparison_document(self, document: ComparisonDocument) -> None:
+        if document.left_case_id == document.right_case_id:
+            raise CaseIntegrityError("Comparison document must name two distinct cases")
+        try:
+            left = self.load(document.left_case_id)
+            right = self.load(document.right_case_id)
+        except CaseNotFoundError as error:
+            raise CaseIntegrityError("Comparison references a case outside this console") from error
+        if (
+            document.left_case_manifest_sha256 != left.manifest_sha256
+            or document.right_case_manifest_sha256 != right.manifest_sha256
+        ):
+            raise CaseIntegrityError("Comparison manifest references do not match verified cases")
+        cases = {left.case.case_id: left, right.case.case_id: right}
+        entities = {
+            case_id: {entity.id: entity for entity in case.entities}
+            for case_id, case in cases.items()
+        }
+        for component in document.components:
+            for reference in component.evidence_refs:
+                source_case = cases.get(reference.case_id)
+                if source_case is None:
+                    raise CaseIntegrityError(
+                        "Comparison evidence reference is outside its case pair"
+                    )
+                evidence = source_case.evidence_by_id.get(reference.evidence_id)
+                if (
+                    evidence is None
+                    or evidence.path != reference.path
+                    or evidence.sha256 != reference.sha256
+                ):
+                    raise CaseIntegrityError("Comparison evidence reference cannot be verified")
+            for entity_reference in component.entity_refs:
+                source_case = cases.get(entity_reference.case_id)
+                entity = entities.get(entity_reference.case_id, {}).get(entity_reference.entity_id)
+                if (
+                    source_case is None
+                    or entity is None
+                    or entity.source_evidence_id != entity_reference.evidence_id
+                    or entity.type != entity_reference.type
+                    or entity.normalized_value != entity_reference.normalized_value
+                    or entity_reference.evidence_id not in source_case.evidence_by_id
+                ):
+                    raise CaseIntegrityError("Comparison entity reference cannot be verified")
+
 
 def case_summary(loaded: LoadedCase) -> dict[str, Any]:
     """Return only safe, display-ready case facts; raw stored URLs never become application HTML."""
@@ -190,12 +310,25 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
     }
 
 
-def case_details(loaded: LoadedCase) -> dict[str, Any]:
+def case_details(
+    loaded: LoadedCase,
+    *,
+    comparisons: list[ComparisonDocument] | None = None,
+    comparison_integrity_warning: bool = False,
+) -> dict[str, Any]:
     """Project a verified package into a UI-safe, relationship-neutral review model."""
 
+    evidence_ids = set(loaded.evidence_by_id)
+    graph_nodes = {node.id: node for node in loaded.graph.nodes} if loaded.graph else {}
     summary = case_summary(loaded)
     summary.update(
         {
+            "seed_url_display": safe_display_url(loaded.case.seed_url),
+            "navigation_status": loaded.case.navigation_status,
+            "classification_reasons": [
+                _safe_text(reason, 256) for reason in loaded.case.classification_reasons
+            ],
+            "collection_limits": _display_collection_limits(loaded.case),
             "pages": [
                 {
                     "id": page.id,
@@ -208,6 +341,9 @@ def case_details(loaded: LoadedCase) -> dict[str, Any]:
                     "content_usable": page.content_usable,
                     "html_evidence_id": page.html_evidence_id,
                     "screenshot_evidence_id": page.screenshot_evidence_id,
+                    "classification_reasons": [
+                        _safe_text(reason, 256) for reason in page.classification_reasons
+                    ],
                 }
                 for page in loaded.pages
             ],
@@ -230,19 +366,52 @@ def case_details(loaded: LoadedCase) -> dict[str, Any]:
                     "display_value": safe_display_entity(entity.type, entity.normalized_value),
                     "source_evidence_id": entity.source_evidence_id,
                     "confidence": entity.confidence,
+                    "source_page_id": loaded.evidence_by_id[entity.source_evidence_id].page_id,
                 }
                 for entity in loaded.entities
             ],
-            "candidates": _display_candidates(loaded.candidates),
+            "candidate_policy_version": (
+                loaded.candidates.scoring_policy_version if loaded.candidates is not None else None
+            ),
+            "candidates": _display_candidates(
+                loaded.candidates,
+                case_id=loaded.case.case_id,
+                evidence_ids=evidence_ids,
+            ),
             "graph": (
                 {
                     "node_count": len(loaded.graph.nodes),
                     "edge_count": len(loaded.graph.edges),
                     "schema_version": loaded.graph.metadata.get("schema_version"),
+                    "nodes": [
+                        {
+                            "id": node.id,
+                            "type": node.type,
+                            "label": _safe_display_graph_label(node.type, node.label),
+                        }
+                        for node in loaded.graph.nodes
+                    ],
+                    "edges": [
+                        _display_graph_edge(
+                            edge,
+                            graph_nodes,
+                            evidence_ids,
+                            case_id=loaded.case.case_id,
+                        )
+                        for edge in loaded.graph.edges
+                    ],
                 }
                 if loaded.graph is not None
                 else None
             ),
+            "diagnostic": _display_diagnostic(
+                loaded.diagnostics,
+                evidence_ids,
+                case_id=loaded.case.case_id,
+            ),
+            "diagnostic_integrity_warning": loaded.diagnostic_warning,
+            "comparisons": _display_comparisons(comparisons or []),
+            "comparison_integrity_warning": comparison_integrity_warning,
         }
     )
     return summary
@@ -293,7 +462,22 @@ def safe_display_entity(entity_type: str, value: str) -> str:
     return _safe_text(value, max_length=256)
 
 
-def _display_candidates(candidates: CandidateDocument | None) -> list[dict[str, Any]]:
+def _display_collection_limits(case: CaseRecord) -> dict[str, int | float] | None:
+    if case.crawl_configuration is None:
+        return None
+    configuration = case.crawl_configuration
+    return {
+        "max_depth": configuration.max_depth,
+        "max_pages_total": configuration.max_pages_total,
+        "max_redirects_per_page": configuration.max_redirects_per_page,
+        "page_timeout_seconds": configuration.page_timeout_seconds,
+        "case_timeout_seconds": configuration.case_timeout_seconds,
+    }
+
+
+def _display_candidates(
+    candidates: CandidateDocument | None, *, case_id: str, evidence_ids: set[str]
+) -> list[dict[str, Any]]:
     if candidates is None:
         return []
     return [
@@ -308,13 +492,157 @@ def _display_candidates(candidates: CandidateDocument | None) -> list[dict[str, 
                 {
                     "reason_type": reason.reason_type,
                     "weight": reason.weight,
-                    "evidence_ids": reason.supporting_evidence_ids,
-                    "observation_ids": reason.source_observation_ids,
+                    "evidence_refs": [
+                        _display_evidence_reference(
+                            reference.case_id,
+                            reference.evidence_id,
+                            observation_id=reference.observation_id,
+                            available=(
+                                reference.case_id == case_id
+                                and reference.evidence_id in evidence_ids
+                            ),
+                        )
+                        for reference in reason.supporting_evidence_refs
+                    ],
+                    "observation_ids": [
+                        _safe_text(observation_id, 128)
+                        for observation_id in reason.source_observation_ids
+                    ],
                 }
                 for reason in candidate.reasons
             ],
         }
         for candidate in candidates.candidates
+    ]
+
+
+def _display_graph_edge(
+    edge: Any, graph_nodes: dict[str, Any], evidence_ids: set[str], *, case_id: str
+) -> dict[str, Any]:
+    source = graph_nodes[edge.source]
+    target = graph_nodes[edge.target]
+    evidence_available = edge.evidence_id is not None and edge.evidence_id in evidence_ids
+    return {
+        "id": edge.id,
+        "source": {
+            "id": source.id,
+            "type": source.type,
+            "label": _safe_display_graph_label(source.type, source.label),
+        },
+        "type": edge.type,
+        "target": {
+            "id": target.id,
+            "type": target.type,
+            "label": _safe_display_graph_label(target.type, target.label),
+        },
+        "evidence": (
+            _display_evidence_reference(
+                case_id,
+                edge.evidence_id,
+                available=evidence_available,
+            )
+            if edge.evidence_id is not None
+            else None
+        ),
+        "relationship_status": "observed_evidence"
+        if edge.evidence_id is not None
+        else "structural_record",
+        "source_url_display": safe_display_url(edge.source_url),
+        "extraction_method": _safe_text(edge.extraction_method, 128)
+        if edge.extraction_method is not None
+        else None,
+        "confidence": edge.confidence,
+    }
+
+
+def _display_evidence_reference(
+    case_id: str,
+    evidence_id: str,
+    *,
+    available: bool,
+    observation_id: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "case_id": _safe_text(case_id, 80),
+        "evidence_id": _safe_text(evidence_id, 128),
+        "observation_id": _safe_text(observation_id, 128) if observation_id is not None else None,
+        "available": available,
+    }
+
+
+def _safe_display_graph_label(node_type: str, label: str) -> str:
+    """Apply the same redaction boundary to graph labels that can contain captured values."""
+
+    if node_type in {"page", "external_asset_url"}:
+        return safe_display_url(label) or _safe_text(label, 256)
+    if node_type in {"whatsapp_or_phone", "referral"}:
+        return safe_display_entity(node_type, label)
+    return _safe_text(label, 256)
+
+
+def _display_diagnostic(
+    diagnostic: RenderDiagnosticsDocument | None, evidence_ids: set[str], *, case_id: str
+) -> dict[str, Any] | None:
+    if diagnostic is None:
+        return None
+    return {
+        "status": diagnostic.status,
+        "collection_mode": diagnostic.collection_mode,
+        "source_page_id": _safe_text(diagnostic.source_page_id, 80),
+        "checkpoint_count": len(diagnostic.checkpoints),
+        "diagnostic_wait_budget_ms": diagnostic.diagnostic_wait_budget_ms,
+        "evidence_refs": [
+            _display_evidence_reference(
+                case_id,
+                reference.evidence_id,
+                available=reference.evidence_id in evidence_ids,
+            )
+            for reference in diagnostic.source_evidence_refs
+        ],
+    }
+
+
+def _display_comparisons(comparisons: list[ComparisonDocument]) -> list[dict[str, Any]]:
+    return [
+        {
+            "left_case_id": _safe_text(document.left_case_id, 80),
+            "right_case_id": _safe_text(document.right_case_id, 80),
+            "review_status": document.review_status,
+            "evidence_similarity_score": document.candidate_mirror_score,
+            "comparator_version": document.comparator_version,
+            "scoring_policy_version": document.scoring_policy_version,
+            "left_case_manifest_sha256": document.left_case_manifest_sha256,
+            "right_case_manifest_sha256": document.right_case_manifest_sha256,
+            "warnings": [_safe_text(warning, 256) for warning in document.warnings],
+            "components": [
+                {
+                    "name": component.name,
+                    "score": component.score,
+                    "weight": component.weight,
+                    "available": component.available,
+                    "status": component.status,
+                    "evidence_refs": [
+                        _display_evidence_reference(
+                            reference.case_id,
+                            reference.evidence_id,
+                            available=True,
+                        )
+                        for reference in component.evidence_refs
+                    ],
+                    "entity_refs": [
+                        {
+                            "case_id": _safe_text(reference.case_id, 80),
+                            "entity_id": _safe_text(reference.entity_id, 128),
+                            "evidence_id": _safe_text(reference.evidence_id, 128),
+                            "type": _safe_text(reference.type, 80),
+                        }
+                        for reference in component.entity_refs
+                    ],
+                }
+                for component in document.components
+            ],
+        }
+        for document in comparisons
     ]
 
 
@@ -458,6 +786,43 @@ def _artifact_response_policy(record: EvidenceRecord) -> tuple[str, str]:
     raise CaseIntegrityError("Evidence artifact type is not supported by the review console")
 
 
+def _load_diagnostics(
+    directory: Path,
+    *,
+    case_id: str,
+    manifest_sha256: str,
+    pages: list[CrawlPageRecord],
+    evidence_by_id: dict[str, EvidenceRecord],
+) -> tuple[RenderDiagnosticsDocument | None, str | None]:
+    """Load an optional noncanonical diagnostic without weakening canonical case verification."""
+
+    filename = "diagnostics/render-diagnostics.json"
+    try:
+        if not _file_exists(directory, filename):
+            return None, None
+        document = RenderDiagnosticsDocument.model_validate(_read_json(directory, filename))
+    except (CaseIntegrityError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None, _DIAGNOSTIC_WARNING
+    if (
+        document.source_case_id != case_id
+        or document.source_case_manifest_sha256 != manifest_sha256
+    ):
+        return None, _DIAGNOSTIC_WARNING
+    if document.source_page_id not in {page.id for page in pages}:
+        return None, _DIAGNOSTIC_WARNING
+    if document.checkpoint_schedule_ms != [0, 500, 1500, 3000] or not document.source_evidence_refs:
+        return None, _DIAGNOSTIC_WARNING
+    for reference in document.source_evidence_refs:
+        evidence = evidence_by_id.get(reference.evidence_id)
+        if (
+            evidence is None
+            or evidence.type != reference.type
+            or evidence.sha256 != reference.sha256
+        ):
+            return None, _DIAGNOSTIC_WARNING
+    return document, None
+
+
 def _load_graph(directory: Path, evidence_by_id: dict[str, EvidenceRecord]) -> GraphDocument | None:
     if not _file_exists(directory, "graph.json"):
         return None
@@ -467,7 +832,12 @@ def _load_graph(directory: Path, evidence_by_id: dict[str, EvidenceRecord]) -> G
         raise CaseIntegrityError("Graph JSON cannot be validated") from error
     _index_unique(graph.nodes, "graph node")
     _index_unique(graph.edges, "graph edge")
+    node_ids = {node.id for node in graph.nodes}
     for edge in graph.edges:
+        if edge.source not in node_ids or edge.target not in node_ids:
+            raise CaseIntegrityError(
+                "Graph edge references a graph node absent from the case manifest"
+            )
         if edge.evidence_id is not None and edge.evidence_id not in evidence_by_id:
             raise CaseIntegrityError("Graph edge references evidence absent from the case manifest")
     return graph
@@ -517,10 +887,32 @@ def _load_candidates(
 
 
 def _file_exists(directory: Path, filename: str) -> bool:
-    path = directory / filename
-    if _is_reparse_point(path):
+    relative = Path(filename)
+    if (
+        relative.is_absolute()
+        or ".." in relative.parts
+        or _path_has_reparse_point(directory, relative)
+    ):
         raise CaseIntegrityError("Case JSON artifact must not be a reparse point")
+    path = directory / relative
     return path.is_file()
+
+
+def _read_comparison_document(path: Path) -> ComparisonDocument:
+    """Parse one bounded immediate comparison file; callers validate its local references."""
+
+    try:
+        if path.stat().st_size > _MAX_COMPARISON_BYTES:
+            raise CaseIntegrityError("Comparison document exceeds review size limit")
+        content = path.read_bytes()
+    except OSError as error:
+        raise CaseIntegrityError("Comparison document cannot be read") from error
+    if len(content) > _MAX_COMPARISON_BYTES:
+        raise CaseIntegrityError("Comparison document exceeds review size limit")
+    try:
+        return ComparisonDocument.model_validate(json.loads(content))
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        raise CaseIntegrityError("Comparison document cannot be validated") from error
 
 
 def _read_json(directory: Path, filename: str) -> object:

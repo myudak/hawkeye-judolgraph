@@ -46,11 +46,14 @@ Completed evidence: an opt-in `hawkeye diagnose` command; immutable in-case diag
 `0/500/1500/3000 ms` checkpoints; eight zero-network fixture scenarios; two qualitative live
 diagnostic runs; and 115 passing automated tests. Canonical collection behavior did not change.
 
-## G2 — Competition investigator workflow — proposed, not approved
+## G2 — Competition investigator workflow — completed
 
-Potential work: polish the V1 investigator narrative, improve evidence-graph explanation,
-comparison presentation, accessibility, and demo flow using only verified local artifacts. This
-does not authorize public deployment, new crawling behavior, or changes to scoring semantics.
+Completed evidence: a localhost-only investigator workflow with a stage-by-stage case narrative,
+direct provenance links, an accessible evidence-graph relationship table, neutral lead and
+comparison language, separate noncanonical diagnostic cues, and a deterministic offline judge demo
+builder. Optional comparison documents are displayed only after their case manifests, evidence, and
+entity references re-verify. G2 changed no collector, diagnostic, extraction, graph, candidate,
+comparison, bind, or deployment behavior.
 
 ## G3 — Demonstration and evaluation package — proposed, not approved
 

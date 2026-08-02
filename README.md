@@ -212,6 +212,37 @@ This is suitable for one local investigator on the same machine. Binding beyond 
 multiple users, or adding review notes/exports requires authentication, authorization, separate
 application state, and a deployment security review; those features are intentionally absent.
 
+## Competition investigator workflow (G2)
+
+The local console now presents a case as a bounded investigation path: seed, capture, deterministic
+observations, evidence graph, pending leads, offline comparisons, and human review. The graph has a
+keyboard-accessible relationship table, every displayed derived item links back to local evidence
+where available, and the UI uses neutral labels such as **Pending lead**, **Relationship: not
+determined**, **Evidence-similarity score**, and **Review status: needs review**. It does not record
+a human conclusion.
+
+To display existing offline comparison outputs, pass an optional separate directory. Documents are
+not trusted merely because they are present: their case manifests, evidence references, and entity
+references are re-verified before display.
+
+```powershell
+python -m hawkeye serve --cases ./cases --comparisons ./comparisons --port 8760
+```
+
+For a reproducible offline judge walkthrough, create a new sanitized fixture corpus and then serve
+it through the same console:
+
+```powershell
+python -m hawkeye demo --output verification-output/gemastik-demo
+python -m hawkeye serve `
+  --cases verification-output/gemastik-demo/cases `
+  --comparisons verification-output/gemastik-demo/comparisons `
+  --port 8760
+```
+
+The demo command never collects or contacts a domain and refuses to overwrite existing output. See
+`docs/DEMO.md` for the evaluator path, limitations, and accessibility checks.
+
 ## Gemastik evaluation baseline (G0)
 
 The checked-in `evaluation/manifests/` entries describe opt-in live evaluation inputs and bounded

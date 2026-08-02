@@ -10,6 +10,7 @@ from pathlib import Path
 
 from hawkeye.collector.safety import SafetyPolicy, UnsafeUrlError
 from hawkeye.comparison import ComparisonInputError, compare_cases, write_comparison
+from hawkeye.demo import build_demo
 from hawkeye.diagnostics import DiagnosticInputError, run_render_diagnostics
 from hawkeye.discovery import (
     ExternalDiscoveryInputError,
@@ -169,7 +170,29 @@ def build_parser() -> argparse.ArgumentParser:
         "--cases", type=Path, default=Path("cases"), help="Local case-package root"
     )
     serve_parser.add_argument(
+        "--comparisons",
+        type=Path,
+        help=(
+            "Optional separate local directory of verified offline comparison JSON documents; "
+            "never writes or fetches"
+        ),
+    )
+    serve_parser.add_argument(
         "--port", type=int, default=8760, help="Local loopback port (1024-65535)"
+    )
+
+    demo_parser = subcommands.add_parser(
+        "demo",
+        help=(
+            "Write a new sanitized offline Gemastik demo corpus; never fetches, collects, or "
+            "overwrites"
+        ),
+    )
+    demo_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("verification-output/gemastik-demo"),
+        help="New demo output directory; it must not already exist",
     )
     return parser
 
@@ -194,6 +217,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_diagnose(args)
     if args.command == "serve":
         return _run_serve(args)
+    if args.command == "demo":
+        return _run_demo(args)
     raise AssertionError(f"Unexpected command: {args.command}")
 
 
@@ -419,8 +444,33 @@ def _run_serve(args: argparse.Namespace) -> int:
     """Launch the V1 view with no externally reachable host option and no mutating endpoints."""
 
     try:
-        run_local_server(args.cases, port=args.port)
+        run_local_server(args.cases, port=args.port, comparisons_root=args.comparisons)
     except (CaseIntegrityError, ValueError) as error:
         print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
         return 2
+    return 0
+
+
+def _run_demo(args: argparse.Namespace) -> int:
+    """Build the offline judge walkthrough without network access or existing-file mutation."""
+
+    try:
+        result = build_demo(args.output)
+    except (FileExistsError, ValueError) as error:
+        print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
+        return 2
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "output_directory": str(result.output_directory),
+                "cases_directory": str(result.cases_directory),
+                "comparisons_directory": str(result.comparisons_directory),
+                "case_ids": result.case_ids,
+                "comparison_path": str(result.comparison_path),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0

@@ -9,12 +9,17 @@ import uvicorn
 from hawkeye.review_app.app import create_app
 
 
-def run_local_server(cases_root: Path | str, *, port: int = 8760) -> None:
+def run_local_server(
+    cases_root: Path | str,
+    *,
+    port: int = 8760,
+    comparisons_root: Path | str | None = None,
+) -> None:
     """Run a single-process read-only console bound exclusively to 127.0.0.1."""
 
     if not 1024 <= port <= 65535:
         raise ValueError("port must be between 1024 and 65535")
-    app = create_app(cases_root)
+    app = create_app(cases_root, comparisons_root=comparisons_root)
     uvicorn.run(
         app,
         host="127.0.0.1",
