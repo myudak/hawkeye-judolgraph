@@ -2,10 +2,11 @@
 
 ## Current milestone
 
-**G2 — Competition investigator workflow** is complete. The localhost console now gives a judge or
-investigator a traceable, accessibility-first path through only verified local evidence. It remains
-read-only: G2 did not change collection, diagnostic timing, canonical artifacts, extraction, graph
-semantics, candidate generation, comparison scoring, bind address, or deployment scope.
+**G3 — Frozen Gemastik evaluator package** is complete. The competition package wraps the frozen
+G2 runtime in a fail-closed, hash-backed offline verifier, judge guide, checklist, threat model, and
+presentation storyboard. It adds no engine behavior: collection, diagnostic timing, canonical
+artifacts, extraction, graph semantics, candidate generation, comparison scoring, bind address,
+and deployment scope remain unchanged.
 
 ## Verified baseline
 
@@ -13,9 +14,13 @@ semantics, candidate generation, comparison scoring, bind address, or deployment
 - `python -m ruff format --check .` — passed.
 - `python -m ruff check .` — passed.
 - `python -m mypy hawkeye` — passed.
-- `python -m pytest -q` — 121 passed on 2026-08-02.
+- `python -m pytest -q` — 126 passed on 2026-08-02.
 - A local V1 server demonstration verified loopback access, strict CSP, safe artifact headers, and
   rejection of a hostile Host header.
+- Frozen competition target: `gemastik-g2` /
+  `e55c1610c4e5a0a31891e3a69944aa1ffe2648ac`.
+- `python scripts/verify_gemastik_demo.py --output <new-directory>` — passed on 2026-08-02,
+  including fixture-label, artifact-integrity, pytest, ruff, mypy, and `git diff --check` gates.
 
 ## Current capabilities
 
@@ -27,6 +32,11 @@ G2 adds a documented offline judge walkthrough: `python -m hawkeye demo --output
 creates three sanitized fixture cases, one separately verified comparison, and a noncanonical
 diagnostic cue. `hawkeye serve --cases <...> --comparisons <...>` displays them through the same
 verified loader and localhost-only UI as ordinary cases. See `docs/DEMO.md`.
+
+G3 adds a fully offline evaluator package under `docs/evaluator/`, a fixture-only label manifest,
+an implemented threat model, and a 12-scene presentation storyboard. Its verifier creates a fresh
+sanitized demo, validates the frozen runtime and hashes, writes only a separate report directory,
+and fails nonzero when a required check is not met. See `docs/evaluator/JUDGE-GUIDE.md`.
 
 ## Known limitations
 
@@ -46,10 +56,9 @@ verified loader and localhost-only UI as ordinary cases. See `docs/DEMO.md`.
   environment-dependent observation; it does not establish a cause, prove a later checkpoint is
   canonical, or authorize a collector-wait change.
 
-## Next checkpoint
+## Future scope boundary
 
-G3 remains proposed, not approved: package a concise evaluator guide, deterministic benchmark
-labels, threat-model visual, and presentation narrative around the verified G0–G2 artifacts. Any
-future change to collection timing, canonical artifact selection, classification, user-agent
-behavior, screenshots, scoring, external network behavior, or public deployment needs a separate
-decision.
+The Gemastik package is complete at G3. Any future change to collection timing, canonical artifact
+selection, classification, user-agent behavior, screenshots, scoring, external network behavior,
+or public deployment needs a separate decision and must not be folded into this frozen evaluator
+package.

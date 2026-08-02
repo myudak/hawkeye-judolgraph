@@ -90,6 +90,28 @@ hawkeye demo --output <new-directory>`, then serve its `cases/` and `comparisons
 through the existing loopback-only console. The fixture uses reserved `.invalid` labels and generic
 static images. It is a local demonstration input, not live availability or competition truth.
 
+## Frozen evaluator package protocol (G3)
+
+G3 evaluates the frozen `gemastik-g2` runtime at
+`e55c1610c4e5a0a31891e3a69944aa1ffe2648ac`. Its label source is
+`evaluation/benchmarks/gemastik-g2-labels.json`, which records fixture-only expected properties and
+prohibited interpretations. It covers normal usable content, restricted capture, a pending lead,
+offline comparison with `needs_review`, a fixture low-information component, a noncanonical render
+diagnostic, and an invalid provenance-companion warning. Live observations are excluded from labels.
+
+Run the fail-closed offline verifier with a new output directory:
+
+```powershell
+python scripts/verify_gemastik_demo.py --output verification-output/gemastik-g3
+```
+
+The command verifies the frozen tag and runtime tree, blocks normal DNS/socket connection primitives
+while building/reading the sanitized G2 demo, checks the demo-manifest and label-manifest hashes,
+uses the existing verified loader for integrity/reference validation, checks evaluator documentation,
+runs pytest/ruff/mypy/`git diff --check`, and writes `gemastik-g3-report.json` plus `SUMMARY.md`
+outside case directories. It refuses existing output and returns nonzero on a required failure.
+Report statuses are `PASS`, `FAIL`, `NOT APPLICABLE`, and `OBSERVATIONAL ONLY`.
+
 ## Live collection protocol
 
 - Use a fresh, unauthenticated browser context where practical.

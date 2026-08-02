@@ -94,3 +94,19 @@ an invalid document becomes an integrity warning rather than a displayed score. 
 diagnostics are separately validated against the current case manifest and remain explicitly
 noncanonical. The UI has no write route, review-decision store, remote asset, external fetch,
 collection trigger, scoring change, or public bind.
+
+## ADR-011 — G3 verifies a frozen runtime through an external evaluator wrapper
+
+**Status:** accepted
+
+G3 targets the `gemastik-g2` tag at `e55c1610c4e5a0a31891e3a69944aa1ffe2648ac`. Its verifier is a
+checked-in script, not an engine or API change. Before producing a report, it checks that the tag
+still resolves to the target and that the `hawkeye/` runtime tree has not drifted from G2. G3
+documentation, labels, scripts, and tests are intentionally outside that frozen runtime boundary.
+
+The verifier creates a new sanitized demo directory under caller-selected ignored output, blocks
+normal DNS/socket connection primitives while it builds and reads fixture inputs, validates case and
+comparison references through the existing loader, checks hash-backed labels, and writes a report
+outside immutable case directories. It refuses an existing output directory and returns nonzero for
+required failures. Its report distinguishes `PASS`, `FAIL`, `NOT APPLICABLE`, and
+`OBSERVATIONAL ONLY`; no live result becomes permanent benchmark truth.

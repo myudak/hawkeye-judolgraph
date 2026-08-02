@@ -55,11 +55,13 @@ builder. Optional comparison documents are displayed only after their case manif
 entity references re-verify. G2 changed no collector, diagnostic, extraction, graph, candidate,
 comparison, bind, or deployment behavior.
 
-## G3 — Demonstration and evaluation package — proposed, not approved
+## G3 — Demonstration and evaluation package — completed
 
-Potential work: stable sanitized demo dataset, evaluator guide, benchmark labels for deterministic
-fixtures, threat-model diagram, and a concise Gemastik presentation narrative. Live availability
-must never become a test dependency.
+Completed evidence: a hash-backed fixture-label manifest targeting `e55c161` / `gemastik-g2`; a
+fail-closed, zero-network G3 verifier that creates a new sanitized demo and report outside immutable
+case directories; evaluator guide and checklist; an implemented threat-model diagram; and a concise
+presentation storyboard. G3 changes only the evaluator wrapper, documents, labels, and tests. Live
+availability remains observational and never becomes benchmark truth.
 
 ## Explicitly out of scope until separately approved
 

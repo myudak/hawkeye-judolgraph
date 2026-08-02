@@ -243,6 +243,23 @@ python -m hawkeye serve `
 The demo command never collects or contacts a domain and refuses to overwrite existing output. See
 `docs/DEMO.md` for the evaluator path, limitations, and accessibility checks.
 
+## Frozen Gemastik evaluator package (G3)
+
+The evaluator package targets the frozen G2 runtime at `gemastik-g2` /
+`e55c1610c4e5a0a31891e3a69944aa1ffe2648ac`. It adds no engine behavior: it wraps the existing
+sanitized demo, verified loader, label manifest, threat model, guide, checklist, and storyboard.
+Run it from a clean or intentionally inspected checkout with a new output directory:
+
+```powershell
+python scripts/verify_gemastik_demo.py --output verification-output/gemastik-g3
+```
+
+The verifier fails visibly if the target tag/runtime or fixture inputs drift. It creates a fresh demo
+without normal DNS/socket connections, validates hashes/references and non-conclusive label
+semantics, runs pytest/ruff/mypy/`git diff --check`, and produces a human-readable summary. See
+`docs/evaluator/README.md` for the 5–8 minute judge guide and `docs/THREAT-MODEL.md` for implemented
+boundaries and residual risks.
+
 ## Gemastik evaluation baseline (G0)
 
 The checked-in `evaluation/manifests/` entries describe opt-in live evaluation inputs and bounded

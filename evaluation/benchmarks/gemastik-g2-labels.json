@@ -1,0 +1,160 @@
+{
+  "schema_version": "1.0",
+  "label_version": "1.0",
+  "evaluation_package_version": "gemastik-g3-1",
+  "target": {
+    "commit": "e55c1610c4e5a0a31891e3a69944aa1ffe2648ac",
+    "tag": "gemastik-g2"
+  },
+  "sanitized_demo": {
+    "builder_command": "python -m hawkeye demo --output <new-directory>",
+    "fixture_manifest_sha256": "372504af00e556200919dbc36040787f47ccb64f404eb3a17a87c996ee45dc2f",
+    "case_ids": [
+      "demo-harbor",
+      "demo-restricted",
+      "demo-tide"
+    ],
+    "comparison_filename": "demo-harbor--demo-tide.json"
+  },
+  "labels": [
+    {
+      "benchmark_case_id": "demo-harbor-content",
+      "source": "sanitized_demo",
+      "case_id": "demo-harbor",
+      "expected_properties": {
+        "capture_outcome": "content",
+        "content_usable": true
+      },
+      "expected_invariants": [
+        "all local evidence references resolve",
+        "no candidate is automatically crawled",
+        "diagnostic remains noncanonical"
+      ],
+      "prohibited_interpretations": [
+        "confirmed mirror",
+        "same owner",
+        "criminal network",
+        "ownership probability"
+      ]
+    },
+    {
+      "benchmark_case_id": "demo-harbor-pending-candidate",
+      "source": "sanitized_demo",
+      "case_id": "demo-harbor",
+      "expected_properties": {
+        "candidate_count": 1,
+        "candidate_status": "pending",
+        "relationship": null
+      },
+      "expected_invariants": [
+        "candidate remains a pending lead",
+        "candidate is not automatically crawled"
+      ],
+      "prohibited_interpretations": [
+        "confirmed mirror",
+        "same owner",
+        "criminal network",
+        "ownership probability"
+      ]
+    },
+    {
+      "benchmark_case_id": "demo-harbor-noncanonical-diagnostic",
+      "source": "sanitized_demo",
+      "case_id": "demo-harbor",
+      "expected_properties": {
+        "diagnostic_status": "stable_across_checkpoints"
+      },
+      "expected_invariants": [
+        "diagnostic remains noncanonical",
+        "canonical evidence is not replaced"
+      ],
+      "prohibited_interpretations": [
+        "later render is canonical truth",
+        "diagnostic proves a relationship"
+      ]
+    },
+    {
+      "benchmark_case_id": "demo-restricted-capture",
+      "source": "sanitized_demo",
+      "case_id": "demo-restricted",
+      "expected_properties": {
+        "capture_outcome": "consent_wall",
+        "content_usable": false,
+        "candidate_count": 0,
+        "entity_count": 0
+      },
+      "expected_invariants": [
+        "restriction artifacts remain available",
+        "unusable content does not contribute extracted target entities"
+      ],
+      "prohibited_interpretations": [
+        "absence of activity",
+        "content recovered"
+      ]
+    },
+    {
+      "benchmark_case_id": "demo-offline-comparison",
+      "source": "sanitized_demo",
+      "case_id": "demo-harbor",
+      "comparison_with": "demo-tide",
+      "expected_properties": {
+        "comparison_review_status": "needs_review",
+        "comparison_component_status": "scored",
+        "comparison_component_name": "shared_asset_similarity"
+      },
+      "expected_invariants": [
+        "comparison components remain separately reported",
+        "score remains an evidence-similarity input"
+      ],
+      "prohibited_interpretations": [
+        "confirmed mirror",
+        "same owner",
+        "ownership probability"
+      ]
+    },
+    {
+      "benchmark_case_id": "fixture-low-information-comparison",
+      "source": "existing_test_fixture",
+      "test_nodeid": "tests/test_comparison.py::test_blank_screenshots_are_marked_low_information",
+      "expected_properties": {
+        "comparison_component_name": "screenshot_perceptual_similarity",
+        "comparison_component_available": false,
+        "comparison_component_status": "low_information"
+      },
+      "expected_invariants": [
+        "unavailable component is not treated as a perfect match"
+      ],
+      "prohibited_interpretations": [
+        "missing component proves similarity"
+      ]
+    },
+    {
+      "benchmark_case_id": "fixture-invalid-provenance-warning",
+      "source": "existing_test_fixture",
+      "test_nodeid": "tests/test_review_app.py::test_verified_comparison_projection_and_invalid_companion_warning",
+      "expected_properties": {
+        "invalid_companion": "visible_integrity_warning"
+      },
+      "expected_invariants": [
+        "invalid provenance companion is not displayed as a score"
+      ],
+      "prohibited_interpretations": [
+        "unverified comparison is evidence"
+      ]
+    }
+  ],
+  "global_invariants": [
+    "all evidence references resolve",
+    "case artifacts remain local and verified",
+    "no candidate is automatically crawled",
+    "pending relationships remain non-conclusive",
+    "comparison review status remains needs_review"
+  ],
+  "prohibited_interpretations": [
+    "confirmed mirror",
+    "same owner",
+    "criminal network",
+    "ownership probability"
+  ],
+  "verification_command": "python scripts/verify_gemastik_demo.py --output <new-output-directory>"
+}
