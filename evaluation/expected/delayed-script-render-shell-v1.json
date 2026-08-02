@@ -1,0 +1,27 @@
+{
+  "expected_invariants": [
+    {
+      "id": "navigation_attempted",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "artifacts_preserved",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "max_pages",
+      "operator": "less_or_equal",
+      "value": 5
+    },
+    {
+      "id": "max_depth",
+      "operator": "less_or_equal",
+      "value": 1
+    }
+  ],
+  "fixture_id": "delayed-script-render-shell-v1",
+  "known_gap": "Current capture may preserve the initial shell instead of later rendered content.",
+  "schema_version": "1.0"
+}

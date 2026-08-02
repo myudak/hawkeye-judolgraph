@@ -1,0 +1,58 @@
+{
+  "collection_policy": {
+    "candidate_crawling": false,
+    "interactive": false,
+    "max_depth": 1,
+    "max_pages": 5
+  },
+  "environmental_restrictions": [
+    "Live availability, content, redirect behavior, and outcome may vary by time, geography, VPN exit, and challenge state.",
+    "No login, CAPTCHA solving, form submission, download, or candidate navigation is permitted.",
+    "Chrome observations are qualitative comparison notes only and are not collector truth."
+  ],
+  "evaluation_id": "live-qq101xfw-001",
+  "expected_invariants": [
+    {
+      "id": "navigation_attempted",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "artifacts_preserved",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "max_pages",
+      "operator": "less_or_equal",
+      "value": 5
+    },
+    {
+      "id": "max_depth",
+      "operator": "less_or_equal",
+      "value": 1
+    },
+    {
+      "id": "external_documents_crawled",
+      "operator": "equals",
+      "value": 0
+    },
+    {
+      "id": "candidate_domains_crawled",
+      "operator": "equals",
+      "value": 0
+    },
+    {
+      "id": "review_status",
+      "operator": "equals",
+      "value": "needs_review"
+    }
+  ],
+  "fixture_manifest_path": "evaluation/fixtures/live-public-capture-policy-v1.json",
+  "fixture_manifest_sha256": "77e51318763cd6db9abaa2233a8d6e470776ca0ce00de93c69cfe421e283411b",
+  "input_url": "https://qq101xfw.com/",
+  "live_evaluation": true,
+  "purpose": "Opt-in non-interactive public-web evaluation; it does not assert ownership, legality, or affiliation.",
+  "schema_version": "1.0",
+  "source_type": "public_web"
+}

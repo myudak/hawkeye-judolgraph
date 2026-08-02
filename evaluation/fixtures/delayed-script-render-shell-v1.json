@@ -1,0 +1,10 @@
+{
+  "current_expected_behavior": "Capture may contain only the initial shell",
+  "engine_behavior_changed": false,
+  "fixture_id": "delayed-script-render-shell-v1",
+  "future_review_target": "Determine whether bounded render-readiness handling improves evidence completeness",
+  "network_access": false,
+  "purpose": "Reproduce a page whose initial document is sparse before client-side rendering",
+  "scenario": "delayed_script_render_shell",
+  "schema_version": "1.0"
+}

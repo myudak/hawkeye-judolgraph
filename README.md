@@ -8,6 +8,10 @@ same-site breadth-first crawl at depth zero and one only (five HTML pages maximu
 AI extraction, make legal conclusions, log in, submit forms, bypass restrictions, or automatically
 browse generated candidates.
 
+Gemastik G0 adds a read-only evaluation tool for assessing an already-collected local case against
+a checked-in invariant manifest. It does not trigger browser navigation, external discovery, or
+candidate crawling.
+
 ## Setup
 
 Use Python 3.12 or newer, then install the package and Chromium runtime:
@@ -207,6 +211,28 @@ or V0.3 score never becomes a mirror/ownership conclusion.
 This is suitable for one local investigator on the same machine. Binding beyond loopback, adding
 multiple users, or adding review notes/exports requires authentication, authorization, separate
 application state, and a deployment security review; those features are intentionally absent.
+
+## Gemastik evaluation baseline (G0)
+
+The checked-in `evaluation/manifests/` entries describe opt-in live evaluation inputs and bounded
+invariants only. They are not CI truth: live content, redirects, screenshot pixels, entity counts,
+and capture outcomes may change with time, geography, VPN exit, challenge state, or site behavior.
+Raw live cases and generated reports stay ignored locally.
+
+After a bounded collection completes, generate a new hash-backed report without revisiting the
+network:
+
+```powershell
+python -m hawkeye evaluate `
+  ./evaluation/manifests/live-qq101xfw-001.json `
+  ./evaluation/live-cases/run-20260802/eval-qq101xfw-20260802 `
+  --report ./evaluation/reports/eval-qq101xfw.json
+```
+
+The report verifies the completed package first, then records the manifest hash, fixture-policy
+hash, engine version, commit hash when available, artifact hashes, observed invariant results, and
+environmental restrictions. It never overwrites an existing report. See `docs/EVALUATION.md` for
+the collection and Chrome-observation protocol.
 
 ## Explicit V0.2 policy limits
 

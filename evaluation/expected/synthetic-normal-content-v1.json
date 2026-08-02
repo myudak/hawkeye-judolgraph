@@ -1,0 +1,36 @@
+{
+  "expected_invariants": [
+    {
+      "id": "artifacts_preserved",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "max_pages",
+      "operator": "less_or_equal",
+      "value": 5
+    },
+    {
+      "id": "max_depth",
+      "operator": "less_or_equal",
+      "value": 1
+    },
+    {
+      "id": "external_documents_crawled",
+      "operator": "equals",
+      "value": 0
+    },
+    {
+      "id": "candidate_domains_crawled",
+      "operator": "equals",
+      "value": 0
+    },
+    {
+      "id": "review_status",
+      "operator": "equals",
+      "value": "needs_review"
+    }
+  ],
+  "fixture_id": "synthetic-normal-content-v1",
+  "schema_version": "1.0"
+}

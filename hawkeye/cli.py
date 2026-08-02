@@ -16,6 +16,7 @@ from hawkeye.discovery import (
     UrlscanPublicSearchSource,
     discover_case,
 )
+from hawkeye.evaluation import EvaluationInputError, evaluate_case
 from hawkeye.pipeline import investigate
 from hawkeye.review_app import run_local_server
 from hawkeye.review_app.loader import CaseIntegrityError
@@ -98,6 +99,21 @@ def build_parser() -> argparse.ArgumentParser:
     discover_parser.add_argument(
         "case_directory", type=Path, help="Completed local case directory to use as the query seed"
     )
+
+    evaluate_parser = subcommands.add_parser(
+        "evaluate",
+        help=(
+            "Assess one completed local case against a checked-in evaluation manifest "
+            "without network access"
+        ),
+    )
+    evaluate_parser.add_argument("manifest", type=Path, help="Evaluation manifest JSON")
+    evaluate_parser.add_argument(
+        "case_directory", type=Path, help="Completed local case directory to assess"
+    )
+    evaluate_parser.add_argument(
+        "--report", type=Path, required=True, help="New report JSON output path"
+    )
     discover_parser.add_argument(
         "--source", choices=("urlscan-public",), default="urlscan-public", help="Public source"
     )
@@ -148,6 +164,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_compare(args)
     if args.command == "discover":
         return _run_discover(args)
+    if args.command == "evaluate":
+        return _run_evaluate(args)
     if args.command == "serve":
         return _run_serve(args)
     raise AssertionError(f"Unexpected command: {args.command}")
@@ -268,6 +286,35 @@ def _run_discover(args: argparse.Namespace) -> int:
     }
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
+
+
+def _run_evaluate(args: argparse.Namespace) -> int:
+    """Evaluate a verified local case without navigating, fetching, or modifying that case."""
+
+    command = (
+        f"python -m hawkeye evaluate {args.manifest} {args.case_directory} --report {args.report}"
+    )
+    try:
+        result = evaluate_case(args.manifest, args.case_directory, args.report, command=command)
+    except (EvaluationInputError, FileExistsError, ValueError) as error:
+        print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
+        return 2
+    report = result.report
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "report_path": str(result.report_path),
+                "evaluation_id": report.evaluation_id,
+                "source_case_id": report.source_case_id,
+                "passed": report.passed,
+                "capture_outcome": report.source_case_capture_outcome,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0 if report.passed else 1
 
 
 def _run_serve(args: argparse.Namespace) -> int:

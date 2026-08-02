@@ -1,0 +1,68 @@
+# Architecture and Scope Decisions
+
+## ADR-001 — Deterministic evidence pipeline
+
+**Status:** accepted
+
+Collection, extraction, candidate generation, and comparison use explicit deterministic rules and
+persist provenance. AI may assist a future workflow only inside a separately documented,
+evidence-backed boundary.
+
+## ADR-002 — Leads are not conclusions
+
+**Status:** accepted
+
+Candidates remain `pending` with `relationship: null`; comparison emits an evidence-similarity
+score with `needs_review`. Neither output may be labelled ownership, mirror confirmation, or
+criminal attribution.
+
+## ADR-003 — Bounded public collection
+
+**Status:** accepted
+
+Collection permits public HTTP(S) seeds only, applies URL and DNS safety checks, and remains bounded
+to same-site depth `0..1` and five HTML pages. It does not log in, submit forms, accept downloads,
+or bypass restrictions. Candidate domains are never crawled automatically.
+
+## ADR-004 — Local-only V1 console
+
+**Status:** accepted
+
+The review console binds only to `127.0.0.1`, permits only `127.0.0.1` and `localhost` Host
+headers, ignores forwarded-host headers, has no CORS or write endpoints, and re-verifies artifacts
+before delivery. Public deployment requires a new threat model, authentication, authorization, and
+review milestone.
+
+## ADR-005 — Reviewer conversation is advisory
+
+**Status:** accepted
+
+The designated Chrome conversation is a lead-agent-only architecture and security checkpoint.
+Repository artifacts and executed verification take precedence. The conversation is neither shared
+memory nor an execution worker, and it receives no secrets or large raw artifacts.
+
+## ADR-006 — Live evaluation is opt-in and non-interactive
+
+**Status:** accepted
+
+Live public URLs are recorded as manifests and may be observed or collected only through bounded
+non-interactive workflows. They are not unit-test truth. Raw captures remain ignored local data
+unless redistribution is separately justified; deterministic fixtures are the test source of truth.
+
+## ADR-007 — Residual DNS TOCTOU is documented
+
+**Status:** accepted
+
+The collector revalidates request destinations, but Chromium ultimately resolves hostnames itself.
+Complete DNS-rebinding elimination would require network-layer IP pinning or a validating proxy.
+This residual limitation is documented rather than hidden.
+
+## ADR-008 — Rendered-content completeness is a separate capture concern
+
+**Status:** accepted
+
+Chrome observations of two opt-in live evaluations showed more visible landing-page content than
+the isolated collector artifacts, which preserved title-led sparse shells and dark screenshots.
+This is recorded as a rendered-content completeness gap, not as a challenge, failure, mirror, or
+site conclusion. G0 adds a fully local delayed-render shell fixture but does not change collection,
+classification, waiting, user-agent, screenshot, or scoring behavior; any fix belongs to G1.

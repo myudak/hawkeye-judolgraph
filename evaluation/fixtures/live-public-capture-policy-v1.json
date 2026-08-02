@@ -1,0 +1,25 @@
+{
+  "fixture_id": "live-public-capture-policy-v1",
+  "fixtures": [
+    {
+      "expected_properties_path": "evaluation/expected/synthetic-normal-content-v1.json",
+      "fixture_id": "synthetic-normal-content-v1",
+      "html_fixture_path": "tests/fixtures/normal_content.html",
+      "purpose": "Exercise a usable public-style landing page deterministically."
+    },
+    {
+      "expected_properties_path": "evaluation/expected/synthetic-restriction-v1.json",
+      "fixture_id": "synthetic-restriction-v1",
+      "html_fixture_path": "tests/fixtures/bot_challenge.html",
+      "purpose": "Exercise a blocked or restricted outcome deterministically."
+    },
+    {
+      "expected_properties_path": "evaluation/expected/delayed-script-render-shell-v1.json",
+      "fixture_id": "delayed-script-render-shell-v1",
+      "html_fixture_path": "tests/fixtures/delayed_script_render_shell.html",
+      "purpose": "Reproduce an initially sparse local shell that renders later without network access."
+    }
+  ],
+  "provenance": "Synthetic and minimized local fixtures only; no live-site mirror is stored here.",
+  "schema_version": "1.0"
+}

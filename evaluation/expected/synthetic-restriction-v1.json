@@ -1,0 +1,31 @@
+{
+  "expected_invariants": [
+    {
+      "id": "navigation_attempted",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "artifacts_preserved",
+      "operator": "equals",
+      "value": true
+    },
+    {
+      "id": "max_pages",
+      "operator": "less_or_equal",
+      "value": 5
+    },
+    {
+      "id": "max_depth",
+      "operator": "less_or_equal",
+      "value": 1
+    },
+    {
+      "id": "review_status",
+      "operator": "equals",
+      "value": "needs_review"
+    }
+  ],
+  "fixture_id": "synthetic-restriction-v1",
+  "schema_version": "1.0"
+}

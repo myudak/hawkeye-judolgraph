@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Delayed local render shell</title>
+    <style>
+      html, body { background: #060a08; color: #dce6dc; font-family: sans-serif; margin: 0; }
+      #application-shell { min-height: 100vh; padding: 1rem; }
+    </style>
+  </head>
+  <body>
+    <main id="application-shell" aria-busy="true">Initial local shell.</main>
+    <script>
+      window.setTimeout(() => {
+        const shell = document.getElementById("application-shell");
+        shell.setAttribute("aria-busy", "false");
+        shell.textContent = "Delayed synthetic rendered content.";
+      }, 5000);
+    </script>
+  </body>
+</html>

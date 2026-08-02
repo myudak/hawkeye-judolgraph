@@ -7,3 +7,5 @@ __pycache__/
 cases/
 live-smoke-tests/
 verification-output/
+evaluation/live-cases/
+evaluation/reports/

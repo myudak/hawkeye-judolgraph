@@ -35,6 +35,7 @@ def fixture_server_url() -> Iterator[str]:
         "/unavailable-page.html": "unavailable_page.html",
         "/bot-challenge.html": "bot_challenge.html",
         "/consent-wall.html": "consent_wall.html",
+        "/delayed-script-render-shell.html": "delayed_script_render_shell.html",
     }
 
     class Handler(BaseHTTPRequestHandler):
