@@ -44,37 +44,49 @@ def test_delayed_render_uses_final_canonical_state_and_preserves_initial(
 
 
 @pytest.mark.parametrize(
-    ("path", "access", "adequacy", "public_status"),
+    ("path", "access", "adequacy", "public_status", "extraction_eligible"),
     [
         (
             "render-rich-hidden-blank.html",
             AccessOutcome.UNKNOWN_RESTRICTION,
             CaptureAdequacy.LIMITED,
             PublicCaptureStatus.CAPTURED_WITH_LIMITATIONS,
+            False,
         ),
         (
             "render-continuing.html",
             AccessOutcome.CONTENT,
+            CaptureAdequacy.ADEQUATE,
+            PublicCaptureStatus.CAPTURED,
+            True,
+        ),
+        (
+            "render-never-settles.html",
+            AccessOutcome.CONTENT,
             CaptureAdequacy.LIMITED,
             PublicCaptureStatus.CAPTURED_WITH_LIMITATIONS,
+            True,
         ),
         (
             "geo-restriction-wording.html",
             AccessOutcome.GEO_RESTRICTION,
             CaptureAdequacy.ADEQUATE,
             PublicCaptureStatus.GEO_RESTRICTION_OBSERVED,
+            False,
         ),
         (
             "unavailable-by-location.html",
             AccessOutcome.UNAVAILABLE,
             CaptureAdequacy.ADEQUATE,
             PublicCaptureStatus.UNAVAILABLE,
+            False,
         ),
         (
             "blank-access-challenge.html",
             AccessOutcome.ACCESS_CHALLENGE,
             CaptureAdequacy.LIMITED,
             PublicCaptureStatus.ACCESS_CHALLENGE_OBSERVED,
+            False,
         ),
     ],
 )
@@ -85,6 +97,7 @@ def test_capture_dimensions_are_independent(
     access: AccessOutcome,
     adequacy: CaptureAdequacy,
     public_status: PublicCaptureStatus,
+    extraction_eligible: bool,
 ) -> None:
     result, _ = _capture(fixture_server_url, tmp_path, path)
     page = result.pages[0]
@@ -92,7 +105,7 @@ def test_capture_dimensions_are_independent(
     assert page.access_outcome is access
     assert page.capture_adequacy is adequacy
     assert page.public_status is public_status
-    assert page.extraction_eligible is False
+    assert page.extraction_eligible is extraction_eligible
 
 
 def test_html_between_two_and_five_megabytes_is_persisted_but_not_extracted(
@@ -103,7 +116,7 @@ def test_html_between_two_and_five_megabytes_is_persisted_but_not_extracted(
     readiness = json.loads((root / "capture/page-001-readiness.json").read_text("utf-8"))
     assert 2_000_000 < readiness["html_bytes"] <= 5_000_000
     assert (root / "pages/page-001.html").is_file()
-    assert page.capture_adequacy is CaptureAdequacy.LIMITED
+    assert page.capture_adequacy is CaptureAdequacy.ADEQUATE
     assert page.extraction_eligible is False
     assert page.extraction_skip_reason == "direct_extractor_input_exceeds_2_mb"
 

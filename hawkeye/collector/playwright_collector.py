@@ -47,11 +47,12 @@ MAX_BLOCKED_REQUEST_RECORDS = 100
 DEFAULT_MAX_TOTAL_REQUESTS = 200
 DEFAULT_MAX_DECLARED_RESPONSE_BYTES = 10_000_000
 CAPTURE_CHECKPOINT_SCHEDULE_MS = (0, 500, 1500, 3000)
+CAPTURE_SETTLE_EXTENSION_MS = (5000, 8000)
 PERSISTED_HTML_LIMIT_BYTES = 5_000_000
 DIRECT_EXTRACTOR_LIMIT_BYTES = 2_000_000
 MAX_FULL_PAGE_HEIGHT = 12_000
-COLLECTOR_VERSION = "g4a-capture-adequacy-1"
-CAPTURE_POLICY_VERSION = "public-read-only-v2"
+COLLECTOR_VERSION = "g10-bounded-settle-1"
+CAPTURE_POLICY_VERSION = "public-read-only-v3"
 
 
 @dataclass
@@ -507,6 +508,35 @@ class BrowserCollector:
                     checkpoints.append(checkpoint)
                     checkpoint_screenshots.append(checkpoint_screenshot)
                     prior_elapsed = elapsed_ms
+                # Modern client-rendered pages often become information-rich exactly at the old
+                # three-second boundary.  A fixed, bounded settle extension lets the collector
+                # distinguish late rendering from a page that genuinely never stabilizes.  The
+                # extension is used only when the canonical state is already public, visible, and
+                # still changing; it never clicks, scrolls, dismisses, or waits on network-idle.
+                base_deltas = _checkpoint_deltas(checkpoints)
+                if (
+                    base_deltas
+                    and base_deltas[-1].material_change
+                    and not _low_information(checkpoints[-1])
+                    and not _visual_dom_mismatch(checkpoints[-1])
+                ):
+                    for elapsed_ms in CAPTURE_SETTLE_EXTENSION_MS:
+                        page.wait_for_timeout(elapsed_ms - prior_elapsed)
+                        if guard.navigation_failure is not None:
+                            raise self._with_browser_counts(
+                                guard.navigation_failure,
+                                blocked_popup_count,
+                                blocked_download_count,
+                            )
+                        checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
+                            page, elapsed_ms=elapsed_ms, timeout_ms=artifact_timeout_ms
+                        )
+                        checkpoints.append(checkpoint)
+                        checkpoint_screenshots.append(checkpoint_screenshot)
+                        prior_elapsed = elapsed_ms
+                        extended_deltas = _checkpoint_deltas(checkpoints)
+                        if extended_deltas and not extended_deltas[-1].material_change:
+                            break
                 title = page.title()
                 html_bytes = len(html.encode("utf-8"))
                 html_sha256 = hashlib.sha256(html.encode("utf-8")).hexdigest()
@@ -535,17 +565,25 @@ class BrowserCollector:
                 )
                 if full_page_reason is not None:
                     limitation_reasons.append(full_page_reason)
+                adequacy_blockers = {
+                    "rendering_changed_at_budget_end",
+                    "low_information_capture",
+                    "visual_dom_mismatch",
+                    "canonical_html_exceeds_5_mb_persistence_limit",
+                }
                 adequacy = (
-                    CaptureAdequacy.LIMITED if limitation_reasons else CaptureAdequacy.ADEQUATE
+                    CaptureAdequacy.LIMITED
+                    if adequacy_blockers.intersection(limitation_reasons)
+                    else CaptureAdequacy.ADEQUATE
                 )
                 response_headers = _sanitized_response_headers(response)
                 readiness = CaptureReadiness(
-                    checkpoint_schedule_ms=list(CAPTURE_CHECKPOINT_SCHEDULE_MS),
+                    checkpoint_schedule_ms=[item.elapsed_ms for item in checkpoints],
                     checkpoints=checkpoints,
                     deltas=deltas,
                     capture_adequacy=adequacy,
                     limitation_reasons=limitation_reasons,
-                    canonical_checkpoint_ms=CAPTURE_CHECKPOINT_SCHEDULE_MS[-1],
+                    canonical_checkpoint_ms=checkpoints[-1].elapsed_ms,
                     response_status=response.status,
                     response_url=response.url,
                     response_headers=response_headers,

@@ -20,7 +20,10 @@ _MAX_PROBE_BYTES = 64_000
 
 
 def probe_codex_lb(
-    *, timeout_seconds: float = 2.0, api_key: str | None = None
+    *,
+    timeout_seconds: float = 2.0,
+    api_key: str | None = None,
+    preferred_model: str | None = None,
 ) -> CapabilityDiagnostics:
     """Probe only fixed loopback routes; unsupported features remain explicitly unknown."""
 
@@ -28,11 +31,21 @@ def probe_codex_lb(
         raise ValueError("Capability-probe timeout must be greater than zero and at most 5 seconds")
     endpoints: list[EndpointCapability] = []
     for endpoint in CODEX_LB_ENDPOINTS:
-        result = _probe_endpoint(endpoint, timeout_seconds, api_key=api_key)
+        result = _probe_endpoint(
+            endpoint,
+            timeout_seconds,
+            api_key=api_key,
+            preferred_model=preferred_model,
+        )
         # A busy loopback service can miss one short probe even though the route is healthy. Retry
         # only an unreachable result once; HTTP failures are authoritative and are never retried.
         if not result.reachable:
-            retry = _probe_endpoint(endpoint, timeout_seconds, api_key=api_key)
+            retry = _probe_endpoint(
+                endpoint,
+                timeout_seconds,
+                api_key=api_key,
+                preferred_model=preferred_model,
+            )
             if retry.reachable:
                 result = retry
         endpoints.append(result)
@@ -40,8 +53,7 @@ def probe_codex_lb(
     safe_to_enable = bool(
         supported
         and supported.structured_output_support is True
-        and supported.function_call_support is True
-        and supported.tool_result_continuation is True
+        and supported.available_model is not None
     )
     return CapabilityDiagnostics(
         generated_at=datetime.now(UTC),
@@ -68,7 +80,11 @@ def write_capability_diagnostics(
 
 
 def _probe_endpoint(
-    endpoint: str, timeout_seconds: float, *, api_key: str | None
+    endpoint: str,
+    timeout_seconds: float,
+    *,
+    api_key: str | None,
+    preferred_model: str | None,
 ) -> EndpointCapability:
     headers = {"Content-Type": "application/json"}
     if api_key:
@@ -107,6 +123,34 @@ def _probe_endpoint(
     latency_ms = max(0, round((time.monotonic() - started) * 1000))
     content_type = response_headers.get("content-type", "").split(";", maxsplit=1)[0] or None
     advertised = _advertised_capabilities(body, content_type)
+    if endpoint.endswith("/v1/responses") and route_supported is True and not advertised:
+        model = _discover_model(
+            endpoint,
+            timeout_seconds=timeout_seconds,
+            api_key=api_key,
+            preferred_model=preferred_model,
+        )
+        if model is not None:
+            structured_ok = _probe_structured_response(
+                endpoint,
+                model=model,
+                timeout_seconds=timeout_seconds,
+                api_key=api_key,
+            )
+            advertised = {
+                "model": model,
+                "structured_output": structured_ok,
+                # CodexInvestigator returns one validated decision object. It does not expose
+                # model-native function tools, so those capabilities are deliberately not gates.
+                "function_calling": False,
+                "tool_result_continuation": False,
+                "native_search": "unknown",
+            }
+            diagnostic = (
+                "bounded JSON-schema response handshake succeeded"
+                if structured_ok
+                else "model route discovered but JSON-schema handshake failed"
+            )
     return EndpointCapability(
         endpoint=endpoint,
         reachable=reachable,
@@ -127,6 +171,121 @@ def _probe_endpoint(
         latency_ms=latency_ms,
         diagnostic=diagnostic,
     )
+
+
+def _discover_model(
+    endpoint: str,
+    *,
+    timeout_seconds: float,
+    api_key: str | None,
+    preferred_model: str | None,
+) -> str | None:
+    models_endpoint = endpoint.rsplit("/", maxsplit=1)[0] + "/models"
+    headers = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(models_endpoint, method="GET", headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            body = response.read(_MAX_PROBE_BYTES)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return None
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        return None
+    models = [
+        item.get("id")
+        for item in payload["data"]
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    ]
+    if preferred_model and preferred_model in models:
+        return preferred_model
+    priorities = ("gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.4-mini")
+    return next((item for item in priorities if item in models), models[0] if models else None)
+
+
+def _probe_structured_response(
+    endpoint: str,
+    *,
+    model: str,
+    timeout_seconds: float,
+    api_key: str | None,
+) -> bool:
+    schema = {
+        "type": "object",
+        "properties": {"ready": {"type": "boolean"}},
+        "required": ["ready"],
+        "additionalProperties": False,
+    }
+    payload = {
+        "model": model,
+        "input": [
+            {
+                "role": "user",
+                "content": "Return a JSON object with ready set to true and no other fields.",
+            }
+        ],
+        "stream": False,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "hawkeye_capability_probe",
+                "strict": True,
+                "schema": schema,
+            }
+        },
+    }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(
+        endpoint,
+        method="POST",
+        data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            body = response.read(_MAX_PROBE_BYTES)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return False
+    try:
+        response_payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return _contains_ready_json(response_payload)
+
+
+def _contains_ready_json(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    parsed = payload.get("output_parsed")
+    if parsed == {"ready": True}:
+        return True
+    output = payload.get("output")
+    if not isinstance(output, list):
+        return False
+    for item in output:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "output_text":
+                continue
+            text = block.get("text")
+            if not isinstance(text, str):
+                continue
+            try:
+                if json.loads(text) == {"ready": True}:
+                    return True
+            except json.JSONDecodeError:
+                continue
+    return False
 
 
 def _advertised_capabilities(body: bytes, content_type: str | None) -> dict[str, object]:

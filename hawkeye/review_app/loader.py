@@ -22,6 +22,7 @@ from hawkeye.models import (
     CandidateObservation,
     CaseRecord,
     ComparisonDocument,
+    CrawlFrontierRecord,
     CrawlPageRecord,
     EvidenceRecord,
     ExtractedEntity,
@@ -61,6 +62,7 @@ class LoadedCase:
     directory: Path
     case: CaseRecord
     pages: list[CrawlPageRecord]
+    frontier: list[CrawlFrontierRecord]
     evidence_by_id: dict[str, EvidenceRecord]
     entities: list[ExtractedEntity]
     observations: list[SemanticObservation]
@@ -133,6 +135,11 @@ class CaseLoader:
         try:
             case = CaseRecord.model_validate(_read_json(directory, "case.json"))
             pages = _models_from_json(directory, "pages.json", CrawlPageRecord)
+            frontier = (
+                _models_from_json(directory, "frontier.json", CrawlFrontierRecord)
+                if _file_exists(directory, "frontier.json")
+                else []
+            )
             evidence = _models_from_json(directory, "evidence.json", EvidenceRecord)
             entities = _models_from_json(directory, "entities.json", ExtractedEntity)
             observations = (
@@ -166,6 +173,7 @@ class CaseLoader:
             directory=directory,
             case=case,
             pages=sorted(pages, key=lambda page: page.id),
+            frontier=sorted(frontier, key=lambda item: item.id),
             evidence_by_id=evidence_by_id,
             entities=sorted(entities, key=lambda entity: entity.id),
             observations=sorted(observations, key=lambda item: item.id),
@@ -328,6 +336,7 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
             loaded.case.capture_adequacy.value if loaded.case.capture_adequacy is not None else None
         ),
         "extraction_eligible": loaded.case.extraction_eligible,
+        "extraction_tier": loaded.case.extraction_tier,
         "public_status": (
             loaded.case.public_status.value if loaded.case.public_status is not None else None
         ),
@@ -377,6 +386,7 @@ def case_details(
                         page.capture_adequacy.value if page.capture_adequacy is not None else None
                     ),
                     "extraction_eligible": page.extraction_eligible,
+                    "extraction_tier": page.extraction_tier,
                     "extraction_skip_reason": page.extraction_skip_reason,
                     "public_status": (
                         page.public_status.value if page.public_status is not None else None
@@ -395,6 +405,21 @@ def case_details(
                     ],
                 }
                 for page in loaded.pages
+            ],
+            "frontier": [
+                {
+                    "id": item.id,
+                    "depth": item.depth,
+                    "state": item.state,
+                    "anchor_text": _safe_text(item.anchor_text, 256) if item.anchor_text else None,
+                    "normalized_url_display": safe_display_url(item.normalized_url),
+                    "source_page_id": item.source_page_id,
+                    "source_evidence_id": item.source_evidence_id,
+                    "discovery_method": item.discovery_method,
+                    "skip_reason": item.skip_reason,
+                    "target_page_id": item.target_page_id,
+                }
+                for item in loaded.frontier
             ],
             "evidence": [
                 {

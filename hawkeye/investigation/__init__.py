@@ -1,5 +1,6 @@
 """Append-only investigation persistence, runtime, and progressive graph reduction."""
 
+from .live_runtime import run_live_investigation
 from .models import (
     CandidateAssertion,
     CandidateLead,
@@ -25,5 +26,6 @@ __all__ = [
     "ReviewEvent",
     "reduce_events",
     "recollect_approved_fixture_candidate",
+    "run_live_investigation",
     "run_fixture_investigation",
 ]

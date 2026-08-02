@@ -192,6 +192,7 @@ class CrawlPageRecord(BaseModel):
     access_outcome: AccessOutcome | None = None
     capture_adequacy: CaptureAdequacy | None = None
     extraction_eligible: bool | None = None
+    extraction_tier: Literal["verified", "provisional", "none"] | None = None
     extraction_skip_reason: str | None = None
     public_status: PublicCaptureStatus | None = None
     limitation_reasons: list[str] = Field(default_factory=list)
@@ -478,6 +479,7 @@ class CaseRecord(BaseModel):
     access_outcome: AccessOutcome | None = None
     capture_adequacy: CaptureAdequacy | None = None
     extraction_eligible: bool | None = None
+    extraction_tier: Literal["verified", "provisional", "none"] | None = None
     extraction_skip_reason: str | None = None
     public_status: PublicCaptureStatus | None = None
     limitation_reasons: list[str] = Field(default_factory=list)

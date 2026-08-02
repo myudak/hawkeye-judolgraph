@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from urllib.parse import urlsplit
 
 from hawkeye.investigation.models import (
     CausalLink,
@@ -21,6 +22,8 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
     timeline: list[InvestigationEvent] = []
     animations: list[GraphAnimation] = []
     assertion_edges: dict[str, str] = {}
+    source_aliases: dict[str, str] = {}
+    observation_nodes: dict[str, str] = {}
     for event in sorted(events, key=lambda item: item.sequence):
         if event.event_id in applied:
             continue
@@ -40,39 +43,89 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
                 GraphAnimation(sequence=event.sequence, animation="spawn-node", target_id=node_id)
             )
         elif event.kind == "artifact.captured":
-            node_id = str(payload.get("node_id", f"page:{event.sequence}"))
+            proposed_id = str(payload.get("node_id", f"page:{event.sequence}"))
+            seed_id = f"seed:{event.case_id}"
+            seed_node = nodes.get(seed_id)
+            label = str(payload.get("label", proposed_id))
+            root = bool(payload.get("root")) or (
+                seed_node is not None and _same_public_url(seed_node.label, label)
+            )
+            node_id = seed_id if root else proposed_id
+            if root:
+                source_aliases[proposed_id] = node_id
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
-                kind="collected_page",
-                label=str(payload.get("label", node_id)),
+                kind="seed_page" if root else "collected_page",
+                label=label,
                 status="collected",
                 attributes=payload,
             )
             animations.append(
                 GraphAnimation(sequence=event.sequence, animation="spawn-node", target_id=node_id)
             )
+            if not root and payload.get("parent_node_id"):
+                parent_value = str(payload["parent_node_id"])
+                parent = source_aliases.get(parent_value, parent_value)
+                edge_id = f"crawl:{parent}:{node_id}"
+                edges[edge_id] = ProgressiveGraphEdge(
+                    id=edge_id,
+                    source=parent,
+                    target=node_id,
+                    relation="crawled_same_site_page",
+                    appearance="solid",
+                    supporting_event_ids=[event.event_id],
+                )
+                animations.append(
+                    GraphAnimation(
+                        sequence=event.sequence,
+                        animation="draw-edge",
+                        target_id=edge_id,
+                    )
+                )
         elif event.kind == "observation.created":
-            node_id = str(payload.get("node_id", f"observation:{event.sequence}"))
             observation_type = str(payload.get("observation_type", "public_contact"))
-            kind: Literal["claimed_brand", "public_contact"] = (
-                "claimed_brand"
-                if observation_type == "claimed_brand_identity"
-                else "public_contact"
+            kind, relation = _observation_semantics(observation_type)
+            label = str(payload.get("normalized_value", f"observation:{event.sequence}"))
+            source_value = str(payload.get("source_node_id", f"seed:{event.case_id}"))
+            source = source_aliases.get(source_value, source_value)
+            observation_id = str(payload.get("observation_id", ""))
+            source_node = nodes.get(source)
+            if (
+                kind in {"external_destination", "redirect_target"}
+                and source_node is not None
+                and _same_public_url(source_node.label, label)
+            ):
+                if observation_id:
+                    observation_nodes[observation_id] = source
+                animations.append(
+                    GraphAnimation(
+                        sequence=event.sequence, animation="pulse-node", target_id=source
+                    )
+                )
+                continue
+            node_id = next(
+                (node.id for node in nodes.values() if node.kind == kind and node.label == label),
+                str(payload.get("node_id", f"observation:{event.sequence}")),
             )
+            status: Literal["observed", "collected"] = (
+                "collected" if payload.get("matched_case_id") else "observed"
+            )
+            existing = nodes.get(node_id)
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
                 kind=kind,
-                label=str(payload.get("normalized_value", node_id)),
-                status="observed",
-                attributes=payload,
+                label=label,
+                status=status,
+                attributes={**(existing.attributes if existing else {}), **payload},
             )
-            source = str(payload.get("source_node_id", f"seed:{event.case_id}"))
-            edge_id = f"observed:{source}:{node_id}"
+            if observation_id:
+                observation_nodes[observation_id] = node_id
+            edge_id = f"{relation}:{source}:{node_id}"
             edges[edge_id] = ProgressiveGraphEdge(
                 id=edge_id,
                 source=source,
                 target=node_id,
-                relation="observed",
+                relation=relation,
                 appearance="solid",
                 supporting_event_ids=[event.event_id],
                 supporting_observation_ids=[str(payload.get("observation_id", ""))],
@@ -88,25 +141,52 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
                 ]
             )
         elif event.kind == "search.lead.discovered":
-            node_id = f"candidate:{payload.get('lead_id', event.sequence)}"
+            label = str(payload.get("url", ""))
+            node_id = _node_id_with_label(nodes, label) or (
+                f"candidate:{payload.get('lead_id', event.sequence)}"
+            )
+            existing = nodes.get(node_id)
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
                 kind="candidate_domain",
-                label=str(payload.get("url", node_id)),
+                label=label or node_id,
                 status="lead",
-                attributes=payload,
+                attributes={**(existing.attributes if existing else {}), **payload},
             )
+            for edge_id, lead_edge in list(edges.items()):
+                if lead_edge.target == node_id:
+                    edges[edge_id] = lead_edge.model_copy(update={"appearance": "dashed"})
             animations.append(
                 GraphAnimation(sequence=event.sequence, animation="spawn-node", target_id=node_id)
             )
+        elif event.kind == "entity.matched":
+            observation_id = str(payload.get("observation_id", ""))
+            matched_node_id = observation_nodes.get(observation_id)
+            node = nodes.get(matched_node_id or "")
+            if node is not None:
+                nodes[node.id] = node.model_copy(
+                    update={
+                        "status": "collected",
+                        "attributes": {**node.attributes, **payload},
+                    }
+                )
+                animations.append(
+                    GraphAnimation(
+                        sequence=event.sequence, animation="pulse-node", target_id=node.id
+                    )
+                )
         elif event.kind == "candidate_page.collected":
-            node_id = str(payload.get("node_id", f"candidate-page:{event.sequence}"))
+            proposed_id = str(payload.get("node_id", f"candidate-page:{event.sequence}"))
+            label = str(payload.get("url", proposed_id))
+            node_id = _node_id_with_label(nodes, label) or proposed_id
+            source_aliases[proposed_id] = node_id
+            existing = nodes.get(node_id)
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
                 kind="collected_page",
-                label=str(payload.get("url", node_id)),
+                label=label,
                 status="collected",
-                attributes=payload,
+                attributes={**(existing.attributes if existing else {}), **payload},
             )
             animations.append(
                 GraphAnimation(sequence=event.sequence, animation="spawn-node", target_id=node_id)
@@ -115,18 +195,20 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
             assertion_id = str(payload["assertion_id"])
             subject = str(payload.get("subject", ""))
             object_value = str(payload.get("object", ""))
-            source = str(
+            source_value = str(
                 payload.get(
                     "subject_node_id",
                     _node_id_with_label(nodes, subject) or f"seed:{event.case_id}",
                 )
             )
-            target = str(
+            target_value = str(
                 payload.get(
                     "object_node_id",
                     _node_id_with_label(nodes, object_value) or f"candidate-page:{event.sequence}",
                 )
             )
+            source = source_aliases.get(source_value, source_value)
+            target = source_aliases.get(target_value, target_value)
             edge_id = f"assertion:{assertion_id}"
             assertion_edges[assertion_id] = edge_id
             edges[edge_id] = ProgressiveGraphEdge(
@@ -185,3 +267,41 @@ def _node_id_with_label(nodes: dict[str, ProgressiveGraphNode], label: str) -> s
     return next((node.id for node in matches if node.status == "collected"), None) or next(
         (node.id for node in matches), None
     )
+
+
+def _same_public_url(left: str, right: str) -> bool:
+    """Compare public URL identities without treating display-only slash variants as entities."""
+
+    try:
+        left_url = urlsplit(left)
+        right_url = urlsplit(right)
+    except ValueError:
+        return left == right
+    if not left_url.scheme or not right_url.scheme:
+        return left == right
+    return (
+        left_url.scheme.lower(),
+        left_url.netloc.lower(),
+        left_url.path.rstrip("/") or "/",
+        left_url.query,
+    ) == (
+        right_url.scheme.lower(),
+        right_url.netloc.lower(),
+        right_url.path.rstrip("/") or "/",
+        right_url.query,
+    )
+
+
+def _observation_semantics(
+    observation_type: str,
+) -> tuple[
+    Literal["claimed_brand", "public_contact", "external_destination", "redirect_target"],
+    str,
+]:
+    if observation_type == "claimed_brand_identity":
+        return "claimed_brand", "claims_brand"
+    if observation_type == "public_outgoing_link":
+        return "external_destination", "publicly_links_to"
+    if observation_type == "public_redirect_target":
+        return "redirect_target", "publicly_redirects_to"
+    return "public_contact", "displays_public_claim"

@@ -92,7 +92,16 @@ def create_app(
 
     cases_path = Path(cases_root).expanduser().resolve()
     loader = CaseLoader(cases_path, comparisons_root=comparisons_root)
-    workspace = MvpWorkspace(workspace_root) if workspace_root is not None else None
+    active_safety_policy = collection_safety_policy or SafetyPolicy()
+    workspace = (
+        MvpWorkspace(
+            workspace_root,
+            cases_root=cases_path,
+            safety_policy=active_safety_policy,
+        )
+        if workspace_root is not None
+        else None
+    )
     app = FastAPI(
         title="JudolGraph HAWK-EYE Investigator Console",
         docs_url=None,
@@ -163,21 +172,26 @@ def create_app(
 
         @app.post("/api/cases", include_in_schema=False)
         def create_case(payload: _CollectSeedRequest, request: Request) -> dict[str, object]:
-            """Collect one public seed without interaction, expansion, or candidate crawling."""
+            """Collect a bounded same-site case and launch its auditable investigation run."""
 
             _require_same_origin(request)
             result = investigate(
                 payload.seed_url,
                 output=cases_path,
                 timeout_seconds=30,
-                case_timeout_seconds=45,
-                max_pages=1,
-                max_depth=0,
+                case_timeout_seconds=100,
+                max_pages=3,
+                max_depth=1,
                 case_id=make_case_id(),
-                safety_policy=collection_safety_policy or SafetyPolicy(),
+                safety_policy=active_safety_policy,
             )
             loaded = loader.load(result.case.case_id)
-            return case_details(loaded, comparisons=[])
+            details = case_details(loaded, comparisons=[])
+            investigation = workspace.create_live_run(
+                result,
+                known_cases=loader.list_cases(),
+            )
+            return {**details, **investigation}
 
         @app.get("/api/mvp/scenarios", include_in_schema=False)
         def mvp_scenarios() -> dict[str, object]:
@@ -200,7 +214,16 @@ def create_app(
 
         @app.get("/api/mvp/runs/{workspace_id}", include_in_schema=False)
         def mvp_run_details(workspace_id: str) -> dict[str, object]:
-            return workspace.details(workspace_id)
+            details = workspace.details(workspace_id)
+            source_case_id = details.get("source_case_id")
+            if isinstance(source_case_id, str):
+                details["source_case"] = case_details(loader.load(source_case_id), comparisons=[])
+            candidate_case_id = details.get("candidate_case_id")
+            if isinstance(candidate_case_id, str):
+                details["candidate_case"] = case_details(
+                    loader.load(candidate_case_id), comparisons=[]
+                )
+            return details
 
         @app.post("/api/mvp/runs/{workspace_id}/reviews", include_in_schema=False)
         def mvp_review(
@@ -224,7 +247,7 @@ def create_app(
         def mvp_artifact(workspace_id: str, artifact_name: str) -> Response:
             return Response(
                 content=workspace.artifact(workspace_id, artifact_name),
-                media_type="application/json",
+                media_type=workspace.artifact_media_type(artifact_name),
                 headers={"Content-Disposition": f'attachment; filename="{artifact_name}"'},
             )
 

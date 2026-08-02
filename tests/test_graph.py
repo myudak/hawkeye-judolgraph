@@ -70,7 +70,6 @@ def test_builds_required_nodes_and_evidence_backed_edges() -> None:
     }
     assert {edge.type for edge in graph.edges} >= {
         "started_from",
-        "resolved_to",
         "contains_page",
         "captured_as",
         "links_to",
@@ -87,6 +86,7 @@ def test_builds_required_nodes_and_evidence_backed_edges() -> None:
         for edge in non_structural
     )
     validate_graph_evidence(graph, evidence)
+    assert not any(edge.source == edge.target for edge in graph.edges)
 
 
 def test_extracted_edge_schema_rejects_missing_evidence_fields() -> None:

@@ -61,6 +61,33 @@ def test_free_form_or_invalid_schema_falls_back_after_two_attempts() -> None:
     assert result.failures[-1].fallback_activated is True
 
 
+def test_model_cannot_mutate_an_issued_safe_reference() -> None:
+    context = _context()
+    reference = context.safe_interactive_elements[0].model_copy(
+        update={"dom_path": "button#invented"}
+    )
+    calls = 0
+
+    def mutated(_context: AgentVisibleContext) -> object:
+        nonlocal calls
+        calls += 1
+        return {
+            "action": "tool_request",
+            "tool_name": "page_click_read_only",
+            "element_reference": reference.model_dump(mode="json"),
+            "outcome_summary": "Attempt a mutated selector.",
+        }
+
+    result = CodexInvestigator(None, request_override=mutated).choose(context)
+
+    assert calls == 2
+    assert result.mode == "deterministic_fallback"
+    assert [item.category for item in result.failures] == [
+        "invalid_schema",
+        "invalid_schema",
+    ]
+
+
 def test_unavailable_endpoint_uses_same_normalized_decision_shape() -> None:
     result = CodexInvestigator(None).choose(_context())
     assert result.mode == "deterministic_fallback"

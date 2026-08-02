@@ -117,4 +117,15 @@ def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_u
         assert payload["access_outcome"] == "content"
         assert payload["public_status"] == "captured"
         assert payload["pages"][0]["readiness_evidence_id"]
+        assert payload["source_kind"] == "live_capture"
+        assert payload["workspace_id"].startswith("run-live-")
+        run = client.get(f"/api/mvp/runs/{payload['workspace_id']}").json()
+        assert run["source_case_id"] == payload["case_id"]
+        assert run["source_case"]["case_id"] == payload["case_id"]
+        assert run["agent_mode"] in {"codex", "deterministic_fallback"}
+        assert {item["kind"] for item in run["events"]} >= {
+            "run.started",
+            "artifact.captured",
+            "agent.objective.created",
+        }
         assert client.get("/api/cases").json()["cases"][0]["case_id"] == payload["case_id"]

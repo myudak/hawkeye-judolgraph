@@ -62,7 +62,8 @@ def build_graph(
     seed_domain = _domain_node(nodes, case.seed_url)
     final_domain = _domain_node(nodes, case.final_url)
     _add_structural_edge(edges, case_node.id, seed_domain.id, "started_from")
-    _add_structural_edge(edges, seed_domain.id, final_domain.id, "resolved_to")
+    if seed_domain.id != final_domain.id:
+        _add_structural_edge(edges, seed_domain.id, final_domain.id, "resolved_to")
 
     page_nodes: dict[str, GraphNode] = {}
     page_by_id = {page.id: page for page in crawl_pages}

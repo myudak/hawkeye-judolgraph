@@ -61,11 +61,11 @@ def test_semantic_observation_types_normalization_provenance_and_crops(
     assert stored == observations
 
 
-def test_limited_capture_does_not_auto_extract_strong_observations(
+def test_information_rich_unstable_capture_extracts_only_provisional_observations(
     fixture_server_url: str, tmp_path: Path
 ) -> None:
     result = investigate(
-        f"{fixture_server_url}render-continuing.html",
+        f"{fixture_server_url}render-never-settles.html",
         output=tmp_path / "cases",
         case_id="limited-no-semantic-extraction",
         timeout_seconds=15,
@@ -74,5 +74,12 @@ def test_limited_capture_does_not_auto_extract_strong_observations(
         max_depth=0,
         safety_policy=SafetyPolicy(allow_loopback_for_testing=True),
     )
-    assert result.case.extraction_eligible is False
-    assert result.observations == []
+    assert result.case.capture_adequacy.value == "limited"
+    assert result.case.extraction_eligible is True
+    assert result.case.extraction_tier == "provisional"
+    assert result.observations
+    assert all(item.attributes.get("provisional") is True for item in result.observations)
+    assert all(
+        "provisional_observation_from_limited_capture" in item.limitations
+        for item in result.observations
+    )

@@ -40,7 +40,7 @@ class CodexLbClient:
         self._api_key = api_key
 
     def request_decision(self, context: AgentVisibleContext) -> object:
-        schema = AgentDecision.model_json_schema()
+        schema = _strict_json_schema(AgentDecision.model_json_schema())
         request_payload: dict[str, object] = {
             "input": [
                 {
@@ -52,10 +52,24 @@ class CodexLbClient:
                         "or criminality."
                     ),
                 },
-                {"role": "user", "content": context.model_dump(mode="json")},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        context.model_dump(mode="json"),
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                },
             ],
             "stream": False,
-            "text": {"format": {"type": "json_schema", "name": "agent_decision", "schema": schema}},
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "agent_decision",
+                    "strict": True,
+                    "schema": schema,
+                }
+            },
         }
         if self.model:
             request_payload["model"] = self.model
@@ -84,7 +98,8 @@ class DeterministicInvestigator:
     """Fixture-capable fallback producing the same AgentDecision schema as Codex."""
 
     def choose(self, context: AgentVisibleContext) -> AgentDecision:
-        for reference in context.safe_interactive_elements:
+        ranked = sorted(context.safe_interactive_elements, key=_fallback_priority)
+        for reference in ranked:
             pseudo_element = _reference_policy_projection(reference)
             permitted, _, _ = validate_read_only_interaction(pseudo_element)
             if not permitted:
@@ -108,6 +123,21 @@ class DeterministicInvestigator:
                 else "No policy-permitted action can close the explicit evidence gap."
             ),
         )
+
+
+def _fallback_priority(reference: StableElementReference) -> tuple[int, str]:
+    label = f"{reference.accessible_name} {reference.visible_text}".casefold()
+    priorities = (
+        ("promotion", 0),
+        ("promo", 0),
+        ("about", 1),
+        ("public", 1),
+        ("information", 1),
+        ("help", 2),
+        ("menu", 3),
+    )
+    score = next((value for term, value in priorities if term in label), 10)
+    return score, reference.element_id
 
 
 class CodexInvestigator:
@@ -147,6 +177,7 @@ class CodexInvestigator:
             try:
                 raw = requester(context)
                 decision = AgentDecision.model_validate(raw)
+                _validate_context_decision(decision, context)
                 return AgentStepResult(decision=decision, mode="codex", failures=failures)
             except ValidationError as error:
                 failures.append(
@@ -157,7 +188,16 @@ class CodexInvestigator:
                         fallback_activated=attempt == 2,
                     )
                 )
-            except (RuntimeError, ValueError, json.JSONDecodeError) as error:
+            except (ValueError, json.JSONDecodeError) as error:
+                failures.append(
+                    AgentFailure(
+                        attempt=attempt,
+                        category="invalid_schema",
+                        message=str(error)[:1000],
+                        fallback_activated=attempt == 2,
+                    )
+                )
+            except RuntimeError as error:
                 failures.append(
                     AgentFailure(
                         attempt=attempt,
@@ -222,3 +262,37 @@ def _structured_response(payload: object) -> dict[str, object] | None:
             if isinstance(decoded, dict):
                 return decoded
     return None
+
+
+def _strict_json_schema(value: object) -> object:
+    """Make Pydantic's nullable defaults compatible with strict Responses schemas."""
+
+    if isinstance(value, list):
+        return [_strict_json_schema(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    projected = {key: _strict_json_schema(item) for key, item in value.items() if key != "default"}
+    properties = projected.get("properties")
+    if projected.get("type") == "object" and isinstance(properties, dict):
+        projected["additionalProperties"] = False
+        projected["required"] = list(properties)
+    return projected
+
+
+def _validate_context_decision(decision: AgentDecision, context: AgentVisibleContext) -> None:
+    """Bind a model-selected tool request to an exact server-issued safe reference."""
+
+    if decision.action != "tool_request":
+        return
+    if decision.element_reference is None or decision.tool_name is None:
+        raise ValueError("tool request omitted its bounded reference or tool name")
+    expected = next(
+        (
+            item
+            for item in context.safe_interactive_elements
+            if item.reference_id == decision.element_reference.reference_id
+        ),
+        None,
+    )
+    if expected is None or expected != decision.element_reference:
+        raise ValueError("tool request did not preserve an issued safe element reference")

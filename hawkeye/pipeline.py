@@ -359,13 +359,37 @@ def investigate(
             visible_text=collected.visible_text,
             navigation_status="captured",
         )
-        extraction_eligible = bool(
+        verified_extraction = bool(
             classification.content_usable
             and classification.access_outcome is not None
             and classification.access_outcome.value == "content"
             and readiness.capture_adequacy is CaptureAdequacy.ADEQUATE
             and html_evidence is not None
             and readiness.html_bytes <= DIRECT_EXTRACTOR_LIMIT_BYTES
+        )
+        provisional_extraction = bool(
+            classification.content_usable
+            and classification.access_outcome is not None
+            and classification.access_outcome.value == "content"
+            and readiness.capture_adequacy is CaptureAdequacy.LIMITED
+            and html_evidence is not None
+            and readiness.html_bytes <= DIRECT_EXTRACTOR_LIMIT_BYTES
+            and readiness.checkpoints
+            and readiness.checkpoints[-1].visible_text_chars >= 80
+            and (
+                readiness.checkpoints[-1].informative_tile_ratio >= 0.02
+                or readiness.checkpoints[-1].visible_text_words >= 15
+            )
+            and "visual_dom_mismatch" not in readiness.limitation_reasons
+            and "low_information_capture" not in readiness.limitation_reasons
+        )
+        extraction_eligible = verified_extraction or provisional_extraction
+        extraction_tier = (
+            "verified"
+            if verified_extraction
+            else "provisional"
+            if provisional_extraction
+            else "none"
         )
         extraction_skip_reason = None
         if not extraction_eligible:
@@ -394,6 +418,20 @@ def investigate(
                 source_evidence_id=html_evidence.id,
                 entity_id_start=len(entities) + 1,
             )
+            if provisional_extraction:
+                page_entities = [
+                    item.model_copy(
+                        update={
+                            "confidence": min(item.confidence, 0.85),
+                            "details": {
+                                **item.details,
+                                "evidence_tier": "provisional",
+                                "source_capture_adequacy": readiness.capture_adequacy.value,
+                            },
+                        }
+                    )
+                    for item in page_entities
+                ]
             entities.extend(page_entities)
             page_observations = extract_semantic_observations(
                 collected.html,
@@ -405,6 +443,25 @@ def investigate(
                 redirects=collected.redirects,
                 observation_id_start=len(observations) + 1,
             )
+            if provisional_extraction:
+                page_observations = [
+                    item.model_copy(
+                        update={
+                            "confidence": min(item.confidence, 0.85),
+                            "limitations": [
+                                *item.limitations,
+                                "provisional_observation_from_limited_capture",
+                                *readiness.limitation_reasons,
+                            ],
+                            "attributes": {
+                                **item.attributes,
+                                "provisional": True,
+                                "source_capture_adequacy": readiness.capture_adequacy.value,
+                            },
+                        }
+                    )
+                    for item in page_observations
+                ]
             observations.extend(
                 _attach_observation_crops(
                     storage=storage,
@@ -428,10 +485,11 @@ def investigate(
             redirects=collected.redirects,
             navigation_status="captured",
             capture_outcome=classification.outcome,
-            content_usable=extraction_eligible,
+            content_usable=classification.content_usable,
             access_outcome=classification.access_outcome,
             capture_adequacy=readiness.capture_adequacy,
             extraction_eligible=extraction_eligible,
+            extraction_tier=extraction_tier,
             extraction_skip_reason=extraction_skip_reason,
             public_status=public_status,
             limitation_reasons=readiness.limitation_reasons,
@@ -469,7 +527,7 @@ def investigate(
             f"page_id={target.page_id} depth={current.depth} "
             f"outcome={classification.outcome.value} "
             f"adequacy={readiness.capture_adequacy.value} "
-            f"eligible={extraction_eligible} entities={len(page_entities)}"
+            f"eligible={extraction_eligible} tier={extraction_tier} entities={len(page_entities)}"
         )
 
         completed_page = _page_by_id(pages, target.page_id)
@@ -526,6 +584,7 @@ def investigate(
             "access_outcome": primary.access_outcome,
             "capture_adequacy": primary.capture_adequacy,
             "extraction_eligible": primary.extraction_eligible,
+            "extraction_tier": primary.extraction_tier,
             "extraction_skip_reason": primary.extraction_skip_reason,
             "public_status": primary.public_status,
             "limitation_reasons": primary.limitation_reasons,

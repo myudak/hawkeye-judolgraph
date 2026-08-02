@@ -277,125 +277,190 @@ function buildCaseProjection(details) {
   const nodes = [];
   const edges = [];
   const timeline = [];
-  const sourceNodes = details.graph?.nodes || [];
-  const primarySource = sourceNodes.find((item) => item.type === "page") || sourceNodes.find((item) => item.type === "domain") || sourceNodes[0];
-  sourceNodes.forEach((raw, index) => {
-    addUniqueNode(nodes, normalizeNode(raw, index, {
-      primary: raw.id === primarySource?.id,
-      sequence: 1,
-      attributes: { source: "persisted graph node", raw },
+  const pages = details.pages || [];
+  const primaryPage = pages[0];
+  const pageIds = new Map();
+  pages.forEach((page, index) => {
+    const nodeId = `page:${page.id}`;
+    pageIds.set(page.id, nodeId);
+    addUniqueNode(nodes, normalizeNode({
+      id: nodeId,
+      type: index === 0 ? "seed_page" : "collected_page",
+      label: page.final_url_display,
+      status: "collected",
+    }, index, {
+      primary: index === 0,
+      sequence: index + 1,
+      attributes: { page, source_case_id: details.case_id },
+      cluster: "Captured pages",
     }));
-  });
-  (details.graph?.edges || []).forEach((raw, index) => {
-    addUniqueEdge(edges, normalizeEdge(raw, index, {
-      sequence: 2 + index,
-      appearance: raw.relationship_status === "observed_evidence" ? "solid_emphasized" : "solid",
-    }));
-  });
-
-  if (!nodes.length) {
-    const caseNode = normalizeNode({ id: `case:${details.case_id}`, type: "case", label: details.case_id }, 0, { primary: true, sequence: 1 });
-    addUniqueNode(nodes, caseNode);
-    (details.pages || []).forEach((page, index) => {
-      const pageNode = normalizeNode({ id: `page:${page.id}`, type: "page", label: page.final_url_display }, index + 1, { sequence: index + 2, attributes: { page } });
-      addUniqueNode(nodes, pageNode);
-      addUniqueEdge(edges, normalizeEdge({ id: `case-page:${page.id}`, source: caseNode.id, target: pageNode.id, relation: "contains captured page" }, edges.length, { sequence: index + 2 }));
-    });
-  }
-
-  const pageNodes = new Map();
-  nodes.filter((item) => item.kind === "page").forEach((item) => {
-    const pageId = item.id.startsWith("page:") ? item.id.slice(5) : item.id;
-    pageNodes.set(pageId, item.id);
-  });
-  let sequence = Math.max(3, edges.length + 2);
-  const evidenceRecords = details.evidence || [];
-  const canonicalScreenshotId = details.pages?.[0]?.screenshot_evidence_id;
-  const screenshotRecords = evidenceRecords.filter((item) => String(item.type).includes("screenshot"));
-  const graphEvidenceIds = new Set(
-    evidenceRecords
-      .filter((item) => !String(item.type).includes("screenshot") || item.id === canonicalScreenshotId || (!canonicalScreenshotId && item.id === screenshotRecords.at(-1)?.id))
-      .map((item) => item.id),
-  );
-  evidenceRecords.forEach((record, index) => {
-    sequence += 1;
-    let targetId = primarySource?.id || nodes[0]?.id;
-    if (graphEvidenceIds.has(record.id)) {
-      const evidenceNode = normalizeNode({
-        id: `evidence:${record.id}`,
-        type: record.type,
-        label: String(record.type).includes("screenshot") && screenshotRecords.length > 1
-          ? `Screenshot evidence · ${screenshotRecords.length} views`
-          : titleCase(record.type),
-      }, nodes.length, {
-        sequence,
-        attributes: { evidence: record },
-      });
-      addUniqueNode(nodes, evidenceNode);
-      targetId = evidenceNode.id;
-      const sourceId = pageNodes.get(record.page_id) || primarySource?.id || nodes[0]?.id;
-      if (sourceId) {
-        addUniqueEdge(edges, normalizeEdge({
-          id: `captured:${record.id}`,
-          source: sourceId,
-          target: evidenceNode.id,
-          relation: "captured as",
-        }, edges.length, { sequence }));
-      }
+    if (index > 0 && primaryPage) {
+      addUniqueEdge(edges, normalizeEdge({
+        id: `crawl:${primaryPage.id}:${page.id}`,
+        source: `page:${primaryPage.id}`,
+        target: nodeId,
+        relation: "crawled same-site page",
+      }, edges.length, { sequence: index + 1 }));
     }
+  });
+  if (!nodes.length) {
+    addUniqueNode(nodes, normalizeNode({
+      id: `page:${details.case_id}`,
+      type: "seed_page",
+      label: details.final_url_display || details.seed_url_display,
+      status: "collected",
+    }, 0, { primary: true, sequence: 1, attributes: { source_case_id: details.case_id } }));
+  }
+  const rootId = pageIds.get(primaryPage?.id) || nodes[0].id;
+  let sequence = Math.max(2, pages.length + 1);
+  timeline.push({
+    sequence: 1,
+    label: "Capture started",
+    detail: formatTime(details.started_at),
+    occurredAt: details.started_at,
+    targetId: rootId,
+  });
+  pages.forEach((page, index) => timeline.push({
+    sequence: index + 2,
+    label: index === 0 ? "Seed page captured" : "Same-site page captured",
+    detail: `${titleCase(page.capture_adequacy)} · ${hostnameFrom(page.final_url_display)}`,
+    targetId: pageIds.get(page.id),
+  }));
+
+  const knownByHost = new Map(
+    view.cases
+      .filter((item) => item.integrity === "verified")
+      .map((item) => [hostnameFrom(item.final_url_display), item]),
+  );
+  const sourceHost = hostnameFrom(details.final_url_display || details.seed_url_display);
+  const token = sourceHost.match(/[a-z]+\d+|\d+[a-z]+|\d{3,}/i)?.[0]?.toLowerCase() || "";
+  const candidateHosts = new Set((details.candidates || []).map((item) => item.hostname));
+  const destinations = new Map();
+  const addDestination = (url, sourcePageId, source, redirect = false) => {
+    const host = hostnameFrom(url);
+    if (!host || host === sourceHost) return;
+    const known = knownByHost.get(host);
+    const related = Boolean(known || candidateHosts.has(host) || (token && host.includes(token)));
+    if (!related) return;
+    const existing = destinations.get(host) || { host, url, sourcePageId, sources: [], redirect, known };
+    existing.sources.push(source);
+    existing.known ||= known;
+    existing.redirect ||= redirect;
+    destinations.set(host, existing);
+  };
+  (details.frontier || []).forEach((item) => {
+    if (item.normalized_url_display) addDestination(
+      item.normalized_url_display,
+      item.source_page_id,
+      { frontier: item },
+      item.discovery_method === "redirect",
+    );
+  });
+  (details.observations || []).forEach((observation) => {
+    if (["public_outgoing_link", "public_redirect_target"].includes(observation.type)) {
+      addDestination(
+        observation.display_value,
+        observation.source_page_id,
+        { observation },
+        observation.type === "public_redirect_target",
+      );
+    }
+  });
+  destinations.forEach((destination) => {
+    sequence += 1;
+    const nodeId = `destination:${destination.host}`;
+    const status = destination.known ? "collected" : "lead";
+    addUniqueNode(nodes, normalizeNode({
+      id: nodeId,
+      type: destination.redirect ? "redirect_target" : destination.known ? "external_destination" : "candidate_domain",
+      label: destination.host,
+      status,
+    }, nodes.length, {
+      sequence,
+      status,
+      cluster: "Linked destinations",
+      attributes: {
+        url: destination.url,
+        observations: destination.sources,
+        matched_case_id: destination.known?.case_id,
+        relationship: destination.known ? "observed link to saved capture" : evidenceSemantics.candidate,
+      },
+    }));
+    const sourceId = pageIds.get(destination.sourcePageId) || rootId;
+    addUniqueEdge(edges, normalizeEdge({
+      id: `destination-edge:${sourceId}:${nodeId}`,
+      source: sourceId,
+      target: nodeId,
+      relation: destination.redirect ? "publicly redirects to" : "publicly links to",
+    }, edges.length, { sequence, appearance: status === "lead" ? "dashed" : "solid_emphasized" }));
     timeline.push({
       sequence,
-      label: titleCase(record.type),
-      detail: formatTime(record.collected_at),
-      occurredAt: record.collected_at,
-      targetId,
+      label: destination.known ? "Saved destination matched" : "Candidate lead observed",
+      detail: destination.host,
+      targetId: nodeId,
     });
   });
 
-  (details.observations || []).forEach((observation) => {
+  const signalTypes = new Set([
+    "claimed_brand_identity",
+    "public_telegram_alias",
+    "public_whatsapp_link",
+    "public_phone_number",
+    "public_email_address",
+    "public_payment_method",
+    "public_payment_provider",
+    "public_offer_claim",
+    "public_referral_code",
+  ]);
+  (details.observations || []).filter((item) => signalTypes.has(item.type)).slice(0, 18).forEach((observation) => {
     sequence += 1;
-    const observationNode = normalizeNode({
-      id: `observation:${observation.id}`,
-      type: observation.type || "observation",
+    const kind = observation.type === "claimed_brand_identity" ? "claimed_brand" : "public_contact";
+    const nodeId = `observation:${observation.id}`;
+    addUniqueNode(nodes, normalizeNode({
+      id: nodeId,
+      type: kind,
       label: observation.display_value,
-    }, nodes.length, { sequence, attributes: { observation } });
-    observationNode.kind = observationNode.kind === "default" ? "observation" : observationNode.kind;
-    observationNode.cluster = "Observed signals";
-    addUniqueNode(nodes, observationNode);
-    const sourceId = `evidence:${observation.source_artifact_id}`;
-    if (nodes.some((item) => item.id === sourceId)) {
-      addUniqueEdge(edges, normalizeEdge({ id: `supports:${observation.id}`, source: sourceId, target: observationNode.id, relation: "supports observation" }, edges.length, { sequence }));
-    }
-    timeline.push({ sequence, label: titleCase(observation.type), detail: "Semantic observation recorded", targetId: observationNode.id });
-  });
-
-  (details.candidates || []).forEach((candidate) => {
-    sequence += 1;
-    const candidateId = `candidate:${candidate.candidate_id}`;
-    addUniqueNode(nodes, normalizeNode({ id: candidateId, type: "candidate_domain", label: candidate.hostname }, nodes.length, {
+      status: "observed",
+    }, nodes.length, {
       sequence,
-      status: "lead",
-      attributes: { candidate },
+      cluster: "Observed signals",
+      attributes: { observation },
     }));
-    const reason = candidate.reasons?.[0];
-    const sourceEvidenceId = reason?.evidence_refs?.[0]?.evidence_id;
-    const sourceId = sourceEvidenceId && nodes.some((item) => item.id === `evidence:${sourceEvidenceId}`)
-      ? `evidence:${sourceEvidenceId}`
-      : primarySource?.id || nodes[0]?.id;
-    if (sourceId) addUniqueEdge(edges, normalizeEdge({ id: `lead:${candidate.candidate_id}`, source: sourceId, target: candidateId, relation: "pending candidate lead" }, edges.length, { sequence, appearance: "dashed" }));
-    timeline.push({ sequence, label: "Candidate recorded", detail: evidenceSemantics.candidate, targetId: candidateId });
+    const sourceId = pageIds.get(observation.source_page_id) || rootId;
+    addUniqueEdge(edges, normalizeEdge({
+      id: `observed:${sourceId}:${nodeId}`,
+      source: sourceId,
+      target: nodeId,
+      relation: observation.type === "claimed_brand_identity" ? "claims brand" : "displays public signal",
+    }, edges.length, { sequence }));
+    timeline.push({
+      sequence,
+      label: titleCase(observation.type),
+      detail: "Evidence-backed semantic observation",
+      targetId: nodeId,
+    });
   });
 
-  timeline.unshift({ sequence: 1, label: "Capture started", detail: formatTime(details.started_at), occurredAt: details.started_at, targetId: primarySource?.id || nodes[0]?.id });
-  sequence += 1;
+  (details.evidence || [])
+    .filter((record) => String(record.type).includes("screenshot"))
+    .forEach((record) => {
+      sequence += 1;
+      timeline.push({
+        sequence,
+        label: titleCase(record.type),
+        detail: `${formatTime(record.collected_at)} · saved image evidence`,
+        occurredAt: record.collected_at,
+        targetId: pageIds.get(record.page_id) || rootId,
+      });
+    });
   timeline.push({
-    sequence,
+    sequence: sequence + 1,
     label: details.capture_adequacy === "adequate" ? "Capture adequate" : "Capture limited",
-    detail: formatTime(details.completed_at),
+    detail: `${titleCase(details.extraction_tier || "none")} evidence · ${formatTime(details.completed_at)}`,
     occurredAt: details.completed_at,
-    targetId: primarySource?.id || nodes[0]?.id,
+    targetId: rootId,
   });
-  return { nodes, edges, timeline, mode: "Saved public observation" };
+  return { nodes, edges, timeline, mode: "Public evidence relations" };
 }
 
 function buildRunProjection(details) {
@@ -409,19 +474,77 @@ function buildRunProjection(details) {
     primary: raw.kind === "seed_page",
     sequence: animationSequence.get(raw.id) || index + 1,
     attributes: raw.attributes || {},
+    cluster: ["external_destination", "redirect_target", "candidate_domain"].includes(raw.kind)
+      ? "Linked destinations"
+      : undefined,
   }));
   const edges = (details.graph?.edges || []).map((raw, index) => normalizeEdge(raw, index, {
     sequence: Math.min(...(raw.supporting_event_ids || []).map((id) => eventSequence.get(id) || 999), index + 2),
   }));
-  const timeline = (details.events || []).map((event) => ({
-    sequence: event.sequence,
-    label: titleCase(event.kind.replaceAll(".", " ")),
-    detail: formatTime(event.occurred_at),
-    occurredAt: event.occurred_at,
-    targetId: (details.graph?.animations || []).find((item) => item.sequence === event.sequence)?.target_id || null,
-    event,
-  }));
-  return { nodes, edges, timeline, mode: "Event-driven investigation" };
+  const observationEvents = (details.events || []).filter((event) => event.kind === "observation.created");
+  const blockedPreflights = (details.events || []).filter(
+    (event) => event.kind === "tool.blocked" && event.payload?.policy_preflight,
+  );
+  let observationsAdded = false;
+  let blockedPreflightsAdded = false;
+  const timeline = [];
+  (details.events || []).forEach((event) => {
+    if (event.kind === "interactive_element.discovered") return;
+    if (event.kind === "tool.requested" && (event.payload?.executed === false || event.payload?.action === "policy_preflight")) return;
+    if (event.kind === "tool.blocked" && event.payload?.policy_preflight) {
+      if (blockedPreflightsAdded) return;
+      blockedPreflightsAdded = true;
+      timeline.push({
+        sequence: event.sequence,
+        label: `${blockedPreflights.length} unsafe controls blocked`,
+        detail: "Policy preflight only · never executed",
+        occurredAt: event.occurred_at,
+        targetId: null,
+        event,
+      });
+      return;
+    }
+    if (event.kind === "entity.matched") return;
+    if (event.kind === "observation.created") {
+      if (observationsAdded) return;
+      observationsAdded = true;
+      timeline.push({
+        sequence: event.sequence,
+        label: "Semantic evidence extracted",
+        detail: `${observationEvents.length} evidence-backed observations`,
+        occurredAt: event.occurred_at,
+        targetId: (details.graph?.animations || []).find((item) => item.sequence === event.sequence)?.target_id || null,
+        event,
+      });
+      return;
+    }
+    const labelByKind = {
+      "run.started": "Investigation started",
+      "collection.started": "Bounded crawl started",
+      "artifact.captured": event.payload?.interaction_artifact ? "Interaction evidence saved" : "Page evidence saved",
+      "agent.objective.created": "Agent objective issued",
+      "agent.fallback.activated": "Safe fallback activated",
+      "tool.requested": "Agent action selected",
+      "tool.completed": "Safe action completed",
+      "search.lead.discovered": "Candidate lead observed",
+      "candidate_page.approval_required": "Collection approval required",
+      "candidate_page.approved": "Candidate collection approved",
+      "candidate_page.collected": "Candidate page collected",
+      "assertion.proposed": "Review assertion proposed",
+      "review.required": "Human review required",
+      "run.completed": "Investigation completed",
+    };
+    if (!Object.hasOwn(labelByKind, event.kind)) return;
+    timeline.push({
+      sequence: event.sequence,
+      label: labelByKind[event.kind],
+      detail: event.payload?.url || event.payload?.label || formatTime(event.occurred_at),
+      occurredAt: event.occurred_at,
+      targetId: (details.graph?.animations || []).find((item) => item.sequence === event.sequence)?.target_id || null,
+      event,
+    });
+  });
+  return { nodes, edges, timeline, mode: "Live investigation replay" };
 }
 
 function applyLayoutTargets() {
@@ -435,6 +558,7 @@ function applyLayoutTargets() {
     "Evidence artifacts": { x: -250, y: 80 },
     "Observed signals": { x: 210, y: -100 },
     "Pending leads": { x: 285, y: 115 },
+    "Linked destinations": { x: 270, y: 70 },
     "Evidence graph": { x: 0, y: 0 },
   };
   for (const [cluster, items] of buckets) {
@@ -939,7 +1063,7 @@ function renderCaseIntel(details) {
   const hero = el("section", "intel-hero");
   hero.append(
     el("h1", "", host),
-    el("p", "", "Saved one-page public observation. The graph connects only captured pages, verified artifacts, extracted observations, and pending leads."),
+    el("p", "", `${details.pages?.length || 0} captured public page${details.pages?.length === 1 ? "" : "s"}. The canvas shows relationships; screenshots and source artifacts stay in the evidence inspector.`),
   );
   const statuses = el("div", "status-row");
   const adequacyTone = details.capture_adequacy === "adequate" ? "good" : "warn";
@@ -961,7 +1085,7 @@ function renderCaseIntel(details) {
   const limitations = el("ul", "limitation-list");
   const limitValues = [...(details.limitation_reasons || [])];
   if (details.extraction_skip_reason) limitValues.push(details.extraction_skip_reason);
-  if (!limitValues.length) limitValues.push("One public page only; no authentication, CAPTCHA bypass, or candidate crawling.");
+  if (!limitValues.length) limitValues.push("Public read-only collection; no authentication or access-control bypass.");
   limitValues.forEach((reason) => limitations.append(el("li", "", reason)));
 
   const policy = el("p", "policy-copy", "A candidate is a pending lead, never a confirmed operator or mirror. Similarity is evidence comparison, not ownership probability. Human review remains required.");
@@ -974,24 +1098,38 @@ function renderCaseIntel(details) {
 }
 
 function renderRunIntel(details) {
+  const source = details.source_case;
+  const runNodes = details.graph?.nodes || [];
+  const events = details.events || [];
+  const capturedPages = source?.pages?.length
+    || runNodes.filter((item) => ["seed_page", "collected_page"].includes(item.kind)).length;
+  const semanticEvidence = source?.observations?.length
+    || events.filter((item) => item.kind === "observation.created").length;
+  const completedActions = details.action_summary?.status === "completed"
+    ? 1
+    : events.filter((item) => item.kind === "tool.completed").length;
+  const host = hostnameFrom(source?.final_url_display || source?.seed_url_display || details.case_id);
   const hero = el("section", "intel-hero");
   hero.append(
-    el("h1", "", valueOr(details.case_id, "Investigation")),
-    el("p", "", "A deterministic, append-only investigation replay. Dashed edges are leads; emphasized edges exist only after a recorded human decision."),
+    el("h1", "", host),
+    el("p", "", details.source_kind === "live_capture"
+      ? `Live bounded investigation using ${details.agent_mode === "codex" ? valueOr(details.agent_model, "Codex") : "the deterministic safe fallback"}. Every graph transition replays an immutable local event.`
+      : "Controlled evidence replay. Dashed edges are leads; emphasized assertion edges require a recorded human decision."),
   );
   const statuses = el("div", "status-row");
   statuses.append(
     statusPill(details.agent_mode || "deterministic fallback", details.agent_mode === "codex" ? "good" : "warn"),
+    statusPill(details.capture_adequacy || source?.capture_adequacy || "controlled evidence", (details.capture_adequacy || source?.capture_adequacy) === "adequate" ? "good" : "warn"),
+    statusPill(details.extraction_tier || source?.extraction_tier || "fixture", (details.extraction_tier || source?.extraction_tier) === "verified" ? "good" : "warn"),
     statusPill(details.lead_status || "recorded", details.lead_status === "recollected" ? "good" : "warn"),
-    statusPill(details.current_assertion_status || "no assertion", details.current_assertion_status === "verified" ? "good" : "warn"),
   );
   hero.append(statuses);
   const stats = el("div", "stat-grid");
   stats.append(
-    metricCard(details.graph?.nodes?.length || 0, "Graph nodes"),
-    metricCard(details.graph?.edges?.length || 0, "Graph links"),
-    metricCard(details.events?.length || 0, "Persisted events"),
-    metricCard(details.reviews?.length || 0, "Review versions"),
+    metricCard(capturedPages, "Captured pages"),
+    metricCard(semanticEvidence, "Semantic evidence"),
+    metricCard(details.pending_leads?.length || 0, "Approval leads"),
+    metricCard(completedActions, "Safe agent actions"),
   );
   const policy = el("p", "policy-copy", "Replay animation is a projection of persisted events. Reloading reconstructs the same graph truth; animation never creates evidence.");
   refs.intelContent.replaceChildren(hero, intelSection("Run facts", stats), intelSection("Evidence rule", policy));
@@ -1037,6 +1175,51 @@ function findScreenshot(details, selected) {
     || null;
 }
 
+function screenshotsForCase(details, selected) {
+  const pageFromNode = selected?.attributes?.page;
+  const page = pageFromNode
+    || details.pages?.find((item) => `page:${item.id}` === selected?.id)
+    || details.pages?.[0];
+  if (!page) return [];
+  const labels = [
+    [page.initial_screenshot_evidence_id, "Initial"],
+    [page.screenshot_evidence_id, "Canonical"],
+    [page.full_page_screenshot_evidence_id, "Full page"],
+  ];
+  const seen = new Set();
+  return labels.flatMap(([id, label]) => {
+    if (!id || seen.has(id)) return [];
+    seen.add(id);
+    const record = details.evidence?.find((item) => item.id === id);
+    return record ? [{ record, label }] : [];
+  });
+}
+
+function renderScreenshotGallery(details, selected) {
+  const screenshots = screenshotsForCase(details, selected);
+  if (!screenshots.length) return null;
+  const gallery = el("figure", "evidence-preview screenshot-gallery");
+  const image = el("img");
+  const label = el("figcaption", "preview-label", screenshots[0].label);
+  const strip = el("div", "screenshot-strip");
+  const show = (item, button) => {
+    image.src = caseArtifactUrl(details.case_id, item.record.id);
+    image.alt = `${item.label} screenshot evidence for ${hostnameFrom(details.final_url_display)}`;
+    label.textContent = `${item.label} · ${item.record.image_dimensions?.width || "?"} × ${item.record.image_dimensions?.height || "?"}`;
+    [...strip.children].forEach((child) => child.classList.toggle("active", child === button));
+  };
+  screenshots.forEach((item, index) => {
+    const button = el("button", "screenshot-thumb", item.label);
+    button.type = "button";
+    button.addEventListener("click", () => show(item, button));
+    strip.append(button);
+    if (index === 0) window.queueMicrotask(() => show(item, button));
+  });
+  image.loading = "eager";
+  gallery.append(image, label, strip);
+  return gallery;
+}
+
 function renderCaseInspector(details, selected) {
   const screenshot = findScreenshot(details, selected);
   const selectedEvidence = selected?.attributes?.evidence;
@@ -1046,21 +1229,14 @@ function renderCaseInspector(details, selected) {
     selected?.kind === "candidate_domain" ? evidenceSemantics.candidate : "Evidence shown here is loaded from the verified local case manifest.",
   );
   const children = [header];
-  if (screenshot) {
-    const preview = el("figure", "evidence-preview");
-    const image = el("img");
-    image.src = caseArtifactUrl(details.case_id, screenshot.id);
-    image.alt = `Captured screenshot evidence for ${hostnameFrom(details.final_url_display)}`;
-    image.loading = "eager";
-    preview.append(image, el("figcaption", "preview-label", details.capture_adequacy === "adequate" ? "Captured evidence" : "Limited capture"));
-    children.push(preview);
-  }
+  const gallery = renderScreenshotGallery(details, selected);
+  if (gallery) children.push(gallery);
 
   const facts = factList([
     ["Public state", titleCase(details.public_status)],
     ["Adequacy", titleCase(details.capture_adequacy || "legacy capture")],
     ["Access", titleCase(details.access_outcome || details.capture_outcome)],
-    ["Extraction", details.extraction_eligible ? "Eligible" : `Withheld · ${valueOr(details.extraction_skip_reason, "capture limit")}`],
+    ["Extraction", details.extraction_eligible ? titleCase(details.extraction_tier || "eligible") : `Withheld · ${valueOr(details.extraction_skip_reason, "capture limit")}`],
     ["Captured", formatTime(selectedEvidence?.collected_at || details.completed_at)],
     ["Dimensions", screenshot?.image_dimensions ? `${screenshot.image_dimensions.width} × ${screenshot.image_dimensions.height}` : null],
   ]);
@@ -1150,7 +1326,8 @@ function renderRunInspector(details, selected) {
   const attributes = selected?.attributes || {};
   const facts = factList([
     ["Node state", titleCase(selected?.status)],
-    ["Agent", titleCase(details.agent_mode)],
+    ["Agent", details.agent_mode === "codex" ? valueOr(details.agent_model, "Codex") : titleCase(details.agent_mode)],
+    ["Evidence", titleCase(details.extraction_tier || details.source_case?.extraction_tier)],
     ["Lead", titleCase(details.lead_status)],
     ["Assertion", titleCase(details.current_assertion_status || "not proposed")],
     ["Run", details.run_id],
@@ -1161,25 +1338,30 @@ function renderRunInspector(details, selected) {
     link.href = runArtifactUrl(details.workspace_id, artifact.name);
     artifactGrid.append(link);
   });
-  const children = [header, evidenceBlock("Persisted state", facts)];
+  const children = [header];
+  if (details.source_case) {
+    const gallery = renderScreenshotGallery(details.source_case, selected);
+    if (gallery) children.push(gallery);
+  }
+  children.push(evidenceBlock("Persisted state", facts));
   if (Object.keys(attributes).length) children.push(evidenceBlock("Node evidence", factList(Object.entries(attributes).slice(0, 8))));
   children.push(evidenceBlock("Run artifacts", artifactGrid));
 
   if (details.lead_status === "waiting_for_approval") {
-    const approve = el("button", "", "Approve bounded Page B recollection");
+    const approve = el("button", "", "Approve candidate collection");
     approve.type = "button";
     approve.className = "artifact-link";
     approve.addEventListener("click", async () => {
       approve.disabled = true;
-      approve.textContent = "Collecting approved fixture…";
+      approve.textContent = "Collecting approved public page…";
       try {
         await postJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/approve`, {});
         await loadRun(details.workspace_id);
-        toast("Approval recorded before bounded recollection.", "success");
+        toast("Approval recorded before bounded candidate collection.", "success");
       } catch (error) {
         toast(error.message, "error");
         approve.disabled = false;
-        approve.textContent = "Approve bounded Page B recollection";
+        approve.textContent = "Approve candidate collection";
       }
     });
     children.push(evidenceBlock("Approval boundary", approve));
@@ -1345,7 +1527,9 @@ async function boot() {
   const preferred = verified.find((item) => item.final_url_display?.includes("qq101xfw.com"))
     || verified.find((item) => item.final_url_display?.includes("qq888bet4cv.com"))
     || verified[0];
-  if (preferred) await loadCase(preferred.case_id);
+  const liveRun = view.runs.find((item) => item.source_kind === "live_capture");
+  if (liveRun) await loadRun(liveRun.workspace_id);
+  else if (preferred) await loadCase(preferred.case_id);
   else if (view.runs[0]) await loadRun(view.runs[0].workspace_id);
   else setStatus("Enter one public URL to create a bounded observation.");
 }
@@ -1355,12 +1539,12 @@ refs.scanForm.addEventListener("submit", async (event) => {
   const seedUrl = refs.seedInput.value.trim();
   refs.scanButton.disabled = true;
   refs.scanButton.textContent = "Scanning…";
-  setStatus("One page · no clicks · no candidate crawling…");
+  setStatus("Capturing up to 3 same-site pages · waiting for render stability · one safe agent action…");
   try {
     const details = await postJson("/api/cases", { seed_url: seedUrl });
     await refreshIndexes();
-    await loadCase(details.case_id);
-    toast("Bounded public capture saved and verified.", "success");
+    await loadRun(details.workspace_id);
+    toast("Public capture and investigation timeline saved.", "success");
   } catch (error) {
     toast(error.message, "error");
     setStatus(`Capture stopped safely · ${error.message}`);

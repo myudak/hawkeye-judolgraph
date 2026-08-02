@@ -40,6 +40,7 @@ def fixture_server_url() -> Iterator[str]:
         "/render-shell-500.html": "render_shell_500.html",
         "/render-shell-1500.html": "render_shell_1500.html",
         "/render-continuing.html": "render_continuing.html",
+        "/render-never-settles.html": "render_never_settles.html",
         "/render-sparse-blank.html": "render_sparse_blank.html",
         "/render-canvas-heavy.html": "render_canvas_heavy.html",
         "/render-dom-growth-static.html": "render_dom_growth_static.html",

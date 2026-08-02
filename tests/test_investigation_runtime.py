@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from hawkeye.investigation import InvestigationStore, reduce_events, run_fixture_investigation
+from hawkeye.collector.safety import SafetyPolicy
+from hawkeye.investigation import (
+    InvestigationStore,
+    reduce_events,
+    run_fixture_investigation,
+    run_live_investigation,
+)
+from hawkeye.models import CaseRecord, CrawlFrontierRecord, CrawlPageRecord, InvestigationResult
 
 
 def test_synthetic_page_a_to_page_b_flow_requires_recollection_and_review(tmp_path: Path) -> None:
@@ -105,8 +113,15 @@ def test_event_sequence_idempotence_and_graph_replay_consistency(tmp_path: Path)
     assert replayed == first
     proposed_edge = next(edge for edge in first.edges if edge.id == "assertion:assertion-06")
     assert proposed_edge.appearance == "dashed"
-    assert proposed_edge.source == "page:a"
-    assert proposed_edge.target == "page:b"
+    assert proposed_edge.source == "seed:fixture-redirect-new-tab"
+    target = next(node for node in first.nodes if node.id == proposed_edge.target)
+    assert target.kind == "collected_page"
+    assert target.label == "https://candidate-f.example.invalid/final"
+    assert sum(node.label == "https://scenario-6.example.invalid/" for node in first.nodes) == 1
+    assert (
+        sum(node.label == "https://candidate-f.example.invalid/final" for node in first.nodes) == 1
+    )
+    assert all(edge.source != edge.target for edge in first.edges)
     store.append_review(
         "assertion-06",
         outcome="verified",
@@ -121,3 +136,125 @@ def test_event_sequence_idempotence_and_graph_replay_consistency(tmp_path: Path)
         "draw-edge",
         "pulse-node",
     }
+
+
+def test_live_graph_collapses_root_capture_and_projects_meaningful_relation(
+    tmp_path: Path,
+) -> None:
+    store = InvestigationStore(tmp_path / "events.sqlite3")
+    started = store.append_event(
+        case_id="case-live",
+        run_id="run-live",
+        kind="run.started",
+        payload={"seed_url": "https://source.example/"},
+    )
+    captured = store.append_event(
+        case_id="case-live",
+        run_id="run-live",
+        kind="artifact.captured",
+        payload={
+            "node_id": "page:page-001",
+            "root": True,
+            "label": "https://source.example/",
+        },
+        causation_event_id=started.event_id,
+    )
+    observation = store.append_event(
+        case_id="case-live",
+        run_id="run-live",
+        kind="observation.created",
+        payload={
+            "observation_id": "obs-link",
+            "node_id": "observable:target",
+            "source_node_id": "page:page-001",
+            "observation_type": "public_outgoing_link",
+            "normalized_value": "https://target.example/",
+            "matched_case_id": "case-target",
+        },
+        causation_event_id=captured.event_id,
+    )
+    store.append_event(
+        case_id="case-live",
+        run_id="run-live",
+        kind="entity.matched",
+        payload={"observation_id": "obs-link", "target_case_id": "case-target"},
+        causation_event_id=observation.event_id,
+    )
+
+    graph = reduce_events(store.events("run-live"))
+
+    assert {node.id for node in graph.nodes} == {"seed:case-live", "observable:target"}
+    destination = next(node for node in graph.nodes if node.id == "observable:target")
+    assert destination.kind == "external_destination"
+    assert destination.status == "collected"
+    assert len(graph.edges) == 1
+    assert graph.edges[0].source == "seed:case-live"
+    assert graph.edges[0].relation == "publicly_links_to"
+
+
+def test_direct_frontier_anchor_auto_matches_an_already_collected_related_case(
+    tmp_path: Path,
+) -> None:
+    now = datetime.now(UTC)
+    package = tmp_path / "case-package"
+    package.mkdir()
+    result = InvestigationResult(
+        case_directory=str(package),
+        case=CaseRecord(
+            case_id="case-888",
+            seed_url="https://888.com/",
+            final_url="https://888.com/",
+            status="completed",
+            started_at=now,
+            completed_at=now,
+            page_count=1,
+        ),
+        pages=[
+            CrawlPageRecord(
+                id="page-001",
+                url="https://888.com/",
+                normalized_url="https://888.com/",
+                final_url="https://888.com/",
+                depth=0,
+                state="completed",
+                html_evidence_id="evidence-page-001",
+                screenshot_evidence_id="evidence-screenshot-001",
+            )
+        ],
+        frontier=[
+            CrawlFrontierRecord(
+                id="frontier-888casino",
+                depth=1,
+                state="skipped",
+                original_href="https://888casino.com/",
+                normalized_url="https://888casino.com/",
+                source_page_id="page-001",
+                source_evidence_id="evidence-page-001",
+                discovery_method="html_anchor",
+                anchor_text="888casino",
+                skip_reason="external_host_requires_approval",
+            )
+        ],
+    )
+
+    summary = run_live_investigation(
+        result,
+        tmp_path / "run",
+        investigator=None,
+        known_cases=[
+            {
+                "case_id": "case-888casino",
+                "final_url_display": "https://888casino.com/",
+                "public_status": "captured",
+            }
+        ],
+        safety_policy=SafetyPolicy(),
+    )
+
+    graph = summary["graph"]
+    assert isinstance(graph, dict)
+    destination = next(node for node in graph["nodes"] if node["label"] == "https://888casino.com/")
+    assert destination["kind"] == "external_destination"
+    assert destination["status"] == "collected"
+    assert any(edge["relation"] == "publicly_links_to" for edge in graph["edges"])
+    assert summary["pending_leads"] == []

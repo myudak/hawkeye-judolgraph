@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Continuously changing public page</title>
+    <style>body { font-family: sans-serif; margin: 2rem; }</style>
+  </head>
+  <body>
+    <main id="app">
+      <h1>Public information stream</h1>
+      <p>This page remains readable while its public activity counter changes.</p>
+      <a href="https://related.example.invalid/public">Related public page</a>
+      <output id="counter">0</output>
+    </main>
+    <script>
+      const counter = document.getElementById("counter");
+      let value = 0;
+      window.setInterval(() => {
+        value += 1;
+        counter.textContent = String(value);
+        document.body.dataset.tick = String(value);
+      }, 350);
+    </script>
+  </body>
+</html>

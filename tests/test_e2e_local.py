@@ -111,7 +111,6 @@ def test_unusable_fixture_pages_preserve_artifacts_without_target_entities(
     graph = json.loads((case_root / "graph.json").read_text(encoding="utf-8"))
     assert {edge["type"] for edge in graph["edges"]} == {
         "started_from",
-        "resolved_to",
         "contains_page",
         "captured_as",
     }
