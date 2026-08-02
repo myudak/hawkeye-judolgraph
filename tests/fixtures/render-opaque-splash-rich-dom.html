@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Opaque splash over rich document</title>
+  <style>
+    body { margin: 0; font: 16px sans-serif; }
+    main { padding: 24px; }
+    .splash { position: fixed; inset: 0; z-index: 10; background: #071912; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Public information catalogue</h1>
+    <p>
+      This deterministic fixture contains a large amount of ordinary document text behind an
+      opaque splash layer. The DOM reports the words through innerText, but the canonical viewport
+      does not preserve them as inspectable visual evidence. A collector must therefore avoid
+      treating the text-only result as an adequate capture.
+    </p>
+    <nav>
+      <a href="/section-one">Section one</a>
+      <a href="/section-two">Section two</a>
+      <a href="/section-three">Section three</a>
+    </nav>
+    <p>
+      Evidence collection should preserve browser-visible state, source structure, navigation
+      metadata, and stable hashes. Readiness is independent from access outcome. A successful HTTP
+      response does not prove that the meaningful page was visible, and abundant markup does not
+      prove that an analyst can inspect the content in the screenshot. This paragraph repeats the
+      essential semantic contrast so the fixture crosses the deliberately conservative rich-text
+      threshold without relying on scripts, remote resources, or timing behavior.
+    </p>
+    <p>
+      The product records observations as evidence rather than asserting ownership or criminality.
+      Candidate domains remain pending leads until a reviewer approves bounded collection. Every
+      state transition is append-only, and the graph is reconstructed from durable events. This
+      fixture is safe, local, deterministic, non-interactive, and intended only for capture-quality
+      regression testing. It includes enough prose to model a document whose textual representation
+      is rich even though its actual viewport is a uniform blocking surface.
+    </p>
+    <p>
+      Additional catalogue details include public help, policy summaries, navigation labels,
+      informational notices, and descriptive metadata. None of these words are visually available
+      while the opaque layer is present, which is exactly the mismatch under test.
+    </p>
+  </main>
+  <div class="splash" aria-label="Loading"></div>
+</body>
+</html>

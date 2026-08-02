@@ -521,6 +521,8 @@ class BrowserCollector:
                 final_checkpoint = checkpoints[-1]
                 if _low_information(final_checkpoint):
                     limitation_reasons.append("low_information_capture")
+                if _visual_dom_mismatch(final_checkpoint):
+                    limitation_reasons.append("visual_dom_mismatch")
                 html_persistable = html_bytes <= self.max_html_bytes
                 html_omitted_reason = None
                 if not html_persistable:
@@ -848,6 +850,21 @@ def _low_information(checkpoint: CaptureCheckpoint) -> bool:
     )
 
 
+def _visual_dom_mismatch(checkpoint: CaptureCheckpoint) -> bool:
+    """Flag DOM text that is not credibly represented in the viewport pixels.
+
+    ``innerText`` alone cannot detect an opaque splash or challenge layer covering an
+    otherwise rich document.  The two bounded thresholds deliberately require either
+    a nearly uniform viewport or a large amount of text paired with very little visual
+    variation.  Canvas/image-heavy pages remain eligible because this check only
+    applies when the DOM claims meaningful text is visible.
+    """
+
+    return (checkpoint.visible_text_chars >= 80 and checkpoint.informative_tile_ratio < 0.01) or (
+        checkpoint.visible_text_chars >= 1_000 and checkpoint.informative_tile_ratio < 0.10
+    )
+
+
 def _bounded_full_page_screenshot(
     page: Page, checkpoint: CaptureCheckpoint, *, timeout_ms: int
 ) -> tuple[bytes | None, dict[str, int] | None, str | None]:
@@ -913,10 +930,14 @@ def _sanitized_response_headers(response: Response) -> dict[str, str]:
         "server",
         "x-robots-tag",
     }
+    # Playwright's type surface declares string values, but Chromium can expose a null-valued
+    # response header on real redirects/restriction pages. Treat it as absent instead of allowing
+    # one malformed header to erase the entire capture.
+    raw_headers: dict[str, object] = dict(response.all_headers())
     return {
         key.casefold(): value[:1000]
-        for key, value in response.all_headers().items()
-        if key.casefold() in allowed
+        for key, value in raw_headers.items()
+        if key.casefold() in allowed and isinstance(value, str)
     }
 
 

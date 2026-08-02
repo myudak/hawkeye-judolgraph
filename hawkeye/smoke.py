@@ -1,4 +1,4 @@
-"""Bounded live robustness matrix for Engine V0.1, with crawling disabled."""
+"""One-pass bounded live observation matrix with crawling and interaction disabled."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 from hawkeye.pipeline import investigate
 
-LIVE_SMOKE_URLS = (
+LIVE_OBSERVATION_URLS = (
     "https://888.com",
     "https://888casino.com",
     "https://888poker.com",
@@ -23,28 +23,40 @@ LIVE_SMOKE_URLS = (
     "https://skyvegas.com",
     "https://bet365.com",
     "https://williamhill.com",
+    "https://qq101xfw.com",
+    "https://qq888bet4cv.com",
 )
 
 
 def run_live_smoke(output: Path | str) -> dict[str, Any]:
-    """Run the fixed ten-domain matrix, preserving failures and continuing after each one."""
+    """Run each owner-supplied target once and preserve every outcome without retries."""
 
     root = Path(output).expanduser().resolve()
-    root.mkdir(parents=True, exist_ok=True)
+    if root.exists():
+        raise FileExistsError(f"Refusing to overwrite existing live observation output: {root}")
+    root.mkdir(parents=True)
     cases_root = root / "_case-artifacts"
     results: list[dict[str, Any]] = []
-    for index, seed_url in enumerate(LIVE_SMOKE_URLS, start=1):
+    for index, seed_url in enumerate(LIVE_OBSERVATION_URLS, start=1):
         results.append(_run_one(seed_url, root, cases_root, index))
 
     summary = {
-        "matrix": "Engine V0.1 fixed ten-domain live smoke test",
+        "schema_version": "1.0",
+        "matrix": "GEMASTIK bounded 12-domain qualitative observation matrix",
+        "target_count": len(LIVE_OBSERVATION_URLS),
+        "interpretation": (
+            "Time/session/location-dependent observations only; synthetic fixtures remain "
+            "test truth."
+        ),
         "limits": {
             "maximum_primary_pages_per_domain": 1,
             "maximum_crawl_depth": 0,
             "maximum_redirects": 5,
             "timeout_seconds_per_attempt": 30,
-            "controlled_retries": 1,
+            "attempts_per_target": 1,
             "fresh_browser_context_per_attempt": True,
+            "interaction": False,
+            "candidate_recollection": False,
         },
         "results": results,
         "success_count": sum(result["navigation_status"] == "captured" for result in results),
@@ -69,43 +81,31 @@ def _run_one(seed_url: str, root: Path, cases_root: Path, index: int) -> dict[st
     hostname = urlsplit(seed_url).hostname or f"target-{index}"
     target_root = root / hostname
     target_root.mkdir(parents=True, exist_ok=True)
-    attempts = 0
-    total_duration = 0.0
-    final_result: dict[str, Any] | None = None
-
-    while attempts < 2:
-        attempts += 1
-        started = time.monotonic()
-        case_id = f"smoke-{index:02d}-{hostname.replace('.', '-')}-attempt-{attempts}"
-        try:
-            result = investigate(
-                seed_url,
-                output=cases_root,
-                case_id=case_id,
-                timeout_seconds=30.0,
-                case_timeout_seconds=30.0,
-                max_pages=1,
-                max_depth=0,
-                max_redirects=5,
-            )
-        except Exception as error:
-            duration = round(time.monotonic() - started, 3)
-            final_result = _failed_summary(seed_url, str(error), duration)
-        else:
-            duration = round(time.monotonic() - started, 3)
-            final_result = _summarize_case(
-                seed_url,
-                result.case_directory,
-                result.case.model_dump(mode="json"),
-                duration,
-            )
-        total_duration += duration
-        final_result["attempts"] = attempts
-        if final_result["navigation_result"] == "completed":
-            break
-
-    assert final_result is not None
-    final_result["duration_seconds"] = round(total_duration, 3)
+    started = time.monotonic()
+    case_id = f"observation-{index:02d}-{hostname.replace('.', '-')}"
+    try:
+        result = investigate(
+            seed_url,
+            output=cases_root,
+            case_id=case_id,
+            timeout_seconds=30.0,
+            case_timeout_seconds=30.0,
+            max_pages=1,
+            max_depth=0,
+            max_redirects=5,
+        )
+    except Exception as error:
+        duration = round(time.monotonic() - started, 3)
+        final_result = _failed_summary(seed_url, str(error), duration)
+    else:
+        duration = round(time.monotonic() - started, 3)
+        final_result = _summarize_case(
+            seed_url,
+            result.case_directory,
+            result.case.model_dump(mode="json"),
+            duration,
+        )
+    final_result["attempts"] = 1
     case_directory = final_result.get("case_directory")
     artifact_paths = (
         _copy_primary_artifacts(Path(case_directory), target_root)
@@ -125,12 +125,20 @@ def _failed_summary(seed_url: str, error: str, duration_seconds: float) -> dict[
         "navigation_result": "failed",
         "navigation_status": "failed",
         "capture_outcome": "navigation_error",
+        "access_outcome": None,
+        "capture_adequacy": "failed",
+        "extraction_eligible": False,
+        "public_status": "collection_failed",
+        "limitation_reasons": ["collection did not produce a completed case"],
         "content_usable": False,
         "classification_reasons": ["navigation did not complete"],
         "redirect_count": 0,
         "page_title": None,
         "entity_counts": {},
         "screenshot_status": "unavailable",
+        "checkpoint_count": 0,
+        "final_visible_text_chars": 0,
+        "html_bytes": 0,
         "duration_seconds": duration_seconds,
         "failure_or_restriction_reason": error,
         "case_directory": None,
@@ -142,9 +150,18 @@ def _summarize_case(
 ) -> dict[str, Any]:
     directory = Path(case_directory)
     entities_path = directory / "entities.json"
+    pages_path = directory / "pages.json"
+    readiness_path = directory / "capture" / "page-001-readiness.json"
     entities: list[dict[str, Any]] = []
     if entities_path.exists():
         entities = json.loads(entities_path.read_text(encoding="utf-8"))
+    pages = json.loads(pages_path.read_text(encoding="utf-8")) if pages_path.exists() else []
+    primary = pages[0] if isinstance(pages, list) and pages else {}
+    readiness = (
+        json.loads(readiness_path.read_text(encoding="utf-8")) if readiness_path.exists() else {}
+    )
+    checkpoints = readiness.get("checkpoints", []) if isinstance(readiness, dict) else []
+    final_checkpoint = checkpoints[-1] if isinstance(checkpoints, list) and checkpoints else {}
     title = case.get("page_title") or next(
         (entity["value"] for entity in entities if entity["type"] == "page_title"), None
     )
@@ -156,6 +173,11 @@ def _summarize_case(
         "navigation_result": case["status"],
         "navigation_status": case.get("navigation_status", "failed"),
         "capture_outcome": case.get("capture_outcome", "navigation_error"),
+        "access_outcome": primary.get("access_outcome", case.get("access_outcome")),
+        "capture_adequacy": primary.get("capture_adequacy", case.get("capture_adequacy")),
+        "extraction_eligible": primary.get("extraction_eligible", case.get("extraction_eligible")),
+        "public_status": primary.get("public_status", case.get("public_status")),
+        "limitation_reasons": primary.get("limitation_reasons", case.get("limitation_reasons", [])),
         "content_usable": case.get("content_usable") is True,
         "classification_reasons": classification_reasons,
         "redirect_count": len(case.get("redirect_chain", [])),
@@ -164,6 +186,9 @@ def _summarize_case(
         "screenshot_status": "captured"
         if (directory / "screenshots" / "page-001.png").exists()
         else "unavailable",
+        "checkpoint_count": len(checkpoints),
+        "final_visible_text_chars": final_checkpoint.get("visible_text_chars", 0),
+        "html_bytes": readiness.get("html_bytes", 0) if isinstance(readiness, dict) else 0,
         "duration_seconds": duration_seconds,
         "failure_or_restriction_reason": error_or_reason,
         "case_directory": case_directory,
@@ -171,23 +196,36 @@ def _summarize_case(
 
 
 def _copy_primary_artifacts(case_directory: Path, target_root: Path) -> dict[str, str | None]:
-    html_source = case_directory / "pages" / "page-001.html"
-    screenshot_source = case_directory / "screenshots" / "page-001.png"
-    html_target = target_root / "page.html"
-    screenshot_target = target_root / "screenshot.png"
-    if html_source.exists():
-        shutil.copy2(html_source, html_target)
-    if screenshot_source.exists():
-        shutil.copy2(screenshot_source, screenshot_target)
-    return {
-        "case": str(case_directory),
-        "html": str(html_target) if html_target.exists() else None,
-        "screenshot": str(screenshot_target) if screenshot_target.exists() else None,
+    sources = {
+        "html": case_directory / "pages" / "page-001.html",
+        "visible_text": case_directory / "pages" / "page-001-visible.txt",
+        "screenshot": case_directory / "screenshots" / "page-001.png",
+        "initial_screenshot": case_directory / "screenshots" / "page-001-initial.png",
+        "full_page_screenshot": case_directory / "screenshots" / "page-001-full.png",
+        "readiness": case_directory / "capture" / "page-001-readiness.json",
+        "response_metadata": case_directory / "capture" / "page-001-response.json",
     }
+    artifact_paths: dict[str, str | None] = {"case": str(case_directory)}
+    for name, source in sources.items():
+        suffix = source.suffix or ".bin"
+        target = target_root / f"{name.replace('_', '-')}{suffix}"
+        if source.exists():
+            shutil.copy2(source, target)
+        artifact_paths[name] = str(target) if target.exists() else None
+    return artifact_paths
 
 
 def _empty_artifact_paths() -> dict[str, None]:
-    return {"case": None, "html": None, "screenshot": None}
+    return {
+        "case": None,
+        "html": None,
+        "visible_text": None,
+        "screenshot": None,
+        "initial_screenshot": None,
+        "full_page_screenshot": None,
+        "readiness": None,
+        "response_metadata": None,
+    }
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -199,28 +237,34 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _render_summary_markdown(results: list[dict[str, Any]]) -> str:
     rows = [
-        "# Engine V0.1 live smoke-test summary",
+        "# GEMASTIK bounded live-observation summary",
         "",
-        "| Domain | Navigation | Outcome | Usable | Final URL | Redirects | Screenshot | "
-        "Duration (s) | Note |",
-        "| --- | --- | --- | --- | --- | ---: | --- | ---: | --- |",
+        "> Qualitative, time/session/location-dependent observations. Synthetic fixtures remain "
+        "test truth.",
+        "",
+        "| Domain | Public status | Access | Adequacy | Visible chars | HTML bytes | Final URL | "
+        "Duration (s) | Limitations / note |",
+        "| --- | --- | --- | --- | ---: | ---: | --- | ---: | --- |",
     ]
     for result in results:
         row_template = (
-            "| {domain} | {navigation} | {outcome} | {usable} | {final_url} | {redirects} | "
-            "{screenshot} | {duration:.3f} | {reason} |"
+            "| {domain} | {public_status} | {access} | {adequacy} | {visible_chars} | "
+            "{html_bytes} | {final_url} | {duration:.3f} | {reason} |"
         )
         rows.append(
             row_template.format(
                 domain=_table_value(result["input_domain"]),
-                navigation=_table_value(result["navigation_status"]),
-                outcome=_table_value(result["capture_outcome"]),
-                usable="yes" if result["content_usable"] else "no",
+                public_status=_table_value(result.get("public_status")),
+                access=_table_value(result.get("access_outcome")),
+                adequacy=_table_value(result.get("capture_adequacy")),
+                visible_chars=result.get("final_visible_text_chars", 0),
+                html_bytes=result.get("html_bytes", 0),
                 final_url=_table_value(result["final_url"]),
-                redirects=result["redirect_count"],
-                screenshot=_table_value(result["screenshot_status"]),
                 duration=result["duration_seconds"],
-                reason=_table_value(result["failure_or_restriction_reason"]),
+                reason=_table_value(
+                    "; ".join(result.get("limitation_reasons", []))
+                    or result["failure_or_restriction_reason"]
+                ),
             )
         )
     return "\n".join(rows) + "\n"

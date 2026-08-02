@@ -61,6 +61,21 @@ def test_classifies_geo_restriction_and_unknown_interstitial() -> None:
     assert unknown.outcome is CaptureOutcome.UNKNOWN_RESTRICTION
 
 
+def test_classifies_country_network_restriction_as_geo_restricted() -> None:
+    title, visible_text = _fixture_content("country-network-restriction.html")
+
+    classification = classify_capture(
+        title=title,
+        final_url="https://fixture.test/",
+        visible_text=visible_text,
+        navigation_status="captured",
+    )
+
+    assert classification.outcome is CaptureOutcome.GEO_RESTRICTED
+    assert classification.content_usable is False
+    assert "geo-restriction indicator: does not accept bets from" in classification.reasons
+
+
 def test_timeout_and_navigation_error_take_precedence() -> None:
     timed_out = classify_capture(
         title="Just a moment...",

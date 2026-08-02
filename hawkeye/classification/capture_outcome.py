@@ -31,6 +31,8 @@ _GEO_RESTRICTED = (
     "not available in your region",
     "not available in this region",
     "not available in your jurisdiction",
+    "does not accept bets from",
+    "accessing this site from a country",
     "location restricted",
     "geo-restricted",
 )

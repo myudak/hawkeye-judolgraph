@@ -46,10 +46,12 @@ def fixture_server_url() -> Iterator[str]:
         "/render-visual-change-static-dom.html": "render_visual_change_static_dom.html",
         "/render-rich-hidden-blank.html": "render-rich-hidden-blank.html",
         "/geo-restriction-wording.html": "geo-restriction-wording.html",
+        "/country-network-restriction.html": "country-network-restriction.html",
         "/unavailable-by-location.html": "unavailable-by-location.html",
         "/render-long-page.html": "render-long-page.html",
         "/blank-access-challenge.html": "blank-access-challenge.html",
         "/semantic-evidence.html": "semantic-evidence.html",
+        "/render-opaque-splash-rich-dom.html": "render-opaque-splash-rich-dom.html",
     }
 
     class Handler(BaseHTTPRequestHandler):

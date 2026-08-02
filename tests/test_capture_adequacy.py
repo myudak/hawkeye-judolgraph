@@ -134,3 +134,17 @@ def test_long_page_is_bounded_and_canvas_can_be_adequate_visual_evidence(
 
     canvas_result, _ = _capture(fixture_server_url, tmp_path, "render-canvas-heavy.html")
     assert canvas_result.pages[0].capture_adequacy is CaptureAdequacy.ADEQUATE
+
+
+def test_opaque_splash_over_rich_dom_is_limited_and_not_extracted(
+    fixture_server_url: str, tmp_path: Path
+) -> None:
+    result, root = _capture(fixture_server_url, tmp_path, "render-opaque-splash-rich-dom.html")
+    page = result.pages[0]
+    readiness = json.loads((root / "capture/page-001-readiness.json").read_text("utf-8"))
+
+    assert readiness["checkpoints"][-1]["visible_text_chars"] >= 1_000
+    assert readiness["checkpoints"][-1]["informative_tile_ratio"] < 0.10
+    assert "visual_dom_mismatch" in readiness["limitation_reasons"]
+    assert page.capture_adequacy is CaptureAdequacy.LIMITED
+    assert page.extraction_eligible is False
