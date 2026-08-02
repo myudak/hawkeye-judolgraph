@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>DOM growth with static pixels</title>
+    <style>
+      body { font-family: sans-serif; margin: 2rem; }
+      .hidden-local-node { display: none; }
+    </style>
+  </head>
+  <body>
+    <main id="scene"><h1>Static local scene</h1><p>Visible pixels remain unchanged.</p></main>
+    <script>
+      window.setTimeout(() => {
+        const fragment = document.createDocumentFragment();
+        for (let index = 0; index < 20; index += 1) {
+          const node = document.createElement("span");
+          node.className = "hidden-local-node";
+          node.textContent = `Hidden local node ${index}.`;
+          fragment.appendChild(node);
+        }
+        document.getElementById("scene").appendChild(fragment);
+      }, 500);
+    </script>
+  </body>
+</html>

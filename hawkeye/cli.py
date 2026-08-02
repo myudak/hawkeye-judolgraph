@@ -10,6 +10,7 @@ from pathlib import Path
 
 from hawkeye.collector.safety import SafetyPolicy, UnsafeUrlError
 from hawkeye.comparison import ComparisonInputError, compare_cases, write_comparison
+from hawkeye.diagnostics import DiagnosticInputError, run_render_diagnostics
 from hawkeye.discovery import (
     ExternalDiscoveryInputError,
     ExternalDiscoverySourceError,
@@ -114,6 +115,29 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument(
         "--report", type=Path, required=True, help="New report JSON output path"
     )
+
+    diagnose_parser = subcommands.add_parser(
+        "diagnose",
+        help=(
+            "Create fixed-time render diagnostics for a completed case page without changing "
+            "canonical evidence"
+        ),
+    )
+    diagnose_parser.add_argument("case_directory", type=Path, help="Completed local case directory")
+    diagnose_parser.add_argument(
+        "--page-id", default="page-001", help="Verified case page ID to measure (default: page-001)"
+    )
+    diagnose_parser.add_argument(
+        "--mode", choices=("fixture", "live"), required=True, help="Diagnostic provenance label"
+    )
+    diagnose_parser.add_argument(
+        "--timeout", type=float, default=30.0, help="Navigation timeout in seconds"
+    )
+    diagnose_parser.add_argument(
+        "--allow-loopback-for-testing",
+        action="store_true",
+        help="Permit loopback only for deterministic local diagnostic fixtures",
+    )
     discover_parser.add_argument(
         "--source", choices=("urlscan-public",), default="urlscan-public", help="Public source"
     )
@@ -166,6 +190,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_discover(args)
     if args.command == "evaluate":
         return _run_evaluate(args)
+    if args.command == "diagnose":
+        return _run_diagnose(args)
     if args.command == "serve":
         return _run_serve(args)
     raise AssertionError(f"Unexpected command: {args.command}")
@@ -315,6 +341,78 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         )
     )
     return 0 if report.passed else 1
+
+
+def _run_diagnose(args: argparse.Namespace) -> int:
+    """Run a separate render diagnostic; it cannot replace canonical case evidence."""
+
+    if args.allow_loopback_for_testing and os.environ.get("HAWKEYE_TEST_MODE") != "1":
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": (
+                        "--allow-loopback-for-testing requires HAWKEYE_TEST_MODE=1 and is only "
+                        "intended for deterministic local fixtures"
+                    ),
+                },
+                indent=2,
+            )
+        )
+        return 2
+    if args.mode == "fixture" and not args.allow_loopback_for_testing:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": "Fixture diagnostics require --allow-loopback-for-testing",
+                },
+                indent=2,
+            )
+        )
+        return 2
+    if args.mode == "live" and args.allow_loopback_for_testing:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": "Live diagnostics cannot use the loopback test safety policy",
+                },
+            )
+        )
+        return 2
+    command = (
+        f"python -m hawkeye diagnose {args.case_directory} --page-id {args.page_id} "
+        f"--mode {args.mode}"
+    )
+    try:
+        result = run_render_diagnostics(
+            args.case_directory,
+            page_id=args.page_id,
+            mode=args.mode,
+            timeout_seconds=args.timeout,
+            safety_policy=SafetyPolicy(allow_loopback_for_testing=args.allow_loopback_for_testing),
+            command=command,
+        )
+    except (DiagnosticInputError, FileExistsError, ValueError) as error:
+        print(json.dumps({"status": "rejected", "error": str(error)}, indent=2))
+        return 2
+    document = result.document
+    print(
+        json.dumps(
+            {
+                "status": document.status,
+                "diagnostics_path": str(result.path),
+                "source_case_id": document.source_case_id,
+                "source_page_id": document.source_page_id,
+                "checkpoint_count": len(document.checkpoints),
+                "total_diagnostic_time_ms": document.total_diagnostic_time_ms,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0 if document.status != "diagnostic_error" else 1
 
 
 def _run_serve(args: argparse.Namespace) -> int:

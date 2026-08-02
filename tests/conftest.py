@@ -36,6 +36,14 @@ def fixture_server_url() -> Iterator[str]:
         "/bot-challenge.html": "bot_challenge.html",
         "/consent-wall.html": "consent_wall.html",
         "/delayed-script-render-shell.html": "delayed_script_render_shell.html",
+        "/render-static-complete.html": "render_static_complete.html",
+        "/render-shell-500.html": "render_shell_500.html",
+        "/render-shell-1500.html": "render_shell_1500.html",
+        "/render-continuing.html": "render_continuing.html",
+        "/render-sparse-blank.html": "render_sparse_blank.html",
+        "/render-canvas-heavy.html": "render_canvas_heavy.html",
+        "/render-dom-growth-static.html": "render_dom_growth_static.html",
+        "/render-visual-change-static-dom.html": "render_visual_change_static_dom.html",
     }
 
     class Handler(BaseHTTPRequestHandler):

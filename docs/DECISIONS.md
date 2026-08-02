@@ -66,3 +66,14 @@ the isolated collector artifacts, which preserved title-led sparse shells and da
 This is recorded as a rendered-content completeness gap, not as a challenge, failure, mirror, or
 site conclusion. G0 adds a fully local delayed-render shell fixture but does not change collection,
 classification, waiting, user-agent, screenshot, or scoring behavior; any fix belongs to G1.
+
+## ADR-009 — G1 diagnostics are isolated and fixed-time
+
+**Status:** accepted
+
+G1 may create an opt-in `diagnostics/render-diagnostics.json` under an already-verified local
+case. It re-navigates only the saved same-site page in a fresh non-interactive context and records
+neutral measurements at `0`, `500`, `1500`, and `3000` milliseconds. The three-second wait budget
+is fixed and does not adapt to a page. Diagnostics reference canonical evidence but do not modify
+or replace canonical HTML, screenshots, classification, entities, graph edges, candidates, or
+comparison scores. They do not determine why a page changed.

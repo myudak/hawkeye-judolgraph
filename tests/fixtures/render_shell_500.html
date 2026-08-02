@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Render after 500 milliseconds</title>
+    <style>body { font-family: sans-serif; margin: 2rem; }</style>
+  </head>
+  <body>
+    <main id="app">Initial local shell.</main>
+    <script>
+      window.setTimeout(() => {
+        document.getElementById("app").innerHTML =
+          "<h1>Local content after 500 milliseconds</h1>" +
+          "<p>This is fixed deterministic rendered text.</p>" +
+          "<a href='#local'>Local anchor</a>";
+      }, 500);
+    </script>
+  </body>
+</html>

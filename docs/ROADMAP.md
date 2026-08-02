@@ -35,12 +35,16 @@ Completed evidence: baseline tag `v1.0.0-baseline`, operational governance docum
 public manifests, a verified fixture-policy hash, a fully local delayed-render shell fixture,
 read-only `hawkeye evaluate` reports, and 103 passing automated tests.
 
-## G1 — Rendered-content completeness diagnostics and bounded capture-readiness evaluation — proposed, not approved
+## G1 — Rendered-content completeness diagnostics and bounded capture-readiness evaluation — completed
 
 Potential work: define reproducible completeness indicators and bounded render-readiness timing
 budgets for sparse initial shells that later render client-side. It must not introduce CAPTCHA
 bypass, stealth plugins, unrestricted delays, arbitrary user-agent impersonation, or interaction
 with login controls.
+
+Completed evidence: an opt-in `hawkeye diagnose` command; immutable in-case diagnostics; fixed
+`0/500/1500/3000 ms` checkpoints; eight zero-network fixture scenarios; two qualitative live
+diagnostic runs; and 115 passing automated tests. Canonical collection behavior did not change.
 
 ## G2 — Competition investigator workflow — proposed, not approved
 

@@ -234,6 +234,22 @@ hash, engine version, commit hash when available, artifact hashes, observed inva
 environmental restrictions. It never overwrites an existing report. See `docs/EVALUATION.md` for
 the collection and Chrome-observation protocol.
 
+## Render diagnostics (G1)
+
+G1 adds an opt-in diagnostic pass over one already-collected case page. It performs a separate,
+fresh, non-interactive navigation and writes only
+`diagnostics/render-diagnostics.json` inside that local case package:
+
+```powershell
+python -m hawkeye diagnose ./evaluation/live-cases/run-20260802/eval-qq101xfw-20260802 --mode live
+```
+
+The fixed checkpoints are initial navigation, +500 ms, +1,500 ms, and +3,000 ms. Each records
+DOM and screenshot measurements plus deltas. The diagnostics never replace canonical HTML or
+screenshots, change entities/graph/classification/scoring, interact with the page, fetch a
+candidate, impersonate a user-agent, or extend its three-second wait budget because content looks
+incomplete. Diagnostic labels are neutral observations, not a cause determination.
+
 ## Explicit V0.2 policy limits
 
 The collector does not fetch or interpret `robots.txt` in this bounded local-engine milestone; any

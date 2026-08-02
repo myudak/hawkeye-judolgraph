@@ -45,6 +45,37 @@ python -m hawkeye evaluate <manifest.json> <completed-case-directory> --report <
 The command reads and integrity-verifies the case before evaluating it. It performs no network
 request and refuses to overwrite an existing report.
 
+## Render-diagnostics protocol (G1)
+
+Render diagnostics are a distinct opt-in operation, not a modification of collection:
+
+```powershell
+python -m hawkeye diagnose <completed-case-directory> --mode live
+```
+
+For deterministic local fixtures, `--mode fixture --allow-loopback-for-testing` also requires
+`HAWKEYE_TEST_MODE=1`. The operation re-verifies the completed case and page, then writes one new
+`diagnostics/render-diagnostics.json` file. It is rejected if that file already exists.
+
+The fixed schedule is `0`, `500`, `1500`, and `3000` milliseconds after navigation/load
+completion. The additional wait budget is exactly three seconds and never adapts. Each checkpoint
+records document ready state, HTML bytes, visible-text character count, element/anchor/image/
+iframe/canvas counts, document height, screenshot hash/bytes/entropy, and adjacent deltas. Neutral
+labels are `stable_across_checkpoints`, `changed_after_initial_capture`,
+`continued_changing_at_budget_end`, `low_information_across_checkpoints`, and `diagnostic_error`.
+
+The diagnostics do not alter canonical HTML/screenshots, `content_usable`, entities, graph edges,
+candidates, comparison scores, or review semantics. They do not interact with pages, impersonate
+a user agent, install stealth behavior, bypass restrictions, or fetch candidate domains. A change
+observed within the fixed schedule is not proof of its cause or of which checkpoint is the true
+canonical page.
+
+The deterministic G1 scenarios live under `tests/fixtures/` and cover: immediate static content;
+rendering after 500 ms; rendering after 1,500 ms; continued change at the budget end; permanent
+sparse output; canvas-heavy output; DOM growth with unchanged pixels; and pixel change with stable
+DOM. Their tests use relational assertions rather than exact screenshot byte sizes or live-site
+values.
+
 ## Live collection protocol
 
 - Use a fresh, unauthenticated browser context where practical.

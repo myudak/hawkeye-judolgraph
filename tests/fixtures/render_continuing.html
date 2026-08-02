@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Continuing local render fixture</title>
+    <style>body { font-family: sans-serif; margin: 2rem; }</style>
+  </head>
+  <body>
+    <main id="app"><h1>Initial local state</h1></main>
+    <script>
+      const app = document.getElementById("app");
+      [400, 800, 1200, 1600, 2000, 2400, 2800, 3200, 3600].forEach((delay, index) => {
+        window.setTimeout(() => {
+          const item = document.createElement("p");
+          item.textContent = `Fixed local update ${index + 1}.`;
+          app.appendChild(item);
+        }, delay);
+      });
+    </script>
+  </body>
+</html>

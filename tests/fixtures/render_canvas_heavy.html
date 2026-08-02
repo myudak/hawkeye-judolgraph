@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Canvas-heavy local fixture</title>
+    <style>body { margin: 0; background: #101820; }</style>
+  </head>
+  <body>
+    <canvas id="scene" width="900" height="600" aria-label="Synthetic canvas scene"></canvas>
+    <script>
+      const context = document.getElementById("scene").getContext("2d");
+      for (let row = 0; row < 12; row += 1) {
+        for (let column = 0; column < 18; column += 1) {
+          context.fillStyle = `hsl(${(row * 30 + column * 13) % 360} 70% 55%)`;
+          context.fillRect(column * 50, row * 50, 48, 48);
+        }
+      }
+    </script>
+  </body>
+</html>

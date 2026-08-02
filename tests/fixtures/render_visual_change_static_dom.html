@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Visual change with static DOM</title>
+    <style>body { margin: 0; background: #101820; }</style>
+  </head>
+  <body>
+    <canvas id="scene" width="900" height="600" aria-label="Synthetic changing canvas"></canvas>
+    <script>
+      const context = document.getElementById("scene").getContext("2d");
+      context.fillStyle = "#123456";
+      context.fillRect(0, 0, 900, 600);
+      window.setTimeout(() => {
+        context.fillStyle = "#d95f02";
+        context.fillRect(0, 0, 900, 600);
+      }, 500);
+    </script>
+  </body>
+</html>
