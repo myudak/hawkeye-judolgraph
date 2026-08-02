@@ -2,11 +2,11 @@
 
 ## Repository and product
 
-- [x] G4A capture adequacy implemented with fixed checkpoint schedule.
+- [x] G4A capture adequacy implemented with mandatory checkpoints and bounded settle extension.
 - [x] G4B semantic evidence and crop provenance implemented.
 - [x] Exactly 10 controlled interaction scenarios checked in.
 - [x] Server policy blocks all controlled prohibited actions.
-- [x] Codex capability probe and deterministic fallback implemented.
+- [x] Codex strict-output capability probe and deterministic fallback implemented.
 - [x] Synthetic Page A → Page B → assertion path implemented.
 - [x] Real candidate mode stops for explicit approval.
 - [x] SQLite event/assertion/review append-only triggers implemented.
@@ -21,7 +21,7 @@
 - [x] Public name remains `[NAMA PRODUK FINAL]`.
 - [x] No ownership, operator, criminality, illegality, or probability claim.
 - [x] Benchmark explicitly limited to synthetic fixtures.
-- [x] Codex model path described as disabled by current capability result.
+- [x] Codex and fallback paths described according to their verified current behavior.
 - [x] Live sites excluded from official demo and benchmark.
 - [x] Missing user research and impact data marked TODO.
 - [ ] Every external factual claim has a verified citation.

@@ -176,3 +176,32 @@ packages or the event reducer, and the DOM inspector/timeline remains the access
 The local default may prefer an ignored, owner-authorized QQ observation when that case root is
 explicitly supplied to `hawkeye serve`. The application does not bundle, commit, or redistribute
 that live screenshot; deterministic `.invalid` fixtures remain official demo and benchmark truth.
+
+## ADR-019 — Useful bounded expansion replaces the one-page product path
+
+**Status:** accepted; supersedes the fixed canonical-budget part of ADR-012 and the external
+recollection restriction in ADR-016 for the preliminary MVP.
+
+Every URL scan now performs one coherent workflow: up to three same-site pages at depth one,
+mandatory readiness checkpoints with bounded settle extensions, verified or provisional semantic
+evidence, one policy-permitted agent action, append-only events, and the progressive graph. A
+readable page that remains dynamic may produce explicitly provisional evidence instead of being
+discarded. No authentication, challenge, geo, rate-limit, or access-control bypass is added.
+
+## ADR-020 — Direct links drive cross-case graph identity
+
+**Status:** accepted.
+
+Normalized hostnames merge direct public anchors with already verified local cases. Thus an observed
+`888.com` anchor to an already captured `888casino.com` becomes a collected destination node; it
+does not become an ownership claim. An unseen brand-related hostname remains a dashed candidate and
+requires explicit collection approval. Generated candidates are never crawled automatically.
+
+## ADR-021 — Strict Responses output is the Codex capability gate
+
+**Status:** accepted; clarifies ADR-015.
+
+The service discovers a model through the fixed loopback model route and must complete a strict
+JSON-schema probe. The decision schema is normalized to strict required nullable fields. A selected
+tool reference must exactly equal a server-issued safe reference. Codex never receives or executes
+Playwright; transport or validation failure activates the deterministic fallback.

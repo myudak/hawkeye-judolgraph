@@ -62,13 +62,14 @@ Tidak ada wawancara, peserta usability, atau statistik pengguna yang diklaim pad
 Tujuan utama adalah menyediakan alur lokal yang dapat direproduksi:
 
 ```text
-Page A
-→ deterministic capture
+Public seed
+→ bounded same-site capture (up to 3 pages, depth 1)
+→ verified or explicitly provisional semantic evidence
 → explicit evidence gap
-→ bounded safe interaction
+→ one Codex-selected or deterministic safe interaction
 → public observable
-→ direct Page B discovery or attributable fixture-search lead
-→ deterministic Page B recollection
+→ direct candidate discovery or local-case hostname match
+→ explicit approval before an unseen candidate is collected
 → evidence-backed candidate relation
 → human review
 → progressive evidence graph
@@ -98,10 +99,11 @@ register, membuat akun, mengirim pesan, mengirim formulir, membayar, deposit, wi
 taruhan, menyelesaikan CAPTCHA, melewati pembatasan geografis, mengunduh atau menjalankan binary,
 memasang aplikasi, maupun mengakses jaringan privat/lokal pada mode produksi.
 
-Pengumpulan otomatis kandidat nyata tidak dilakukan. Mode real-world berhenti pada
-`candidate_page.approval_required`; persetujuan yang dicatat tetap tidak menjalankan pengumpulan
-eksternal di dalam UI. Recollection otomatis hanya berlaku untuk fixture `.invalid` yang tidak
-melakukan jaringan.
+Kandidat nyata tidak pernah dikumpulkan otomatis. Mode real-world berhenti pada
+`candidate_page.approval_required`. Hanya setelah pengguna menekan approval, kandidat tautan
+langsung dikumpulkan satu kali dengan budget satu halaman/depth nol. Domain yang sudah memiliki
+case lokal tidak dikumpulkan ulang: hostname yang sama langsung diproyeksikan sebagai tujuan
+terkumpul. Semua relasi tetap `needs_review` dan tidak menyatakan kepemilikan.
 
 Konsol tidak dipublikasikan. Tidak ada autentikasi multi-user, deployment publik, PostgreSQL,
 distributed queue, Kubernetes, microservice kompleks, atau dependensi paid search. Perubahan ke
@@ -120,9 +122,9 @@ dan tidak boleh menjadi unit-test truth.
 
 Pengembangan menggunakan milestone berbatas dengan bukti uji pada setiap lapisan:
 
-1. **G4A — Capture Adequacy.** Jadwal checkpoint 0/500/1500/3000 ms dipromosikan menjadi tangkapan
-   kanonik, bersama innerText browser, screenshot awal/final/full-page terbatas, metadata respons,
-   readiness, dan kebijakan HTML 2 MB/5 MB.
+1. **G4A — Capture Adequacy.** Checkpoint wajib 0/500/1500/3000 ms dapat diperpanjang secara
+   berbatas ke 5000/8000 ms ketika halaman informatif masih berubah. Tangkapan menyimpan innerText,
+   screenshot awal/kanonik/full-page, metadata respons, readiness, dan kebijakan HTML 2 MB/5 MB.
 2. **G4B — Semantic Evidence.** Observasi publik diekstrak hanya dari capture yang eligible, dengan
    normalisasi, provenance, konteks, screenshot, dan crop saat bounding box stabil.
 3. **G5 — Controlled Interaction.** Tepat 10 skenario berkualitas mendefinisikan safe reveal,
@@ -143,14 +145,16 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 
 ### Kebutuhan fungsional
 
-- Menangkap satu seed publik berbatas atau membuat walkthrough lokal dari fixture terkontrol.
+- Menangkap satu seed publik, maksimal tiga halaman same-site pada depth satu, atau membuat
+  walkthrough lokal dari fixture terkontrol.
 - Menangkap halaman dengan status akses dan kecukupan yang eksplisit.
-- Menampilkan artefak awal dan kanonik beserta hash.
+- Menampilkan carousel screenshot awal, kanonik, dan full-page beserta artefak terverifikasi.
 - Mengekstrak 14 tipe observasi semantik publik.
 - Mendaftar elemen interaktif menggunakan referensi stabil.
 - Memblokir tindakan terlarang sebelum klik.
 - Menjalankan satu keputusan agen terstruktur atau fallback deterministik.
-- Menyimpan lead, Page B recollection, assertion, review, dan event SQLite.
+- Mencocokkan tautan langsung ke case lokal berdasarkan hostname; menyimpan lead baru, candidate
+  recollection setelah approval, assertion, review, dan event SQLite.
 - Membangun graf canvas stabil dengan pan/zoom/drag/hit-testing/minimap, timeline/replay, screenshot-first
   evidence inspector, search/focus, dan daftar relasi accessible dari bukti/event tersimpan.
 - Menghasilkan benchmark static/rule-based/agent-assisted dengan output mentah dan Markdown.
@@ -173,10 +177,10 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 Controlled or public seed
         │
         ▼
-Playwright collector ──► filesystem artifacts + SHA-256
+Playwright collector (3 pages / depth 1) ──► filesystem artifacts + SHA-256
         │
-        ├── capture readiness / access / adequacy
-        └── eligible semantic observations + crops
+        ├── bounded settle / access / adequacy
+        └── verified or provisional observations + crops
                          │
                          ▼
 Stable element map ─► server policy ─► narrow interaction executor
@@ -185,13 +189,45 @@ Stable element map ─► server policy ─► narrow interaction executor
              CodexInvestigator / deterministic fallback
                          │
                          ▼
-Candidate lead ─► recollected Page B ─► candidate assertion
+Known hostname ─► collected graph node
+Unseen direct lead ─► explicit approval ─► recollected Page B ─► candidate assertion
                          │
                          ▼
 SQLite append-only events + human reviews
                          │
                          ▼
 Idempotent graph reducer ─► localhost evidence console
+```
+
+```mermaid
+flowchart TD
+    S["Public seed"] --> C["Bounded Playwright collector<br/>3 pages · depth 1"]
+    C --> A["Verified filesystem artifacts<br/>SHA-256 · screenshots · HTML · metadata"]
+    C --> Q["Access + adequacy + settle checkpoints"]
+    Q --> E["Verified or provisional semantic evidence"]
+    C --> M["Stable interactive element map"]
+    M --> P["Server-side policy preflight"]
+    X["Codex strict-schema decision"] --> V["Exact server-issued reference validation"]
+    F["Deterministic fallback"] --> P
+    V --> P
+    P -->|"one safe action"| B["Narrow interaction executor"]
+    P -->|"blocked"| L["Persisted policy event<br/>executed = false"]
+    B --> I["Interaction screenshot + resulting public observable"]
+    E --> D["Direct-link and hostname matching"]
+    I --> D
+    D -->|"known local hostname"| K["Collected related case node"]
+    D -->|"unseen direct candidate"| G["Pending lead"]
+    G --> H["Explicit human approval"]
+    H --> R["One-page candidate recollection"]
+    R --> N["Evidence-backed candidate assertion"]
+    N --> U["Append-only human review"]
+    A --> DB["Append-only event + review SQLite"]
+    K --> DB
+    L --> DB
+    U --> DB
+    DB --> GR["Idempotent graph reducer"]
+    GR --> UI["Animated canvas + timeline + evidence inspector"]
+    A --> UI
 ```
 
 ### Desain data penting
@@ -215,7 +251,8 @@ animation queue.
 
 ## 7. Implementasi Perangkat Lunak
 
-Kolektor menunggu checkpoint tetap tanpa berinteraksi. DOM tersembunyi tidak dapat berpura-pura
+Kolektor menunggu checkpoint wajib dan hanya menambah dua settle checkpoint berbatas tanpa
+berinteraksi. DOM tersembunyi tidak dapat berpura-pura
 sebagai visible evidence karena klasifikasi menggunakan `innerText` dan metrik visual. HTML hingga
 5 MB dipersist; input ekstraktor dibatasi 2 MB. Halaman di atas 5 MB tetap menyimpan visible text,
 screenshot, metadata, ukuran, hash, readiness, serta alasan omission.
@@ -229,10 +266,12 @@ Referensi elemen memuat DOM path, role, tag, accessible name, visible text, href
 dan snapshot. Referensi stale ditolak. Login, register, Contact Us, input/form, aplikasi eksternal,
 payment, dan download diblokir server-side.
 
-Probe lokal aktual menemukan route `/v1/responses`, tetapi model dan kemampuan structured tools
-tidak diiklankan. Karena itu official demo menggunakan fallback deterministik. Fallback memilih
-tindakan public reveal pertama yang lolos policy dan menghasilkan event/provenance dengan bentuk
-yang sama seperti path Codex.
+Probe lokal aktual menemukan route `/v1/responses`, memilih `gpt-5.6-terra` dari `/v1/models`, dan
+memverifikasi strict JSON-schema output. Pada validasi QQ 2026-08-03, Codex memilih referensi PROMO
+yang diterbitkan server; policy memvalidasi ulang dan browser menyimpan bukti route `/Promotion`.
+Jika probe, transport, schema, atau exact-reference check gagal, fallback deterministik memilih
+public reveal yang lolos policy dengan bentuk event/provenance yang sama. Benchmark resmi tetap
+menggunakan fixture/fallback agar reproducible.
 
 Canonical synthetic scenario `redirect-new-tab` menghasilkan Page A artifact, explicit evidence
 gap, tool request dan completion, redirect observation, candidate lead, Page B artifact, Page B
@@ -244,6 +283,9 @@ attempt per scenario). Hasil lengkap terdapat pada `BENCHMARK_RESULTS.md`. Unsaf
 adalah 1.0000. Angka ini tidak digeneralisasi ke situs live.
 
 ## 8. Screenshot Mockup Interface Perangkat Lunak
+
+Meskipun nama bagian mengikuti struktur template, seluruh gambar di bawah adalah tangkapan aktual
+dari software localhost, bukan mockup yang digambar terpisah.
 
 Interface final preliminary MVP memakai komposisi graph-first satu layar:
 
@@ -258,7 +300,7 @@ Interface final preliminary MVP memakai komposisi graph-first satu layar:
 6. safe review walkthrough dari selector, Page A/Page B fixture artifacts, candidate assertion,
    dan form review append-only.
 
-Default lokal dapat membuka observasi QQ yang sudah tersimpan apabila root live lokal dipilih,
+Default lokal dapat membuka run QQ terbaru apabila root live lokal dipilih,
 tetapi aset itu diabaikan Git dan tidak digunakan pada screenshot proposal. Figure resmi memakai
 fixture `.invalid` yang disanitasi. Screenshot UI aktual, hash, viewport, commit, dan source run
 dicatat di `FIGURE_INDEX.md`; tidak ada mockup atau graf palsu.
@@ -302,15 +344,16 @@ python -m hawkeye serve --cases verification-output/demo-cases `
   --workspace verification-output/mvp-workspace --port 8760
 ```
 
-Buka `http://127.0.0.1:8760/`. Aplikasi membuka case terverifikasi pertama; masukkan URL publik dan
-tekan **Scan** untuk tangkapan satu halaman tanpa klik atau candidate crawling. Pilih **New safe
-review walkthrough…** pada selector untuk membuat alur fixture Page A → Page B. Periksa agent mode,
-klik node canvas, buka artifacts, lihat assertion, masukkan reviewer label/alasan, pilih outcome,
-lalu tekan **Append review decision**. Replay memperlihatkan kembali urutan event tersimpan.
+Buka `http://127.0.0.1:8760/`. Masukkan URL publik dan tekan **Scan**. Aplikasi menangkap maksimal
+tiga halaman same-site, mengekstrak evidence, menjalankan maksimal satu aksi publik yang lolos
+policy, lalu membuka run graph/timeline yang sama. Gunakan carousel **Initial / Canonical / Full
+page** pada inspector. Domain terkait yang sudah tersimpan muncul sebagai collected destination;
+lead baru tetap dashed dan tombol **Approve candidate collection** diperlukan sebelum recollection.
+Pilih **New safe review walkthrough…** untuk demo fixture Page A → Page B dan append-only review.
 
-Approval-gated controlled run dapat dibuat melalui API/CLI dengan `collection_mode=real_world`;
-UI menampilkan tombol approval dan baru kemudian menjalankan recollection fixture `.invalid`.
-Kandidat eksternal tidak dikumpulkan oleh aksi tersebut.
+Approval-gated controlled run dapat dibuat melalui API/CLI dengan `collection_mode=real_world`.
+Pada live run, UI mencatat approval lebih dahulu, mengumpulkan kandidat langsung satu kali, lalu
+membuat assertion `publicly_links_to` yang tetap membutuhkan review manusia.
 
 ### Verifikasi pengembang
 

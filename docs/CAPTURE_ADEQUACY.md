@@ -1,9 +1,10 @@
 # Capture Adequacy (G4A)
 
-Canonical collection measures four fixed checkpoints at 0, 500, 1,500, and 3,000 ms after
-`domcontentloaded`. It performs no click, scroll, consent dismissal, form submission, download, or
-`networkidle` wait. The final checkpoint is canonical; the initial screenshot is retained only when
-its hash differs.
+Canonical collection always measures checkpoints at 0, 500, 1,500, and 3,000 ms after
+`domcontentloaded`. If the 3,000 ms state is information-rich but still changes materially, the
+collector extends the same bounded observation to 5,000 and then at most 8,000 ms. It performs no
+click, scroll, consent dismissal, form submission, download, or `networkidle` wait. The last actual
+checkpoint is canonical; the initial screenshot is retained separately.
 
 The persisted dimensions are independent:
 
@@ -11,8 +12,9 @@ The persisted dimensions are independent:
 - `access_outcome`: content, access_challenge, geo_restriction, consent_wall, unavailable, or
   unknown_restriction;
 - `capture_adequacy`: adequate, limited, or failed;
-- `extraction_eligible`: true only for captured content with adequate capture and canonical HTML
-  at most 2,000,000 UTF-8 bytes.
+- `extraction_eligible`: true for verified adequate content, or provisionally for a readable
+  information-rich capture that remains dynamic, with canonical HTML at most 2,000,000 UTF-8
+  bytes. Provisional observations carry reduced confidence and explicit limitations.
 
 The browser-visible text source is `document.body.innerText`, never BeautifulSoup text. Each
 checkpoint records browser/collector/policy versions, response metadata, DOM and visible-element
@@ -31,5 +33,5 @@ SHA-256 remain in readiness evidence while HTML persistence is omitted; visible 
 response metadata, redirects, and readiness remain. Full-page capture is bounded at 12,000 pixels
 high and records truncation. Oversize HTML is never converted into a navigation failure.
 
-Legacy fields remain optional and old case JSON continues to parse through the existing loader.
-
+This preliminary MVP intentionally optimizes one coherent current schema rather than preserving an
+indefinite backward-compatibility contract.

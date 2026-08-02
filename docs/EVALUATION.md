@@ -135,8 +135,9 @@ as test truth.
 The initial G0 live observations showed rich visible landing content in Chrome while the isolated
 collector preserved substantially sparser title-led DOMs and dark screenshots. The local
 `delayed-script-render-shell-v1` fixture reproduced the narrow timing symptom without copying live
-content. G4A now waits at fixed checkpoints, compares visual/DOM change, records browser-visible
-text, and marks continued rendering as limited instead of silently calling it complete.
+content. Canonical capture now uses mandatory base checkpoints plus bounded 5/8-second settle
+extensions, records browser-visible text, and may extract explicitly provisional evidence from a
+readable page that remains dynamic instead of silently discarding it.
 
 On 2026-08-03 the owner-authorized post-G4A matrix ran exactly once against each of the 12 supplied
 targets. Eleven produced verified navigation captures; `888sport.com` stopped at the request
@@ -146,6 +147,12 @@ targets as unavailable, and bet365 as an access challenge. The two QQ observatio
 with screenshot/readiness evidence and limited status. These artifacts remain ignored under
 `evaluation/live-cases/gemastik-2026-08-03-g4a-fixed/`; they are local qualitative robustness
 evidence, not benchmark truth and not redistribution material.
+
+A final corrective QQ validation on the same date used the unified product path. It captured the
+seed and `/MobileExplore`, recorded 11 provisional semantic observations, used a strict
+`gpt-5.6-terra` decision to select the server-issued PROMO reference, saved `/Promotion` interaction
+evidence, and left `qq101uok.com` waiting for explicit approval. This remains an ignored qualitative
+observation, not benchmark truth.
 
 ## Metrics for future labeled fixtures
 
@@ -185,7 +192,7 @@ block rate, mean actions/runtime, candidate relation support, and replay consist
 measured locally and rounded to milliseconds. Synthetic results must never be described as live
 accuracy, ownership probability, operator identification, criminality, or legal status.
 
-External candidate mode stops at an approval event and performs no network recollection. The
-approval-gated controlled walkthrough may recollect only its reserved `.invalid` Page B after the
-approval event is stored. The official benchmark and demo use reserved fixture data and no external
-network.
+External candidate mode stops at an approval event. A user may explicitly approve one directly
+observed candidate, after which the product performs one page/depth-zero collection and proposes
+only a `publicly_links_to` assertion for review. The official benchmark and demo still use reserved
+fixture data and no external network.

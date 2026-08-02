@@ -26,12 +26,12 @@ accuracy, organizational, or societal impact has not yet been measured.
 ## Functional description
 
 1. `hawkeye investigate` performs bounded Playwright collection and writes a verified case.
-2. Eligible captures write `observations.json`; limited captures do not auto-produce strong
-   observations.
+2. Eligible captures write `observations.json`; a readable dynamic capture may produce explicitly
+   provisional observations with capped confidence, never strong hidden conclusions.
 3. The controlled fixture runtime exposes six narrow page tools over stable references.
 4. `CodexInvestigator` validates one structured decision or activates deterministic fallback.
-5. The fixture investigation persists Page A, Page B, lead, assertion, review requirement, and all
-   causally linked events in SQLite.
+5. Live and fixture investigations persist pages, safe actions, leads, approval, assertions, review
+   requirements, and all causally linked events in SQLite.
 6. The local workspace renders graph, evidence, timeline, causal path, and review state.
 7. `hawkeye benchmark` produces raw JSON and all required Markdown result tables.
 
@@ -39,9 +39,10 @@ accuracy, organizational, or societal impact has not yet been measured.
 
 ### Capture readiness
 
-Checkpoint schedule is exactly 0, 500, 1,500, and 3,000 ms after `domcontentloaded`. Canonical state
-is 3,000 ms. It collects no `networkidle`, clicks, scrolls, form submissions, consent dismissal, or
-downloads. Metrics and limits are documented in `docs/CAPTURE_ADEQUACY.md`.
+Checkpoint schedule always includes 0, 500, 1,500, and 3,000 ms after `domcontentloaded`. An
+information-rich page still changing at 3,000 ms receives bounded 5,000 and at most 8,000 ms settle
+checks; the last actual state is canonical. Capture itself performs no clicks, form submissions,
+consent dismissal, or downloads. Metrics and limits are documented in `docs/CAPTURE_ADEQUACY.md`.
 
 ### Semantic evidence
 
@@ -58,16 +59,17 @@ downloads, and external application schemes fail closed. Controlled unsafe-actio
 
 ### Agent runtime
 
-Only fixed localhost routes are probeable. The selected route is `/v1/responses`; its model and
-structured tool capabilities remain unknown, so the model path is disabled. No native search is
-assumed. Deterministic fallback produces `AgentDecision` and `AgentStepResult` models identical to
-the model path.
+Only fixed localhost routes are probeable. The selected route is `/v1/responses`; model discovery
+selected `gpt-5.6-terra` and a strict structured-output probe succeeded. Every decision must retain
+an exact server-issued safe element reference. No native search is assumed. Deterministic fallback
+produces the same `AgentDecision`/`AgentStepResult` models if the service or validation fails.
 
 ### Candidate and review
 
 A URL is a lead until recollection produces a stored candidate page artifact and observation. The
-synthetic fixture index may recollect automatically. Approval-gated controlled mode persists an
-approval event before it recollects reserved fixture Page B; external collection remains disabled.
+synthetic fixture index may recollect automatically. Live mode persists an approval event before
+collecting an observed direct candidate once with a one-page/depth-zero budget. A hostname already
+present in the verified local corpus is matched without another network collection.
 Assertions support public links, shared contact,
 redirect, download, referral, brand claim, and generic candidate relation. Reviews support verified,
 rejected, needs_more_evidence, duplicate, and uncertain.
@@ -86,7 +88,7 @@ inspector and DOM timeline remain usable without interpreting pixels in the canv
 | Layer | Implementation | Persistence | Trust boundary |
 |---|---|---|---|
 | URL safety | `hawkeye/collector/safety.py` | none | validates public HTTP(S), DNS, crawl scope |
-| Browser capture | `hawkeye/collector/playwright_collector.py` | filesystem | no interactions; fixed budgets |
+| Browser capture | `hawkeye/collector/playwright_collector.py` | filesystem | no interactions; bounded settle budgets |
 | Case pipeline | `hawkeye/pipeline.py` | case JSON/artifacts | extraction eligibility |
 | Semantic evidence | `hawkeye/semantic_evidence.py` | observations/crops | public observables only |
 | Interaction | `hawkeye/interaction/` | normalized decisions | policy before state change |
@@ -161,13 +163,13 @@ not canvas animation progress, determine the stable graph.
 
 | Symptom | Meaning | Action |
 |---|---|---|
-| `fallback_required: true` | Required Codex capabilities were not advertised | Continue with deterministic fallback |
+| `fallback_required: true` | Model discovery or strict output probe failed | Continue with deterministic fallback |
 | `blocked_by_policy` | URL/action/resource failed server policy | Inspect limitation/event; do not bypass |
 | `captured_with_limitations` | Navigation succeeded but capture adequacy is limited | Inspect readiness; do not auto-assert |
 | `direct_extractor_input_exceeds_2_mb` | HTML was preserved but not sent to extractor | Manual bounded inspection only |
 | `canonical_html_not_persisted` | HTML exceeded 5 MB | Use visible text/screenshots/readiness; no auto-extraction |
 | `stale_reference` | Snapshot or fingerprint changed | Rediscover elements; never reuse selector blindly |
-| `waiting_for_approval` | Candidate is only a lead | Record explicit decision; only reserved fixture recollection may continue |
+| `waiting_for_approval` | Candidate is only a lead | Review source evidence, then explicitly approve or leave pending |
 | `case_integrity_error` | Artifact/reference hash validation failed | Do not display or repair silently |
 | Host header error | Request was not addressed to localhost/127.0.0.1 | Use the loopback URL directly |
 

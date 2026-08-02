@@ -9,7 +9,7 @@ Do not composite fake graph data or use a live site as the official demo.
 | 00:15–00:30 | Localhost graph-first UI, sanitized saved case, and screenshot inspector | “The preliminary MVP runs locally. The official demo uses controlled public-page fixtures as benchmark truth.” | Address bar must show `127.0.0.1`; case must be `.invalid` fixture |
 | 00:30–00:45 | Architecture diagram | “Playwright preserves evidence; server policy gates interaction; SQLite stores events and reviews; the graph is reduced from those events.” | Use technical architecture, not future deployment |
 | 00:45–01:00 | Select **New safe review walkthrough…** | “The reserved redirect fixture records Page A as an inert artifact and creates an explicit evidence gap.” | Show actual new run ID and fixture label |
-| 01:00–01:15 | Agent mode and timeline | “The local probe could not verify structured Codex capabilities, so deterministic fallback is active. It emits the same validated decision schema.” | Do not claim live model use |
+| 01:00–01:15 | Agent mode and timeline | “The local strict-output probe can enable Codex; the official fixture remains reproducible through the same deterministic fallback schema.” | State which path the visible run actually used |
 | 01:15–01:30 | Tool requested/completed events and redirect observation | “A snapshot-bound public link is validated before execution. The resulting redirect target becomes a public observation.” | Show policy/event payload |
 | 01:30–01:45 | Select Page B canvas node and open its artifact | “The candidate URL remains a lead until the synthetic fixture index recollects Page B and stores its artifact.” | Open Page A and Page B inert JSON |
 | 01:45–02:00 | Dashed assertion edge on canvas | “Only after both pages have observations does the system propose `shares_redirect_target_with`. Dashed means candidate relationship, not ownership.” | Supporting observation IDs visible |
@@ -24,7 +24,7 @@ Do not composite fake graph data or use a live site as the official demo.
 - Use a freshly generated local workspace run.
 - Show one blocked unsafe control via stored policy test/event, not unsafe execution.
 - Show actual artifacts, Page B, assertion evidence IDs, and review history.
-- Show deterministic fallback banner and current capability result.
+- Show the current Codex/fallback badge and matching capability result; never relabel one path as the other.
 - Blur no data by relying only on reserved `.invalid` fixtures.
 - TODO — requires completed test: record and inspect the final three-minute video from the verified
   fixture workspace after the human-owned identity and export settings are confirmed.

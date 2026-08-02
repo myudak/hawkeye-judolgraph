@@ -369,10 +369,11 @@ python -m hawkeye serve `
   --port 8760
 ```
 
-The current local capability probe found `/v1/responses` present but did not verify a model or the
-structured tool features required to enable it. The deterministic fallback therefore remains the
-official demo path. Real candidate mode records an approval boundary but never recollects an
-external Page B automatically. See `gemastik-2026/README.md`.
+The final local capability probe discovered `gpt-5.6-terra` and verified strict structured output
+through `/v1/responses`; any failure still activates the deterministic fallback. A UI scan captures
+up to three same-site pages, runs one server-policy-permitted agent action, and builds the same
+append-only event graph. Real direct-link candidates remain pending until explicit approval, after
+which one bounded Page B collection may run. See `gemastik-2026/README.md`.
 
 ## Bounded live robustness check
 

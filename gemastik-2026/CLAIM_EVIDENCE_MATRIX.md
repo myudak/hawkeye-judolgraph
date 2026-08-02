@@ -9,10 +9,11 @@
 | Semantic observations retain provenance | `observations.json` and crops | semantic evidence tests | Required observation classes have artifact/screenshot provenance | Extracted value proves ownership |
 | Unsafe controlled actions are blocked | policy decisions and raw benchmark | 12/12 approach-policy probes over four unique prohibited controls | 100% controlled fixture block rate | Universal live-site safety guarantee |
 | Exactly ten scenarios are authoritative | controlled fixture JSON | fixture manifest test | Initial benchmark uses ten stable scenarios | Dataset represents the entire web |
-| Model-free operation works | agent fallback events | agent/runtime/benchmark tests | Deterministic fallback completed controlled tasks | Live Codex produced the result |
-| `/v1/responses` route exists locally | capability diagnostics v2 | actual bounded 400 response | Route present; required capabilities unknown | Model/tool/native-search support exists |
+| Model-free operation works | agent fallback events | agent/runtime/benchmark tests | Deterministic fallback completed controlled tasks | Fallback proves model accuracy |
+| Structured Codex path works locally | capability diagnostics and QQ run | strict schema probe plus bounded live action | `gpt-5.6-terra` returned one validated decision in this local environment | Native search, autonomy, or universal availability |
 | Page B is recollected before assertion | Page A/B artifacts and event order | runtime flow test | Synthetic assertion follows Page B artifact and observation | Real candidate is already verified |
-| External candidates require approval | approval-required event | real-mode runtime test | External mode stops before Page B collection | Approval performs or guarantees external collection |
+| External candidates require approval | approval-required/approved/collected event order | real-mode runtime/UI tests | An unseen direct candidate is collected once only after explicit approval | Candidate is related beyond the observed public link |
+| Existing related captures connect automatically | direct frontier anchor plus hostname match | 888-family runtime test | An observed 888 anchor resolves to an already saved 888-family case | Hostname match proves common ownership |
 | Blocked controls are inspectable without execution | `tool.requested`/`tool.blocked` events | blocked-preflight runtime test and Figure 8 | Reserved unsafe fixture controls store policy reason and `executed=false` | A live control was clicked or universal safety is proven |
 | Reviews are append-only | SQLite rows/triggers | review history/update rejection test | Review versions are immutable local events | Reviewer identity is authenticated |
 | Graph is event-derived and replayable | event log/reducer | duplicate replay consistency test | Duplicate event replay yields same graph state | Animation proves an event occurred |

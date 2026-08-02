@@ -65,7 +65,8 @@ availability remains observational and never becomes benchmark truth.
 
 ## G4A — Canonical capture adequacy — completed
 
-Completed evidence: fixed `0/500/1500/3000 ms` canonical checkpoints; browser-visible text and
+Completed evidence: mandatory `0/500/1500/3000 ms` checkpoints with bounded 5,000/8,000 ms settle
+extensions for information-rich changing pages; browser-visible text and
 pixel-information measurements; separate access, adequacy, extraction, and public-status
 dimensions; initial/final/bounded-full screenshots; response/readiness provenance; and an explicit
 2 MB extraction / 5 MB HTML-persistence boundary. Eleven capture and semantic fixture tests cover
@@ -83,19 +84,21 @@ Completed evidence: exactly ten authoritative synthetic scenarios; six narrow sn
 one-action budgets; stale-reference rejection; and server-side prohibition of login, registration,
 download, form submission, ambiguous controls, and unsafe destinations.
 
-## G6 — Bounded Codex runtime — completed with deterministic fallback active
+## G6 — Bounded Codex runtime — completed with verified Codex and fallback paths
 
 Completed evidence: a local codex-lb route probe, strict schema validation, bounded retries/failure
-records, and a deterministic investigator fallback. The 2026-08-02 probe found no advertised model,
-structured-output, tool, streaming, cancellation, or native-search capability, so the official demo
-truthfully uses the fallback path.
+records, exact issued-reference validation, and a deterministic investigator fallback. The final
+2026-08-03 probe discovered `gpt-5.6-terra`, verified strict JSON-schema output, and completed the
+live QQ one-action objective through Codex. Fixture benchmarks remain deterministic fallback truth.
 
-## G7 — Candidate recollection and human review — completed within fixture boundary
+## G7 — Candidate recollection and human review — completed with explicit live approval boundary
 
 Completed evidence: direct/redirect/new-tab/iframe lead discovery, synthetic Page B recollection,
 evidence-backed candidate assertions, append-only SQLite assertions/reviews, and derived current
 review state. Approval-gated controlled mode records approval before it deterministically
-recollects fixture Page B; external candidate collection remains disabled in this preliminary MVP.
+recollects fixture Page B. Live direct-link candidates remain waiting until a user records approval;
+the approved URL is then collected once with page/depth budgets of one/zero before an evidence-backed
+`publicly_links_to` assertion can enter review.
 
 ## G8 — Event-driven progressive graph and evaluation — completed
 
