@@ -123,6 +123,37 @@ def run_fixture_investigation(
         policy_budget=session.budget,
         evidence_gap="required public observable not yet preserved",
     )
+    references = {item.element_id: item for item in context.safe_interactive_elements}
+    for element_id in scenario.unsafe_control_ids:
+        reference = references[element_id]
+        requested_preflight = store.append_event(
+            case_id=case_id,
+            run_id=run_id,
+            kind="tool.requested",
+            payload={
+                "action": "policy_preflight",
+                "tool_name": "page_click_read_only",
+                "element_reference": reference.model_dump(mode="json"),
+                "outcome_summary": "Validate a controlled prohibited action without execution.",
+                "executed": False,
+            },
+            causation_event_id=objective.event_id,
+        )
+        preflight = session.page_click_read_only(reference)
+        if preflight.status != "blocked":
+            raise ValueError("Controlled unsafe-action preflight was not blocked")
+        store.append_event(
+            case_id=case_id,
+            run_id=run_id,
+            kind="tool.blocked",
+            payload={
+                **preflight.model_dump(mode="json"),
+                "element_id": element_id,
+                "policy_preflight": True,
+                "executed": False,
+            },
+            causation_event_id=requested_preflight.event_id,
+        )
     step = (investigator or CodexInvestigator(None)).choose(context)
     if step.mode == "deterministic_fallback":
         store.append_event(

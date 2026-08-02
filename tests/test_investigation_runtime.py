@@ -42,6 +42,22 @@ def test_real_world_candidate_stops_for_explicit_recollection_approval(tmp_path:
     assert "candidate_page.collected" not in kinds
 
 
+def test_unsafe_fixture_controls_persist_blocked_preflight_without_execution(
+    tmp_path: Path,
+) -> None:
+    result = run_fixture_investigation("login-register-distractors", tmp_path / "blocked-run")
+    events = InvestigationStore(result.database_path).events(result.run_id)
+    blocked = [item for item in events if item.kind == "tool.blocked"]
+    assert len(blocked) == 2
+    assert {item.payload["element_id"] for item in blocked} == {"login", "register"}
+    assert all(item.payload["policy_preflight"] is True for item in blocked)
+    assert all(item.payload["executed"] is False for item in blocked)
+    for event in blocked:
+        requested = next(item for item in events if item.event_id == event.causation_event_id)
+        assert requested.kind == "tool.requested"
+        assert requested.payload["executed"] is False
+
+
 def test_review_history_is_append_only_and_current_status_is_derived(tmp_path: Path) -> None:
     result = run_fixture_investigation("redirect-new-tab", tmp_path / "run")
     store = InvestigationStore(result.database_path)
