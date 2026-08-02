@@ -8,7 +8,11 @@ from .models import (
     ReviewEvent,
 )
 from .reducer import reduce_events
-from .runtime import FixtureInvestigationResult, run_fixture_investigation
+from .runtime import (
+    FixtureInvestigationResult,
+    recollect_approved_fixture_candidate,
+    run_fixture_investigation,
+)
 from .store import InvestigationStore
 
 __all__ = [
@@ -20,5 +24,6 @@ __all__ = [
     "ProgressiveGraphState",
     "ReviewEvent",
     "reduce_events",
+    "recollect_approved_fixture_candidate",
     "run_fixture_investigation",
 ]

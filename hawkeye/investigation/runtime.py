@@ -264,12 +264,13 @@ def run_fixture_investigation(
                 causation_event_id=collected_b.event_id,
             )
             lead_status = "recollected"
-    store.append_event(
-        case_id=case_id,
-        run_id=run_id,
-        kind="run.completed",
-        payload={"assertion_id": assertion_id, "lead_status": lead_status},
-    )
+    if lead_status != "waiting_for_approval":
+        store.append_event(
+            case_id=case_id,
+            run_id=run_id,
+            kind="run.completed",
+            payload={"assertion_id": assertion_id, "lead_status": lead_status},
+        )
     graph = reduce_events(store.events(run_id))
     summary = FixtureInvestigationResult(
         case_id=case_id,
@@ -286,6 +287,108 @@ def run_fixture_investigation(
         encoding="utf-8",
     )
     return summary
+
+
+def recollect_approved_fixture_candidate(
+    output_directory: Path | str,
+) -> FixtureInvestigationResult:
+    """Finish an approval-gated controlled run without making a network request."""
+
+    destination = Path(output_directory).expanduser().resolve()
+    summary_path = destination / "run-summary.json"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary = FixtureInvestigationResult.model_validate(payload)
+    scenario_id = summary.case_id.removeprefix("fixture-")
+    scenarios = {item.scenario_id: item for item in load_controlled_scenarios()}
+    scenario = scenarios.get(scenario_id)
+    if scenario is None or scenario.expected_candidate is None:
+        raise ValueError("Approval-gated run has no controlled Page B candidate")
+    _validate_synthetic_public_url(scenario.expected_candidate)
+    store = InvestigationStore(destination / "investigation.sqlite3")
+    events = store.events(summary.run_id)
+    approval = next(
+        (item for item in reversed(events) if item.kind == "candidate_page.approved"), None
+    )
+    if approval is None:
+        raise ValueError("Page B recollection requires an explicit approval event")
+    if any(item.kind == "candidate_page.collected" for item in events):
+        raise ValueError("Page B was already recollected")
+    lead_id = str(approval.payload.get("lead_id", f"lead-{scenario.ordinal:02d}"))
+    page_b_observation = _candidate_observation(scenario.expected_relation)
+    page_b_path, page_b_hash = _write_fixture_artifact(
+        destination / "artifacts" / "page-b.json",
+        {"url": scenario.expected_candidate, "observations": [page_b_observation]},
+    )
+    collected = store.append_event(
+        case_id=summary.case_id,
+        run_id=summary.run_id,
+        kind="candidate_page.collected",
+        payload={
+            "lead_id": lead_id,
+            "node_id": "page:b",
+            "url": scenario.expected_candidate,
+            "artifact_id": "artifact-page-b",
+            "path": page_b_path,
+            "sha256": page_b_hash,
+        },
+        causation_event_id=approval.event_id,
+    )
+    page_b_observation_id = "obs-page-b-001"
+    store.append_event(
+        case_id=summary.case_id,
+        run_id=summary.run_id,
+        kind="observation.created",
+        payload={
+            "observation_id": page_b_observation_id,
+            "node_id": f"observation:{page_b_observation_id}",
+            "source_node_id": "page:b",
+            "observation_type": _fixture_observation_type(page_b_observation),
+            "normalized_value": page_b_observation,
+            "artifact_id": "artifact-page-b",
+        },
+        causation_event_id=collected.event_id,
+    )
+    page_a_observation_ids = [
+        str(item.payload["observation_id"])
+        for item in events
+        if item.kind == "observation.created" and "observation_id" in item.payload
+    ]
+    assertion_id = f"assertion-{scenario.ordinal:02d}"
+    store.add_assertion(
+        CandidateAssertion(
+            assertion_id=assertion_id,
+            case_id=summary.case_id,
+            run_id=summary.run_id,
+            assertion_type=scenario.expected_relation or "candidate_related_to",  # type: ignore[arg-type]
+            subject=scenario.seed_url,
+            object=scenario.expected_candidate,
+            supporting_observation_ids=[*page_a_observation_ids, page_b_observation_id],
+            source_artifact_ids=["artifact-page-a", "artifact-page-b"],
+            created_at=datetime.now(UTC),
+            limitations=[
+                "verified review would support only the stated relationship, not ownership"
+            ],
+        ),
+        causation_event_id=collected.event_id,
+    )
+    store.append_event(
+        case_id=summary.case_id,
+        run_id=summary.run_id,
+        kind="run.completed",
+        payload={"assertion_id": assertion_id, "lead_status": "recollected"},
+    )
+    completed = summary.model_copy(
+        update={
+            "assertion_id": assertion_id,
+            "lead_status": "recollected",
+            "graph": reduce_events(store.events(summary.run_id)),
+        }
+    )
+    summary_path.write_text(
+        json.dumps(completed.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return completed
 
 
 def _write_fixture_artifact(path: Path, payload: dict[str, object]) -> tuple[str, str]:

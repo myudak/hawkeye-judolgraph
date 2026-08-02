@@ -11,7 +11,12 @@ from pathlib import Path
 from hawkeye.agent import CodexInvestigator, CodexLbClient, probe_codex_lb
 from hawkeye.agent.models import CapabilityDiagnostics
 from hawkeye.interaction import load_controlled_scenarios
-from hawkeye.investigation import InvestigationStore, reduce_events, run_fixture_investigation
+from hawkeye.investigation import (
+    InvestigationStore,
+    recollect_approved_fixture_candidate,
+    reduce_events,
+    run_fixture_investigation,
+)
 
 _RUN_ID = re.compile(r"^run-[a-z0-9-]{1,80}-[0-9a-f]{8}$")
 
@@ -136,8 +141,8 @@ class MvpWorkspace:
             "assertion": assertion,
             "current_assertion_status": current_status,
             "reviews": reviews,
-            "events": [item.model_dump(mode="json") for item in events],
-            "graph": graph.model_dump(mode="json"),
+            "events": [_event_for_ui(item.model_dump(mode="json")) for item in events],
+            "graph": _graph_for_ui(graph.model_dump(mode="json")),
             "artifacts": [
                 {"name": path.name, "bytes": path.stat().st_size}
                 for path in sorted((directory / "artifacts").glob("*.json"))
@@ -187,11 +192,15 @@ class MvpWorkspace:
             payload={
                 "lead_id": required.payload.get("lead_id"),
                 "url": required.payload.get("url"),
-                "note": "Approval recorded; external collection remains a separate manual action.",
+                "note": "Approval recorded; controlled Page B recollection may now proceed.",
             },
             causation_event_id=required.event_id,
         )
-        return approved.model_dump(mode="json")
+        completed = recollect_approved_fixture_candidate(directory)
+        return {
+            "approval": approved.model_dump(mode="json"),
+            "result": completed.model_dump(mode="json"),
+        }
 
     def artifact(self, workspace_id: str, artifact_name: str) -> bytes:
         if artifact_name not in {"page-a.json", "page-b.json"}:
@@ -208,3 +217,45 @@ class MvpWorkspace:
         if directory.parent != self.root or not directory.is_dir():
             raise ValueError("Unknown workspace run")
         return directory
+
+
+def _event_for_ui(event: dict[str, object]) -> dict[str, object]:
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        return event
+    return {**event, "payload": _payload_for_ui(payload)}
+
+
+def _payload_for_ui(payload: dict[str, object]) -> dict[str, object]:
+    projected = dict(payload)
+    path = projected.get("path")
+    if isinstance(path, str):
+        projected["path"] = f"artifacts/{Path(path).name}"
+    return projected
+
+
+def _graph_for_ui(graph: dict[str, object]) -> dict[str, object]:
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return graph
+    projected_nodes: list[object] = []
+    for item in nodes:
+        if not isinstance(item, dict):
+            projected_nodes.append(item)
+            continue
+        attributes = item.get("attributes")
+        projected_nodes.append(
+            {
+                **item,
+                "attributes": _payload_for_ui(attributes)
+                if isinstance(attributes, dict)
+                else attributes,
+            }
+        )
+    timeline = graph.get("timeline")
+    projected_timeline = (
+        [_event_for_ui(item) if isinstance(item, dict) else item for item in timeline]
+        if isinstance(timeline, list)
+        else timeline
+    )
+    return {**graph, "nodes": projected_nodes, "timeline": projected_timeline}

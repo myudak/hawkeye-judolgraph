@@ -39,6 +39,10 @@ def test_full_synthetic_ui_api_flow_creates_graph_and_append_only_review(tmp_pat
         assert payload["graph"]["nodes"]
         assert payload["graph"]["edges"]
         assert payload["graph"]["timeline"]
+        artifact_event = next(
+            event for event in payload["events"] if event["kind"] == "artifact.captured"
+        )
+        assert artifact_event["payload"]["path"] == "artifacts/page-a.json"
         review = client.post(
             f"/api/mvp/runs/{workspace_id}/reviews",
             json={
@@ -59,7 +63,9 @@ def test_full_synthetic_ui_api_flow_creates_graph_and_append_only_review(tmp_pat
         assert edge["appearance"] == "solid_emphasized"
 
 
-def test_real_mode_exposes_approval_without_collecting_page_b(tmp_path: Path) -> None:
+def test_approval_gated_mode_recollects_page_b_only_after_explicit_approval(
+    tmp_path: Path,
+) -> None:
     with _client(tmp_path) as client:
         created = client.post(
             "/api/mvp/runs",
@@ -71,8 +77,10 @@ def test_real_mode_exposes_approval_without_collecting_page_b(tmp_path: Path) ->
         approval = client.post(f"/api/mvp/runs/{workspace_id}/approve", json={})
         assert approval.status_code == 200
         approved = client.get(f"/api/mvp/runs/{workspace_id}").json()
-        assert approved["lead_status"] == "approved_waiting_for_manual_collection"
-        assert approved["assertion"] is None
+        assert approved["lead_status"] == "recollected"
+        assert approved["assertion"]["assertion_id"] == "assertion-06"
+        kinds = [event["kind"] for event in approved["events"]]
+        assert kinds.index("candidate_page.approved") < kinds.index("candidate_page.collected")
 
 
 def test_cross_origin_mutation_and_artifact_traversal_are_blocked(tmp_path: Path) -> None:
