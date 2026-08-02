@@ -40,7 +40,8 @@
 
 ## Formatting and delivery
 
-- [ ] Obtain official GEMASTIK 2026 template/rule source and record citation.
+- [x] Obtain the official GEMASTIK 2026 guide/rule source and record its citation.
+- [ ] Confirm whether the organizer publishes a separate proposal template and apply it if required.
 - [ ] Render proposal and verify official section order.
 - [ ] Confirm 24–27 target pages and never exceed 30 pages.
 - [ ] Verify fonts, margins, figure labels, table wrapping, links, and page numbers.

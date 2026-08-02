@@ -162,7 +162,9 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 - Budget maksimal lima iterasi, tiga interaksi, tiga halaman, depth satu, lima redirect, satu search,
   tiga candidate page, dan 120 detik.
 - SQLite append-only untuk event, assertion, lead, dan review; urutan event monoton per run.
-- Old-case compatibility melalui field baru yang opsional.
+- MVP tidak mensyaratkan backward compatibility untuk payload, case, atau schema pra-MVP. Breaking
+  changes diperbolehkan untuk menghasilkan alur produk awal yang koheren; reset data lokal harus
+  dijelaskan dan tidak boleh menghapus artefak bukti secara diam-diam.
 - Reduced-motion dan tabel graf yang dapat dibaca tanpa warna.
 
 ### Arsitektur
