@@ -377,6 +377,8 @@ footer {
   overflow-wrap: anywhere;
 }
 
+.mvp-run-view .metric strong { font-size: clamp(0.95rem, 1.45vw, 1.2rem); }
+
 .metric-detail { display: block; margin-top: 0.48rem; color: var(--muted); font-size: 0.75rem; line-height: 1.35; }
 
 .panel { padding: clamp(0.95rem, 2vw, 1.28rem); margin-top: 1.2rem; }
@@ -454,6 +456,10 @@ th {
 }
 
 tr:last-child td { border-bottom: 0; }
+
+.mvp-review .data-table th,
+.mvp-review .data-table td:first-child,
+.mvp-review .data-table td:last-child { white-space: nowrap; }
 
 .artifact-link {
   color: var(--verified);
@@ -573,14 +579,17 @@ footer span:last-child { text-align: right; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+@media (max-width: 1300px) {
+  .workspace-heading,
+  .workspace-grid { align-items: stretch; flex-direction: column; }
+  .workspace-grid > aside { flex-basis: auto; }
+}
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
   .case-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .case-list { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
   .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .workspace-heading,
-  .workspace-grid { align-items: stretch; flex-direction: column; }
-  .workspace-grid > aside { flex-basis: auto; }
 }
 
 @media (max-width: 700px) {

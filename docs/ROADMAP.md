@@ -63,10 +63,58 @@ case directories; evaluator guide and checklist; an implemented threat-model dia
 presentation storyboard. G3 changes only the evaluator wrapper, documents, labels, and tests. Live
 availability remains observational and never becomes benchmark truth.
 
+## G4A — Canonical capture adequacy — completed
+
+Completed evidence: fixed `0/500/1500/3000 ms` canonical checkpoints; browser-visible text and
+pixel-information measurements; separate access, adequacy, extraction, and public-status
+dimensions; initial/final/bounded-full screenshots; response/readiness provenance; and an explicit
+2 MB extraction / 5 MB HTML-persistence boundary. Eleven capture and semantic fixture tests cover
+delayed, hidden-rich, restriction, unavailable, blank-challenge, long-page, and oversized DOMs.
+
+## G4B — Semantic public evidence — completed
+
+Completed evidence: fourteen typed observable categories, immutable source page/artifact/event
+provenance, normalized text/DOM observations, and best-effort bounded evidence crops. Image OCR and
+visual brand inference remain unclaimed.
+
+## G5 — Controlled safe expansion — completed
+
+Completed evidence: exactly ten authoritative synthetic scenarios; six narrow snapshot-bound tools;
+one-action budgets; stale-reference rejection; and server-side prohibition of login, registration,
+download, form submission, ambiguous controls, and unsafe destinations.
+
+## G6 — Bounded Codex runtime — completed with deterministic fallback active
+
+Completed evidence: a local codex-lb route probe, strict schema validation, bounded retries/failure
+records, and a deterministic investigator fallback. The 2026-08-02 probe found no advertised model,
+structured-output, tool, streaming, cancellation, or native-search capability, so the official demo
+truthfully uses the fallback path.
+
+## G7 — Candidate recollection and human review — completed within fixture boundary
+
+Completed evidence: direct/redirect/new-tab/iframe lead discovery, synthetic Page B recollection,
+evidence-backed candidate assertions, append-only SQLite assertions/reviews, and derived current
+review state. Real-world mode stops at explicit approval and never collects a candidate automatically.
+
+## G8 — Event-driven progressive graph and evaluation — completed
+
+Completed evidence: monotonic idempotent events, causal links, a replay reducer, separate animation
+queue, dashed proposed / emphasized verified / hidden rejected edges, evidence and timeline panels,
+search/focus/minimap, reduced motion, and a three-mode ten-scenario benchmark.
+
+## G9 — Truthful GEMASTIK preliminary package — completed as Markdown source
+
+Completed evidence: proposal in the required nine-section order, technical document, three-minute
+video script, claim/evidence and implementation matrices, benchmark interpretation, license and
+originality drafts, figure index, and submission checklist under `gemastik-2026/`. No final PDF,
+screenshots, video, citations, team identity, signatures, or publication declaration are fabricated;
+those remain explicit human-owned tasks.
+
 ## Explicitly out of scope until separately approved
 
-- Deeper crawling or candidate-domain crawling.
+- Unapproved deeper crawling or automatic real candidate-domain crawling.
 - New external discovery sources.
-- AI-derived relationship conclusions or scoring-weight changes.
+- Unreviewed AI-derived relationship conclusions or scoring-weight changes.
 - Login, form submission, CAPTCHA handling, or evasion.
 - Public hosting, multi-user access, authentication, or remote APIs.
+- Final submission export/upload before the named human-owned checklist items are resolved.

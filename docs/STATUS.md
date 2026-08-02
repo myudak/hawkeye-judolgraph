@@ -2,63 +2,63 @@
 
 ## Current milestone
 
-**G3 — Frozen Gemastik evaluator package** is complete. The competition package wraps the frozen
-G2 runtime in a fail-closed, hash-backed offline verifier, judge guide, checklist, threat model, and
-presentation storyboard. It adds no engine behavior: collection, diagnostic timing, canonical
-artifacts, extraction, graph semantics, candidate generation, comparison scoring, bind address,
-and deployment scope remain unchanged.
+**G4A–G9 — GEMASTIK preliminary MVP** is implemented and locally verified. The product now combines
+capture adequacy, semantic evidence, ten controlled safe-expansion scenarios, a capability-gated
+Codex path with deterministic fallback, synthetic candidate recollection, append-only human review,
+an event-replayed progressive graph, a three-mode benchmark, and a truthful Markdown submission
+package. G2/G3 tags and commits remain unchanged.
 
-## Verified baseline
+## Verification snapshot
 
-- Git baseline: `f6fc7ac` (`v1.0.0-baseline`).
-- `python -m ruff format --check .` — passed.
+Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d4`:
+
+- `python -m ruff format --check .` — passed, 118 files formatted.
 - `python -m ruff check .` — passed.
-- `python -m mypy hawkeye` — passed.
-- `python -m pytest -q` — 126 passed on 2026-08-02.
-- A local V1 server demonstration verified loopback access, strict CSP, safe artifact headers, and
-  rejection of a hostile Host header.
-- Frozen competition target: `gemastik-g2` /
-  `e55c1610c4e5a0a31891e3a69944aa1ffe2648ac`.
-- `python scripts/verify_gemastik_demo.py --output <new-directory>` — passed on 2026-08-02,
-  including fixture-label, artifact-integrity, pytest, ruff, mypy, and `git diff --check` gates.
+- `python -m mypy hawkeye` — passed, 59 source files.
+- `node --check hawkeye/review_app/static/app.js` — passed.
+- `python -m pytest -q` — 158 passed in 380.88 seconds; one upstream FastAPI/Starlette
+  deprecation warning.
+- `git diff --check` — passed.
+- `python -m hawkeye benchmark --output <new-directory> --agent-attempts 3` — passed: ten
+  fixtures, 30 agent-fallback attempts, unsafe-action block rate 1.0.
+- `python -m hawkeye demo --output <new-directory>` — passed: three legacy sanitized cases and
+  one verified offline comparison generated.
+- Localhost UI walkthrough — passed: scenario 6 produced Page A → Page B, a dashed assertion,
+  append-only verified review, 18-event replay, and a `solid_emphasized` edge. Visual QA also
+  covered the responsive workspace layout.
 
-## Current capabilities
+## Implemented product boundary
 
-The repository includes V0 through V0.4 and V1 as listed in `docs/ROADMAP.md`. A previous opt-in
-live run against `https://www.888.com/` completed locally; its raw case and discovery artifacts are
-kept under ignored `verification-output/` and are not benchmark truth.
+- Canonical collection waits only at fixed checkpoints and never adapts or interacts.
+- Capture access, adequacy, extraction eligibility, and public status are separate fields.
+- New capture artifacts are hash/size/type verified by the legacy local loader.
+- Semantic observations are public observables, not assertions; crop generation is best effort.
+- Interaction tools use snapshot-bound references and a one-action evidence-gap budget.
+- The current codex-lb probe does not establish required model capability; official behavior is the
+  logged deterministic fallback, not a hidden model claim.
+- Synthetic candidate recollection is implemented. Real-world candidates stop for explicit
+  approval and are not automatically collected.
+- Assertions and reviews are append-only; current review status is derived from history.
+- Graph truth is reduced from persisted events; animations never create graph truth.
+- The official benchmark is synthetic and measures observable/task/policy behavior only.
 
-G2 adds a documented offline judge walkthrough: `python -m hawkeye demo --output <new-directory>`
-creates three sanitized fixture cases, one separately verified comparison, and a noncanonical
-diagnostic cue. `hawkeye serve --cases <...> --comparisons <...>` displays them through the same
-verified loader and localhost-only UI as ordinary cases. See `docs/DEMO.md`.
+## Known limitations and human-owned completion
 
-G3 adds a fully offline evaluator package under `docs/evaluator/`, a fixture-only label manifest,
-an implemented threat model, and a 12-scene presentation storyboard. Its verifier creates a fresh
-sanitized demo, validates the frozen runtime and hashes, writes only a separate report directory,
-and fails nonzero when a required check is not met. See `docs/evaluator/JUDGE-GUIDE.md`.
+- Live sites vary by geography, VPN exit, challenge, session, and time; they are not test truth.
+- Chromium DNS validation retains the documented TOCTOU residual risk.
+- Capture thresholds and interaction coverage are calibrated only on controlled fixtures.
+- No image OCR, universal live-web safety guarantee, ownership probability, operator identification,
+  criminality, or legal conclusion is claimed.
+- The console remains localhost-only and single-machine; review labels are not authenticated users.
+- Final name, team/institution/category/advisor, external citations, publication/originality
+  confirmations, dependency-license legal review, official formatting, screenshots, video,
+  signatures, PDF export, and upload require authorized humans. They are tracked in
+  `gemastik-2026/SUBMISSION_CHECKLIST.md`.
 
-## Known limitations
+## Local implementation commits
 
-- Live sites can change by time, geography, VPN exit, challenge state, or session state.
-- Chromium performs its own hostname resolution after application-level DNS validation; see
-  ADR-007 for the residual DNS TOCTOU limitation.
-- The V1 console is intentionally a single-machine localhost viewer, not a public service.
-- Candidate and similarity output require human review and do not establish ownership or legal
-  conclusions.
-- The two opt-in live evaluations completed, but rendered-content completeness is uncertain: their
-  saved DOMs and screenshots contained substantially less visible content than separate Chrome
-  observations. This is environment-dependent qualitative evidence, not live-site truth. A fully
-  local delayed-render shell fixture records the current behavior; no collector behavior has been
-  changed on the basis of this observation.
-- In two opt-in G1 diagnostic passes, separately loaded pages changed substantially within the
-  fixed three-second wait budget after initially sparse measurements. This is an
-  environment-dependent observation; it does not establish a cause, prove a later checkpoint is
-  canonical, or authorize a collector-wait change.
+- `ad6b917` — capture adequacy and semantic evidence.
+- `cf648e8` — bounded expansion, agent fallback, investigation, event graph, benchmark, and UI.
+- `4944659` — compatibility, integrity verification, and historical-tag checks.
 
-## Future scope boundary
-
-The Gemastik package is complete at G3. Any future change to collection timing, canonical artifact
-selection, classification, user-agent behavior, screenshots, scoring, external network behavior,
-or public deployment needs a separate decision and must not be folded into this frozen evaluator
-package.
+The package/final-status commit is recorded in the delivery handoff. Nothing is pushed or deployed.

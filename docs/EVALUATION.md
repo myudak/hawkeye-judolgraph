@@ -152,3 +152,31 @@ indicators and timing budgets before considering a capture-readiness change.
 - Unsafe-request blocking rate.
 
 Two live examples are not a benchmark; no accuracy or calibration claim may be made from them.
+
+## G4–G8 controlled interaction benchmark
+
+`evaluation/fixtures/controlled-interactions-v1.json` contains exactly ten authoritative scenarios:
+visible evidence, modal, menu, tab, iframe, redirect/new tab, ambiguous action, login/register,
+download, and no useful hidden evidence. Each records expected observable, required interaction,
+candidate/relation when applicable, and prohibited controls.
+
+Run all scenarios in static, rule-based, and agent-assisted deterministic-fallback modes with:
+
+```powershell
+python -m hawkeye benchmark `
+  --output <new-directory> `
+  --agent-attempts 3
+```
+
+The command writes `raw-results.json` and `BENCHMARK_RESULTS.md`, refuses an existing directory, and
+reports approach comparison, per-scenario results, policy safety, provenance completeness, agent
+nondeterminism, and failure breakdown. The checked-in result is under
+`evaluation/benchmarks/g4-g9-controlled-results/`.
+
+Metrics are observable recall/precision, task success, provenance completeness, unsafe-action
+block rate, mean actions/runtime, candidate relation support, and replay consistency. Timing is
+measured locally and rounded to milliseconds. Synthetic results must never be described as live
+accuracy, ownership probability, operator identification, criminality, or legal status.
+
+Real candidate mode stops at an approval event and performs no automatic Page B recollection. The
+official benchmark and demo use reserved `.invalid` fixture data and no external network.

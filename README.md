@@ -3,7 +3,10 @@
 Engine V1 turns one public seed URL into an auditable, local evidence graph and a deterministic set
 of pending candidate hosts. It can compare two already-collected local cases without revisiting
 either domain, optionally query one bounded public-source strategy for additional pending leads,
-and present verified local evidence in a localhost-only investigator console. Collection performs a
+and present verified local evidence in a localhost-only investigator console. G4–G9 add canonical
+capture adequacy, semantic observations, controlled safe expansion, capability-gated Codex with a
+deterministic fallback, append-only reviews/events, a progressive graph, and a truthful GEMASTIK
+Markdown package. Collection performs a
 same-site breadth-first crawl at depth zero and one only (five HTML pages maximum). It does not use
 AI extraction, make legal conclusions, log in, submit forms, bypass restrictions, or automatically
 browse generated candidates.
@@ -31,7 +34,8 @@ Optional collection controls are `--case-id`, `--max-redirects`, `--max-pages` (
 `--max-depth` (0–1), `--case-timeout` (up to 120 seconds), `--user-agent`, and `--headed`.
 The hard defaults are depth one, five pages, five redirects per page, 30 seconds per page, one
 browser page at a time, 120 seconds per case, 200 browser requests per case, 10 MB of declared
-response bodies per case, and a 2 MB rendered-HTML limit per page. Public document navigation is
+response bodies per case, a 5 MB canonical-HTML persistence limit, and a 2 MB direct-extractor
+input limit per page. Public document navigation is
 limited to default HTTP/HTTPS ports (80/443); custom ports are permitted only for explicit
 loopback fixture tests.
 
@@ -50,9 +54,15 @@ The output is a case directory with:
 case.json
 pages/page-001.html
 screenshots/page-001.png
+screenshots/page-001-initial.png (when different)
+screenshots/page-001-full.png
+pages/page-001-visible.txt
+capture/page-001-response.json
+capture/page-001-readiness.json
 network/page-001-redirects.json (when a document redirect is observed)
 evidence.json
 entities.json
+observations.json
 candidates.json
 candidate_observations.json
 graph.json
@@ -321,16 +331,48 @@ create target-content entities or graph relationships.
 ## Tests and checks
 
 ```powershell
-pytest
-ruff format --check .
-ruff check .
-mypy hawkeye
+python -m pytest -q
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy hawkeye
+node --check hawkeye/review_app/static/app.js
+git diff --check
 ```
 
 The end-to-end fixture test uses an explicit loopback-only test policy. The normal CLI rejects
 loopback targets; `--allow-loopback-for-testing` exists only so a local fixture server can exercise
 the exact CLI path. It additionally requires `HAWKEYE_TEST_MODE=1`, and never enables arbitrary
 private or cloud-metadata destinations.
+
+## GEMASTIK preliminary MVP (G4–G9)
+
+Probe the two fixed loopback Codex routes without persisting secrets:
+
+```powershell
+python -m hawkeye codex-probe --output verification-output/codex-capabilities.json
+```
+
+Run the authoritative 10-scenario benchmark under all three approaches:
+
+```powershell
+python -m hawkeye benchmark `
+  --output verification-output/controlled-benchmark `
+  --agent-attempts 3
+```
+
+Enable the bounded synthetic workspace while preserving legacy case viewing:
+
+```powershell
+python -m hawkeye serve `
+  --cases verification-output/demo-cases `
+  --workspace verification-output/mvp-workspace `
+  --port 8760
+```
+
+The current local capability probe found `/v1/responses` present but did not verify a model or the
+structured tool features required to enable it. The deterministic fallback therefore remains the
+official demo path. Real candidate mode records an approval boundary but never recollects an
+external Page B automatically. See `gemastik-2026/README.md`.
 
 ## Bounded live robustness check
 
