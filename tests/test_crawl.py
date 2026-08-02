@@ -35,7 +35,7 @@ def _crawl(
         url,
         output=output,
         timeout_seconds=timeout_seconds,
-        case_timeout_seconds=10.0,
+        case_timeout_seconds=30.0,
         max_pages=max_pages,
         max_depth=max_depth,
         safety_policy=policy or _loopback_policy(),
@@ -134,7 +134,7 @@ def test_external_redirect_is_recorded_as_failed_child_and_never_followed(
     child = result.pages[1]
     assert child.state == "failed"
     assert child.skip_reason == "external_host"
-    assert child.navigation_status == "failed"
+    assert child.navigation_status == "blocked_by_policy"
     assert any(
         blocked.is_navigation and "outside.example.net" in blocked.url
         for blocked in child.blocked_requests

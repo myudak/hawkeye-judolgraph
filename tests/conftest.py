@@ -44,6 +44,12 @@ def fixture_server_url() -> Iterator[str]:
         "/render-canvas-heavy.html": "render_canvas_heavy.html",
         "/render-dom-growth-static.html": "render_dom_growth_static.html",
         "/render-visual-change-static-dom.html": "render_visual_change_static_dom.html",
+        "/render-rich-hidden-blank.html": "render-rich-hidden-blank.html",
+        "/geo-restriction-wording.html": "geo-restriction-wording.html",
+        "/unavailable-by-location.html": "unavailable-by-location.html",
+        "/render-long-page.html": "render-long-page.html",
+        "/blank-access-challenge.html": "blank-access-challenge.html",
+        "/semantic-evidence.html": "semantic-evidence.html",
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -72,6 +78,10 @@ def fixture_server_url() -> Iterator[str]:
                 body = (fixture_directory / fixture_pages[path]).read_bytes()
             elif path == "/":
                 body = template.replace("{{PORT}}", str(port)).encode("utf-8")
+            elif path == "/oversized-dom-2mb.html":
+                body = _html("Oversized public DOM", "<p>public evidence block</p>" * 90_000)
+            elif path == "/oversized-dom-5mb.html":
+                body = _html("Oversized public DOM", "<p>public evidence block</p>" * 220_000)
             elif path == "/inside/path":
                 body = _html("Internal fixture page", "<p>Internal content.</p>")
             elif path == "/crawl-cycle-root":

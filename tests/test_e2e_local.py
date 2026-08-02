@@ -42,7 +42,14 @@ def test_local_fixture_server_creates_complete_evidence_case(
     graph = json.loads((case_root / "graph.json").read_text(encoding="utf-8"))
     entities = json.loads((case_root / "entities.json").read_text(encoding="utf-8"))
     evidence_ids = {record["id"] for record in evidence}
-    assert {record["type"] for record in evidence} == {"html_page", "screenshot"}
+    assert {record["type"] for record in evidence} >= {
+        "html_page",
+        "screenshot",
+        "visible_text",
+        "response_metadata",
+        "capture_readiness",
+        "full_page_screenshot",
+    }
     assert any(entity["type"] == "telegram" for entity in entities)
     assert any(entity["type"] == "whatsapp_or_phone" for entity in entities)
     for edge in graph["edges"]:

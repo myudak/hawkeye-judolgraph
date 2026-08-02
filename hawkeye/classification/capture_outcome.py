@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import re
 
-from hawkeye.models import CaptureClassification, CaptureOutcome
+from hawkeye.models import (
+    AccessOutcome,
+    CaptureAdequacy,
+    CaptureClassification,
+    CaptureOutcome,
+    PublicCaptureStatus,
+)
 
 _MAX_ANALYZED_TEXT_LENGTH = 50_000
 _MIN_MEANINGFUL_TEXT_LENGTH = 24
@@ -35,6 +41,8 @@ _UNAVAILABLE = (
     "site is unavailable",
     "temporarily unavailable",
     "service unavailable in your region",
+    "unavailable in your region",
+    "unavailable in your location",
 )
 _CONSENT = (
     "manage consent",
@@ -112,11 +120,53 @@ def classify_capture(
             CaptureOutcome.UNKNOWN_RESTRICTION, "captured page had no meaningful visible text"
         )
 
-    return CaptureClassification(outcome=CaptureOutcome.CONTENT, content_usable=True, reasons=[])
+    return CaptureClassification(
+        outcome=CaptureOutcome.CONTENT,
+        access_outcome=AccessOutcome.CONTENT,
+        content_usable=True,
+        reasons=[],
+    )
 
 
 def _restricted(outcome: CaptureOutcome, *reasons: str) -> CaptureClassification:
-    return CaptureClassification(outcome=outcome, content_usable=False, reasons=list(reasons))
+    access = {
+        CaptureOutcome.BOT_CHALLENGE: AccessOutcome.ACCESS_CHALLENGE,
+        CaptureOutcome.GEO_RESTRICTED: AccessOutcome.GEO_RESTRICTION,
+        CaptureOutcome.CONSENT_WALL: AccessOutcome.CONSENT_WALL,
+        CaptureOutcome.UNAVAILABLE_PAGE: AccessOutcome.UNAVAILABLE,
+        CaptureOutcome.UNKNOWN_RESTRICTION: AccessOutcome.UNKNOWN_RESTRICTION,
+    }.get(outcome)
+    return CaptureClassification(
+        outcome=outcome,
+        access_outcome=access,
+        content_usable=False,
+        reasons=list(reasons),
+    )
+
+
+def derive_public_status(
+    *,
+    navigation_status: str,
+    access_outcome: AccessOutcome | None,
+    capture_adequacy: CaptureAdequacy | None,
+) -> PublicCaptureStatus:
+    """Derive the bounded public label without erasing independent capture dimensions."""
+
+    if navigation_status == "blocked_by_policy":
+        return PublicCaptureStatus.BLOCKED_BY_POLICY
+    if navigation_status == "timed_out":
+        return PublicCaptureStatus.TIMEOUT
+    if navigation_status != "captured":
+        return PublicCaptureStatus.COLLECTION_FAILED
+    if access_outcome is AccessOutcome.ACCESS_CHALLENGE:
+        return PublicCaptureStatus.ACCESS_CHALLENGE_OBSERVED
+    if access_outcome is AccessOutcome.GEO_RESTRICTION:
+        return PublicCaptureStatus.GEO_RESTRICTION_OBSERVED
+    if access_outcome is AccessOutcome.UNAVAILABLE:
+        return PublicCaptureStatus.UNAVAILABLE
+    if capture_adequacy is CaptureAdequacy.ADEQUATE:
+        return PublicCaptureStatus.CAPTURED
+    return PublicCaptureStatus.CAPTURED_WITH_LIMITATIONS
 
 
 def _match_reasons(content: str, indicators: tuple[str, ...], label: str) -> list[str]:

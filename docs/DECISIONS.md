@@ -110,3 +110,21 @@ comparison references through the existing loader, checks hash-backed labels, an
 outside immutable case directories. It refuses an existing output directory and returns nonzero for
 required failures. Its report distinguishes `PASS`, `FAIL`, `NOT APPLICABLE`, and
 `OBSERVATIONAL ONLY`; no live result becomes permanent benchmark truth.
+
+## ADR-012 — Canonical capture uses fixed readiness checkpoints
+
+**Status:** accepted
+
+G4A promotes the fixed 0/500/1500/3000 ms measurement schedule into canonical collection. The
+final checkpoint is canonical, browser `innerText` is visible-text truth, and capture adequacy is
+kept independent from navigation and access outcome. Five megabytes is the persistence limit while
+two megabytes is the automatic extraction limit. Oversize documents preserve bounded partial
+evidence and never become navigation errors.
+
+## ADR-013 — Semantic observations precede assertions
+
+**Status:** accepted
+
+G4B adds immutable semantic observations with artifact and screenshot provenance. Observations do
+not themselves assert ownership or relationship. Automatic semantic extraction is fail-closed for
+limited captures; visible branding is a `ClaimedBrandIdentity`, not verified ownership.

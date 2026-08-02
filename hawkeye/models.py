@@ -22,12 +22,117 @@ class CaptureOutcome(StrEnum):
     UNKNOWN_RESTRICTION = "unknown_restriction"
 
 
+class AccessOutcome(StrEnum):
+    """What the public page presented, independent of capture quality."""
+
+    CONTENT = "content"
+    ACCESS_CHALLENGE = "access_challenge"
+    GEO_RESTRICTION = "geo_restriction"
+    CONSENT_WALL = "consent_wall"
+    UNAVAILABLE = "unavailable"
+    UNKNOWN_RESTRICTION = "unknown_restriction"
+
+
+class CaptureAdequacy(StrEnum):
+    """Whether persisted artifacts faithfully preserve an inspectable browser state."""
+
+    ADEQUATE = "adequate"
+    LIMITED = "limited"
+    FAILED = "failed"
+
+
+class PublicCaptureStatus(StrEnum):
+    """Small public-facing status derived from navigation, access, and adequacy."""
+
+    CAPTURED = "captured"
+    CAPTURED_WITH_LIMITATIONS = "captured_with_limitations"
+    BLOCKED_BY_POLICY = "blocked_by_policy"
+    ACCESS_CHALLENGE_OBSERVED = "access_challenge_observed"
+    GEO_RESTRICTION_OBSERVED = "geo_restriction_observed"
+    UNAVAILABLE = "unavailable"
+    TIMEOUT = "timeout"
+    COLLECTION_FAILED = "collection_failed"
+
+
 class CaptureClassification(BaseModel):
     """Stable, explainable outcome assessment for one page capture."""
 
     outcome: CaptureOutcome
     content_usable: bool
     reasons: list[str] = Field(default_factory=list)
+    access_outcome: AccessOutcome | None = None
+
+
+class CaptureCheckpoint(BaseModel):
+    """One deterministic browser-render checkpoint used for canonical capture selection."""
+
+    elapsed_ms: int = Field(ge=0)
+    captured_at: datetime
+    document_ready_state: str
+    html_bytes: int = Field(ge=0)
+    visible_text_chars: int = Field(ge=0)
+    visible_text_words: int = Field(ge=0)
+    element_count: int = Field(ge=0)
+    visible_element_count: int = Field(ge=0)
+    visible_link_count: int = Field(ge=0)
+    visible_button_count: int = Field(ge=0)
+    visible_input_count: int = Field(ge=0)
+    visible_image_count: int = Field(ge=0)
+    visible_iframe_count: int = Field(ge=0)
+    visible_canvas_count: int = Field(ge=0)
+    document_width: int = Field(ge=0)
+    document_height: int = Field(ge=0)
+    screenshot_sha256: str
+    screenshot_bytes: int = Field(ge=0)
+    screenshot_width: int = Field(ge=0)
+    screenshot_height: int = Field(ge=0)
+    screenshot_entropy: float = Field(ge=0.0)
+    informative_tile_ratio: float = Field(ge=0.0, le=1.0)
+
+
+class CaptureCheckpointDelta(BaseModel):
+    """Material changes between two adjacent readiness checkpoints."""
+
+    from_elapsed_ms: int = Field(ge=0)
+    to_elapsed_ms: int = Field(ge=0)
+    html_bytes_delta: int
+    visible_text_chars_delta: int
+    visible_element_count_delta: int
+    visible_link_count_delta: int
+    visible_image_count_delta: int
+    document_height_delta: int
+    screenshot_changed: bool
+    informative_tile_ratio_delta: float
+    material_change: bool
+
+
+class CaptureReadiness(BaseModel):
+    """Persistable explanation of the canonical capture and its limitations."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    checkpoint_schedule_ms: list[int]
+    checkpoints: list[CaptureCheckpoint]
+    deltas: list[CaptureCheckpointDelta]
+    capture_adequacy: CaptureAdequacy
+    limitation_reasons: list[str] = Field(default_factory=list)
+    canonical_checkpoint_ms: int = Field(ge=0)
+    response_status: int | None = Field(default=None, ge=100, le=599)
+    response_url: str
+    response_headers: dict[str, str] = Field(default_factory=dict)
+    content_type: str
+    browser_version: str
+    collector_version: str
+    policy_version: str
+    network_route: str
+    initial_screenshot_changed: bool
+    html_bytes: int = Field(ge=0)
+    html_sha256: str
+    html_omitted_reason: str | None = None
+    full_page_omitted_reason: str | None = None
+    blocked_resource_count: int = Field(ge=0)
+    popup_count: int = Field(ge=0)
+    download_count: int = Field(ge=0)
+    generated_at: datetime
 
 
 class RedirectRecord(BaseModel):
@@ -79,13 +184,26 @@ class CrawlPageRecord(BaseModel):
     anchor_text: str | None = None
     final_url: str | None = None
     redirects: list[RedirectRecord] = Field(default_factory=list)
-    navigation_status: Literal["pending", "captured", "failed", "timed_out"] = "pending"
+    navigation_status: Literal[
+        "pending", "captured", "failed", "timed_out", "blocked_by_policy"
+    ] = "pending"
     capture_outcome: CaptureOutcome | None = None
     content_usable: bool | None = None
+    access_outcome: AccessOutcome | None = None
+    capture_adequacy: CaptureAdequacy | None = None
+    extraction_eligible: bool | None = None
+    extraction_skip_reason: str | None = None
+    public_status: PublicCaptureStatus | None = None
+    limitation_reasons: list[str] = Field(default_factory=list)
     classification_reasons: list[str] = Field(default_factory=list)
     page_title: str | None = None
     html_evidence_id: str | None = None
     screenshot_evidence_id: str | None = None
+    initial_screenshot_evidence_id: str | None = None
+    full_page_screenshot_evidence_id: str | None = None
+    visible_text_evidence_id: str | None = None
+    response_metadata_evidence_id: str | None = None
+    readiness_evidence_id: str | None = None
     redirect_evidence_id: str | None = None
     content_sha256: str | None = None
     content_type: str | None = None
@@ -352,9 +470,17 @@ class CaseRecord(BaseModel):
     final_url: str | None = None
     redirect_chain: list[str] = Field(default_factory=list)
     redirects: list[RedirectRecord] = Field(default_factory=list)
-    navigation_status: Literal["pending", "captured", "failed", "timed_out"] = "pending"
+    navigation_status: Literal[
+        "pending", "captured", "failed", "timed_out", "blocked_by_policy"
+    ] = "pending"
     capture_outcome: CaptureOutcome | None = None
     content_usable: bool | None = None
+    access_outcome: AccessOutcome | None = None
+    capture_adequacy: CaptureAdequacy | None = None
+    extraction_eligible: bool | None = None
+    extraction_skip_reason: str | None = None
+    public_status: PublicCaptureStatus | None = None
+    limitation_reasons: list[str] = Field(default_factory=list)
     classification_reasons: list[str] = Field(default_factory=list)
     page_title: str | None = None
     page_count: int = 0
@@ -371,7 +497,17 @@ class EvidenceRecord(BaseModel):
     """An immutable local artifact record and its integrity data."""
 
     id: str
-    type: Literal["html_page", "screenshot", "network_event"]
+    type: Literal[
+        "html_page",
+        "screenshot",
+        "initial_screenshot",
+        "full_page_screenshot",
+        "visible_text",
+        "response_metadata",
+        "capture_readiness",
+        "network_event",
+        "evidence_crop",
+    ]
     source_url: str
     path: str
     collected_at: datetime
@@ -393,6 +529,59 @@ class ExtractedEntity(BaseModel):
     extraction_method: str
     confidence: float = Field(ge=0.0, le=1.0)
     details: dict[str, str] = Field(default_factory=dict)
+
+
+class SemanticElementSnapshot(BaseModel):
+    """Bounded final-viewport DOM reference used for observation provenance and crops."""
+
+    selector: str
+    tag: str
+    role: str | None = None
+    accessible_name: str = ""
+    visible_text: str = ""
+    href: str | None = None
+    x: float
+    y: float
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+
+class SemanticObservation(BaseModel):
+    """One immutable public observable, distinct from entities and assertions."""
+
+    id: str
+    observation_type: Literal[
+        "claimed_brand_identity",
+        "public_telegram_alias",
+        "public_whatsapp_link",
+        "public_phone_number",
+        "public_email_address",
+        "public_outgoing_link",
+        "public_redirect_target",
+        "public_download_destination",
+        "public_payment_method",
+        "public_payment_provider",
+        "public_offer_claim",
+        "public_legal_or_license_claim",
+        "public_referral_code",
+        "public_tracking_identifier",
+    ]
+    raw_value: str
+    normalized_value: str
+    source_page_id: str
+    source_url: str
+    source_artifact_id: str
+    selector: str | None = None
+    surrounding_text: str = ""
+    screenshot_evidence_id: str
+    crop_evidence_id: str | None = None
+    crop_coordinates: dict[str, float] | None = None
+    viewport_scale: float = 1.0
+    confidence: float = Field(ge=0.0, le=1.0)
+    extraction_method: str
+    evidence_strength: Literal["strong", "moderate", "weak"]
+    limitations: list[str] = Field(default_factory=list)
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class GraphNode(BaseModel):
@@ -475,11 +664,19 @@ class CollectedPage(BaseModel):
     redirects: list[RedirectRecord]
     title: str
     html: str
+    html_persistable: bool = True
+    visible_text: str = ""
     screenshot: bytes
+    initial_screenshot: bytes | None = None
+    full_page_screenshot: bytes | None = None
     viewport: dict[str, int]
     image_dimensions: dict[str, int]
+    initial_image_dimensions: dict[str, int] | None = None
+    full_page_image_dimensions: dict[str, int] | None = None
     collected_at: datetime
     content_type: str = "text/html"
+    readiness: CaptureReadiness | None = None
+    semantic_elements: list[SemanticElementSnapshot] = Field(default_factory=list)
     blocked_requests: list[BlockedRequestRecord] = Field(default_factory=list)
     blocked_popup_count: int = Field(default=0, ge=0)
     blocked_download_count: int = Field(default=0, ge=0)
@@ -493,3 +690,4 @@ class InvestigationResult(BaseModel):
     pages: list[CrawlPageRecord] = Field(default_factory=list)
     frontier: list[CrawlFrontierRecord] = Field(default_factory=list)
     candidates: list[CandidateRecord] = Field(default_factory=list)
+    observations: list[SemanticObservation] = Field(default_factory=list)

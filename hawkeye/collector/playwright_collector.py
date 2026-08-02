@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import math
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -23,7 +25,16 @@ from playwright.sync_api import (
     Error as PlaywrightError,
 )
 
-from hawkeye.models import BlockedRequestRecord, CollectedPage, RedirectRecord
+from hawkeye.models import (
+    BlockedRequestRecord,
+    CaptureAdequacy,
+    CaptureCheckpoint,
+    CaptureCheckpointDelta,
+    CaptureReadiness,
+    CollectedPage,
+    RedirectRecord,
+    SemanticElementSnapshot,
+)
 
 from .safety import SafetyPolicy, UnsafeUrlError
 
@@ -35,6 +46,12 @@ ALLOWED_HTML_CONTENT_TYPES = frozenset({"text/html", "application/xhtml+xml"})
 MAX_BLOCKED_REQUEST_RECORDS = 100
 DEFAULT_MAX_TOTAL_REQUESTS = 200
 DEFAULT_MAX_DECLARED_RESPONSE_BYTES = 10_000_000
+CAPTURE_CHECKPOINT_SCHEDULE_MS = (0, 500, 1500, 3000)
+PERSISTED_HTML_LIMIT_BYTES = 5_000_000
+DIRECT_EXTRACTOR_LIMIT_BYTES = 2_000_000
+MAX_FULL_PAGE_HEIGHT = 12_000
+COLLECTOR_VERSION = "g4a-capture-adequacy-1"
+CAPTURE_POLICY_VERSION = "public-read-only-v2"
 
 
 @dataclass
@@ -257,7 +274,7 @@ class BrowserCollector:
         safety: SafetyPolicy,
         timeout_seconds: float = 30.0,
         max_redirects: int = 5,
-        max_html_bytes: int = 2_000_000,
+        max_html_bytes: int = PERSISTED_HTML_LIMIT_BYTES,
         budget: CollectionBudget | None = None,
         allowed_navigation_hosts: Iterable[str] | None = None,
         headed: bool = False,
@@ -283,7 +300,7 @@ class BrowserCollector:
         self.user_agent = user_agent
 
     def collect(self, seed_url: str) -> CollectedPage:
-        """Navigate once, preserve HTML and one screenshot, then close all browser resources."""
+        """Navigate once and preserve a fixed-time, non-interactive canonical browser state."""
 
         validated_seed = self.safety.validate_crawl_url(seed_url, refresh_dns=True)
         if (
@@ -306,6 +323,7 @@ class BrowserCollector:
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=not self.headed)
+            browser_version = browser.version
             context = browser.new_context(
                 user_agent=self.user_agent,
                 viewport=DEFAULT_VIEWPORT,
@@ -468,31 +486,105 @@ class BrowserCollector:
                         blocked_download_count,
                         reason_code="redirect_limit",
                     )
-                title = page.title()
-                html = page.content()
-                html_bytes = len(html.encode("utf-8"))
-                if html_bytes > self.max_html_bytes:
-                    raise self._error(
-                        "Rendered HTML exceeds "
-                        f"{self.max_html_bytes} byte limit ({html_bytes} bytes)",
-                        guard,
-                        blocked_popup_count,
-                        blocked_download_count,
-                        reason_code="response_too_large",
+                checkpoints: list[CaptureCheckpoint] = []
+                checkpoint_screenshots: list[bytes] = []
+                visible_text = ""
+                html = ""
+                prior_elapsed = 0
+                for elapsed_ms in CAPTURE_CHECKPOINT_SCHEDULE_MS:
+                    if elapsed_ms > prior_elapsed:
+                        page.wait_for_timeout(elapsed_ms - prior_elapsed)
+                    if guard.navigation_failure is not None:
+                        raise self._with_browser_counts(
+                            guard.navigation_failure,
+                            blocked_popup_count,
+                            blocked_download_count,
+                        )
+                    checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
+                        page, elapsed_ms=elapsed_ms, timeout_ms=timeout_ms
                     )
-                screenshot = page.screenshot(type="png", full_page=False, timeout=timeout_ms)
+                    checkpoints.append(checkpoint)
+                    checkpoint_screenshots.append(checkpoint_screenshot)
+                    prior_elapsed = elapsed_ms
+                title = page.title()
+                html_bytes = len(html.encode("utf-8"))
+                html_sha256 = hashlib.sha256(html.encode("utf-8")).hexdigest()
+                screenshot = checkpoint_screenshots[-1]
+                initial_screenshot = checkpoint_screenshots[0]
                 image_dimensions = _image_dimensions(screenshot)
+                initial_dimensions = _image_dimensions(initial_screenshot)
+                deltas = _checkpoint_deltas(checkpoints)
+                limitation_reasons: list[str] = []
+                if deltas and deltas[-1].material_change:
+                    limitation_reasons.append("rendering_changed_at_budget_end")
+                final_checkpoint = checkpoints[-1]
+                if _low_information(final_checkpoint):
+                    limitation_reasons.append("low_information_capture")
+                html_persistable = html_bytes <= self.max_html_bytes
+                html_omitted_reason = None
+                if not html_persistable:
+                    html_omitted_reason = "canonical_html_exceeds_5_mb_persistence_limit"
+                    limitation_reasons.append(html_omitted_reason)
+                full_page_screenshot, full_page_dimensions, full_page_reason = (
+                    _bounded_full_page_screenshot(page, final_checkpoint, timeout_ms=timeout_ms)
+                )
+                if full_page_reason is not None:
+                    limitation_reasons.append(full_page_reason)
+                adequacy = (
+                    CaptureAdequacy.LIMITED if limitation_reasons else CaptureAdequacy.ADEQUATE
+                )
+                response_headers = _sanitized_response_headers(response)
+                readiness = CaptureReadiness(
+                    checkpoint_schedule_ms=list(CAPTURE_CHECKPOINT_SCHEDULE_MS),
+                    checkpoints=checkpoints,
+                    deltas=deltas,
+                    capture_adequacy=adequacy,
+                    limitation_reasons=limitation_reasons,
+                    canonical_checkpoint_ms=CAPTURE_CHECKPOINT_SCHEDULE_MS[-1],
+                    response_status=response.status,
+                    response_url=response.url,
+                    response_headers=response_headers,
+                    content_type=content_type,
+                    browser_version=browser_version,
+                    collector_version=COLLECTOR_VERSION,
+                    policy_version=CAPTURE_POLICY_VERSION,
+                    network_route="application_validated_browser_dns",
+                    initial_screenshot_changed=(
+                        checkpoints[0].screenshot_sha256 != checkpoints[-1].screenshot_sha256
+                    ),
+                    html_bytes=html_bytes,
+                    html_sha256=html_sha256,
+                    html_omitted_reason=html_omitted_reason,
+                    full_page_omitted_reason=full_page_reason,
+                    blocked_resource_count=len(guard.blocked_requests),
+                    popup_count=blocked_popup_count,
+                    download_count=blocked_download_count,
+                    generated_at=datetime.now(UTC),
+                )
+                semantic_elements = _semantic_element_snapshots(page)
                 return CollectedPage(
                     final_url=final.normalized_url,
                     redirect_chain=redirect_chain,
                     redirects=redirects,
                     title=title,
                     html=html,
+                    html_persistable=html_persistable,
+                    visible_text=visible_text,
                     screenshot=screenshot,
+                    initial_screenshot=(
+                        initial_screenshot if readiness.initial_screenshot_changed else None
+                    ),
+                    full_page_screenshot=full_page_screenshot,
                     viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT},
                     image_dimensions=image_dimensions,
+                    initial_image_dimensions=(
+                        initial_dimensions if readiness.initial_screenshot_changed else None
+                    ),
+                    full_page_image_dimensions=full_page_dimensions,
                     collected_at=datetime.now(UTC),
                     content_type=content_type,
+                    readiness=readiness,
+                    semantic_elements=semantic_elements,
                     blocked_requests=guard.blocked_requests,
                     blocked_popup_count=blocked_popup_count,
                     blocked_download_count=blocked_download_count,
@@ -547,20 +639,6 @@ class BrowserCollector:
                 blocked_download_count,
                 reason_code="unsupported_content_type",
             )
-        content_length = response.header_value("content-length")
-        if content_length is not None:
-            try:
-                declared_bytes = int(content_length)
-            except ValueError:
-                declared_bytes = 0
-            if declared_bytes > self.max_html_bytes:
-                raise self._error(
-                    f"Response exceeds {self.max_html_bytes} byte limit ({declared_bytes} bytes)",
-                    guard,
-                    blocked_popup_count,
-                    blocked_download_count,
-                    reason_code="response_too_large",
-                )
         return content_type
 
     @staticmethod
@@ -633,3 +711,285 @@ def _image_dimensions(content: bytes) -> dict[str, int]:
     with Image.open(BytesIO(content)) as image:
         width, height = image.size
     return {"width": width, "height": height}
+
+
+def _capture_checkpoint(
+    page: Page, *, elapsed_ms: int, timeout_ms: int
+) -> tuple[CaptureCheckpoint, bytes, str, str]:
+    """Measure browser-visible state and pixels without interacting with the document."""
+
+    raw = page.evaluate(
+        """() => {
+            const root = document.documentElement;
+            const body = document.body;
+            const visibleText = (body?.innerText ?? "").replace(/\\s+/g, " ").trim();
+            const all = Array.from(document.querySelectorAll("*"));
+            const isVisible = (element) => {
+                const style = getComputedStyle(element);
+                const rect = element.getBoundingClientRect();
+                return style.display !== "none" && style.visibility !== "hidden" &&
+                    Number(style.opacity || "1") > 0 && rect.width > 0 && rect.height > 0;
+            };
+            const visible = all.filter(isVisible);
+            const count = (selector) => Array.from(document.querySelectorAll(selector))
+                .filter(isVisible).length;
+            const width = Math.max(
+                body?.scrollWidth ?? 0, root?.scrollWidth ?? 0,
+                body?.offsetWidth ?? 0, root?.offsetWidth ?? 0
+            );
+            const height = Math.max(
+                body?.scrollHeight ?? 0, root?.scrollHeight ?? 0,
+                body?.offsetHeight ?? 0, root?.offsetHeight ?? 0
+            );
+            const html = root?.outerHTML ?? "";
+            return {
+                document_ready_state: document.readyState,
+                html,
+                html_bytes: new TextEncoder().encode(html).length,
+                visible_text: visibleText,
+                visible_text_chars: visibleText.length,
+                visible_text_words: visibleText ? visibleText.split(/\\s+/).length : 0,
+                element_count: all.length,
+                visible_element_count: visible.length,
+                visible_link_count: count("a[href]"),
+                visible_button_count: count("button, [role=button]"),
+                visible_input_count: count("input, select, textarea"),
+                visible_image_count: count("img, svg"),
+                visible_iframe_count: count("iframe"),
+                visible_canvas_count: count("canvas"),
+                document_width: width,
+                document_height: height
+            };
+        }"""
+    )
+    if not isinstance(raw, dict):
+        raise CollectionError("Capture checkpoint did not return a metrics object")
+    screenshot = page.screenshot(type="png", full_page=False, timeout=timeout_ms)
+    image_dimensions = _image_dimensions(screenshot)
+    entropy, tile_ratio = _visual_information(screenshot)
+    visible_text = str(raw.get("visible_text", ""))
+    html = str(raw.get("html", ""))
+    checkpoint = CaptureCheckpoint(
+        elapsed_ms=elapsed_ms,
+        captured_at=datetime.now(UTC),
+        document_ready_state=str(raw.get("document_ready_state", "unknown")),
+        html_bytes=_bounded_int(raw.get("html_bytes")),
+        visible_text_chars=_bounded_int(raw.get("visible_text_chars")),
+        visible_text_words=_bounded_int(raw.get("visible_text_words")),
+        element_count=_bounded_int(raw.get("element_count")),
+        visible_element_count=_bounded_int(raw.get("visible_element_count")),
+        visible_link_count=_bounded_int(raw.get("visible_link_count")),
+        visible_button_count=_bounded_int(raw.get("visible_button_count")),
+        visible_input_count=_bounded_int(raw.get("visible_input_count")),
+        visible_image_count=_bounded_int(raw.get("visible_image_count")),
+        visible_iframe_count=_bounded_int(raw.get("visible_iframe_count")),
+        visible_canvas_count=_bounded_int(raw.get("visible_canvas_count")),
+        document_width=_bounded_int(raw.get("document_width")),
+        document_height=_bounded_int(raw.get("document_height")),
+        screenshot_sha256=hashlib.sha256(screenshot).hexdigest(),
+        screenshot_bytes=len(screenshot),
+        screenshot_width=image_dimensions["width"],
+        screenshot_height=image_dimensions["height"],
+        screenshot_entropy=entropy,
+        informative_tile_ratio=tile_ratio,
+    )
+    return checkpoint, screenshot, visible_text, html
+
+
+def _checkpoint_deltas(checkpoints: list[CaptureCheckpoint]) -> list[CaptureCheckpointDelta]:
+    deltas: list[CaptureCheckpointDelta] = []
+    for previous, current in zip(checkpoints, checkpoints[1:], strict=False):
+        screenshot_changed = previous.screenshot_sha256 != current.screenshot_sha256
+        html_delta = current.html_bytes - previous.html_bytes
+        text_delta = current.visible_text_chars - previous.visible_text_chars
+        visible_delta = current.visible_element_count - previous.visible_element_count
+        height_delta = current.document_height - previous.document_height
+        informative_delta = current.informative_tile_ratio - previous.informative_tile_ratio
+        material = any(
+            (
+                abs(html_delta) >= 32,
+                abs(text_delta) >= 4,
+                abs(visible_delta) >= 1,
+                abs(height_delta) >= 8,
+                screenshot_changed,
+            )
+        )
+        deltas.append(
+            CaptureCheckpointDelta(
+                from_elapsed_ms=previous.elapsed_ms,
+                to_elapsed_ms=current.elapsed_ms,
+                html_bytes_delta=html_delta,
+                visible_text_chars_delta=text_delta,
+                visible_element_count_delta=visible_delta,
+                visible_link_count_delta=current.visible_link_count - previous.visible_link_count,
+                visible_image_count_delta=(
+                    current.visible_image_count - previous.visible_image_count
+                ),
+                document_height_delta=height_delta,
+                screenshot_changed=screenshot_changed,
+                informative_tile_ratio_delta=informative_delta,
+                material_change=material,
+            )
+        )
+    return deltas
+
+
+def _low_information(checkpoint: CaptureCheckpoint) -> bool:
+    return (
+        checkpoint.visible_text_chars < 24
+        and checkpoint.visible_link_count == 0
+        and checkpoint.visible_image_count == 0
+        and checkpoint.visible_iframe_count == 0
+        and checkpoint.visible_canvas_count == 0
+        and checkpoint.informative_tile_ratio < 0.01
+    )
+
+
+def _bounded_full_page_screenshot(
+    page: Page, checkpoint: CaptureCheckpoint, *, timeout_ms: int
+) -> tuple[bytes | None, dict[str, int] | None, str | None]:
+    capture_height = max(1, min(checkpoint.document_height, MAX_FULL_PAGE_HEIGHT))
+    capture_width = max(1, min(checkpoint.document_width, VIEWPORT_WIDTH))
+    reason = (
+        "full_page_truncated_at_12000_px"
+        if checkpoint.document_height > MAX_FULL_PAGE_HEIGHT
+        else None
+    )
+    try:
+        content = page.screenshot(
+            type="png",
+            full_page=False,
+            clip={"x": 0, "y": 0, "width": capture_width, "height": capture_height},
+            timeout=timeout_ms,
+        )
+    except PlaywrightError:
+        return None, None, "bounded_full_page_screenshot_failed"
+    return content, _image_dimensions(content), reason
+
+
+def _visual_information(content: bytes) -> tuple[float, float]:
+    """Return normalized grayscale entropy and the ratio of non-uniform 64px tiles."""
+
+    with Image.open(BytesIO(content)) as image:
+        gray = image.convert("L")
+        histogram = gray.histogram()
+        pixels = max(1, gray.width * gray.height)
+        entropy_bits = -sum(
+            (count / pixels) * math.log2(count / pixels) for count in histogram if count
+        )
+        informative = 0
+        total = 0
+        for top in range(0, gray.height, 64):
+            for left in range(0, gray.width, 64):
+                tile = gray.crop(
+                    (left, top, min(left + 64, gray.width), min(top + 64, gray.height))
+                )
+                extrema = tile.getextrema()
+                total += 1
+                if (
+                    isinstance(extrema, tuple)
+                    and len(extrema) == 2
+                    and isinstance(extrema[0], (int, float))
+                    and isinstance(extrema[1], (int, float))
+                    and extrema[1] - extrema[0] >= 12
+                ):
+                    informative += 1
+    return round(entropy_bits / 8.0, 6), round(informative / max(1, total), 6)
+
+
+def _sanitized_response_headers(response: Response) -> dict[str, str]:
+    allowed = {
+        "cache-control",
+        "content-language",
+        "content-length",
+        "content-type",
+        "date",
+        "etag",
+        "last-modified",
+        "location",
+        "server",
+        "x-robots-tag",
+    }
+    return {
+        key.casefold(): value[:1000]
+        for key, value in response.all_headers().items()
+        if key.casefold() in allowed
+    }
+
+
+def _bounded_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return max(0, int(value))
+    return 0
+
+
+def _semantic_element_snapshots(page: Page) -> list[SemanticElementSnapshot]:
+    """Return a bounded map of visible evidence-bearing elements at the canonical checkpoint."""
+
+    raw = page.evaluate(
+        """() => {
+            const selectorFor = (element) => {
+                const parts = [];
+                let current = element;
+                while (current && current.nodeType === Node.ELEMENT_NODE && parts.length < 8) {
+                    let part = current.tagName.toLowerCase();
+                    if (current.id && /^[A-Za-z][A-Za-z0-9_-]{0,80}$/.test(current.id)) {
+                        part += `#${CSS.escape(current.id)}`;
+                        parts.unshift(part);
+                        break;
+                    }
+                    const parent = current.parentElement;
+                    if (parent) {
+                        const siblings = Array.from(parent.children)
+                            .filter((sibling) => sibling.tagName === current.tagName);
+                        if (siblings.length > 1) {
+                            part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
+                        }
+                    }
+                    parts.unshift(part);
+                    current = parent;
+                }
+                return parts.join(" > ");
+            };
+            const candidates = Array.from(document.querySelectorAll(
+                "a[href], h1, h2, [data-brand], [itemprop], address, strong, button"
+            ));
+            return candidates.slice(0, 300).flatMap((element) => {
+                const style = getComputedStyle(element);
+                const rect = element.getBoundingClientRect();
+                if (style.display === "none" || style.visibility === "hidden" ||
+                    Number(style.opacity || "1") <= 0 || rect.width <= 0 || rect.height <= 0 ||
+                    rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth ||
+                    rect.top >= innerHeight) {
+                    return [];
+                }
+                const text = (element.innerText || element.textContent || "")
+                    .replace(/\\s+/g, " ").trim().slice(0, 500);
+                return [{
+                    selector: selectorFor(element),
+                    tag: element.tagName.toLowerCase(),
+                    role: element.getAttribute("role"),
+                    accessible_name: (element.getAttribute("aria-label") || text).slice(0, 200),
+                    visible_text: text,
+                    href: element instanceof HTMLAnchorElement ? element.href : null,
+                    x: Math.max(0, rect.x),
+                    y: Math.max(0, rect.y),
+                    width: Math.min(rect.width, innerWidth - Math.max(0, rect.x)),
+                    height: Math.min(rect.height, innerHeight - Math.max(0, rect.y))
+                }];
+            });
+        }"""
+    )
+    if not isinstance(raw, list):
+        return []
+    snapshots: list[SemanticElementSnapshot] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        try:
+            snapshots.append(SemanticElementSnapshot.model_validate(item))
+        except ValueError:
+            continue
+    return snapshots

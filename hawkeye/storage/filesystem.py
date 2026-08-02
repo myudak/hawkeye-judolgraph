@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from hawkeye.models import EvidenceRecord
 
@@ -97,20 +97,108 @@ class CaseStorage:
         image_dimensions: dict[str, int],
         page_id: str = "page-001",
         evidence_id: str | None = None,
+        artifact_kind: Literal[
+            "screenshot", "initial_screenshot", "full_page_screenshot", "evidence_crop"
+        ] = "screenshot",
     ) -> EvidenceRecord:
         self._validate_page_id(page_id)
-        relative_path = f"screenshots/{page_id}.png"
+        suffix_by_kind = {
+            "screenshot": "",
+            "initial_screenshot": "-initial",
+            "full_page_screenshot": "-full",
+            "evidence_crop": "-crop",
+        }
+        relative_path = f"screenshots/{page_id}{suffix_by_kind[artifact_kind]}.png"
         destination = self.write_bytes(relative_path, content)
         suffix = page_id.removeprefix("page-")
+        id_prefix = {
+            "screenshot": "evidence-screenshot",
+            "initial_screenshot": "evidence-initial-screenshot",
+            "full_page_screenshot": "evidence-full-page-screenshot",
+            "evidence_crop": "evidence-crop",
+        }
         return EvidenceRecord(
-            id=evidence_id or f"evidence-screenshot-{suffix}",
-            type="screenshot",
+            id=evidence_id or f"{id_prefix[artifact_kind]}-{suffix}",
+            type=artifact_kind,
             source_url=source_url,
             path=self.relative_path(destination),
             collected_at=collected_at,
             sha256=self.sha256_file(destination),
             page_id=page_id,
             viewport=viewport,
+            image_dimensions=image_dimensions,
+        )
+
+    def save_capture_text(
+        self,
+        content: str,
+        *,
+        source_url: str,
+        collected_at: datetime,
+        page_id: str,
+    ) -> EvidenceRecord:
+        """Persist browser-visible text independently from canonical HTML."""
+
+        self._validate_page_id(page_id)
+        destination = self.write_text(f"pages/{page_id}-visible.txt", content)
+        return EvidenceRecord(
+            id=f"evidence-visible-text-{page_id.removeprefix('page-')}",
+            type="visible_text",
+            source_url=source_url,
+            path=self.relative_path(destination),
+            collected_at=collected_at,
+            sha256=self.sha256_file(destination),
+            page_id=page_id,
+        )
+
+    def save_capture_json(
+        self,
+        payload: Any,
+        *,
+        artifact_kind: Literal["response_metadata", "capture_readiness"],
+        source_url: str,
+        collected_at: datetime,
+        page_id: str,
+    ) -> EvidenceRecord:
+        """Persist one canonical capture metadata document with an integrity record."""
+
+        self._validate_page_id(page_id)
+        filename = "response" if artifact_kind == "response_metadata" else "readiness"
+        destination = self.write_json(f"capture/{page_id}-{filename}.json", payload)
+        return EvidenceRecord(
+            id=f"evidence-{filename}-{page_id.removeprefix('page-')}",
+            type=artifact_kind,
+            source_url=source_url,
+            path=self.relative_path(destination),
+            collected_at=collected_at,
+            sha256=self.sha256_file(destination),
+            page_id=page_id,
+        )
+
+    def save_evidence_crop(
+        self,
+        content: bytes,
+        *,
+        observation_id: str,
+        source_url: str,
+        collected_at: datetime,
+        page_id: str,
+        image_dimensions: dict[str, int],
+    ) -> EvidenceRecord:
+        """Persist one bounded observation crop under a non-user-controlled identifier."""
+
+        self._validate_page_id(page_id)
+        if not re.fullmatch(r"observation-[0-9]{4}", observation_id):
+            raise ValueError("observation_id must use the form observation-0001")
+        destination = self.write_bytes(f"crops/{observation_id}.png", content)
+        return EvidenceRecord(
+            id=f"evidence-crop-{observation_id.removeprefix('observation-')}",
+            type="evidence_crop",
+            source_url=source_url,
+            path=self.relative_path(destination),
+            collected_at=collected_at,
+            sha256=self.sha256_file(destination),
+            page_id=page_id,
             image_dimensions=image_dimensions,
         )
 

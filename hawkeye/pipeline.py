@@ -5,17 +5,19 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from time import monotonic
 
-from bs4 import BeautifulSoup
+from PIL import Image
 
 from hawkeye.candidates import CandidateGeneration, generate_candidates
-from hawkeye.classification import classify_capture
+from hawkeye.classification import classify_capture, derive_public_status
 from hawkeye.collector.playwright_collector import (
     DEFAULT_MAX_DECLARED_RESPONSE_BYTES,
     DEFAULT_MAX_TOTAL_REQUESTS,
     DEFAULT_USER_AGENT,
+    DIRECT_EXTRACTOR_LIMIT_BYTES,
     BrowserCollector,
     CollectionBudget,
     CollectionError,
@@ -35,6 +37,7 @@ from hawkeye.crawl import (
 from hawkeye.extraction import extract_entities
 from hawkeye.graph import build_graph
 from hawkeye.models import (
+    CaptureAdequacy,
     CaseRecord,
     CrawlConfiguration,
     CrawlFrontierRecord,
@@ -43,7 +46,9 @@ from hawkeye.models import (
     ExtractedEntity,
     InvestigationResult,
     RedirectRecord,
+    SemanticObservation,
 )
+from hawkeye.semantic_evidence import extract_semantic_observations
 from hawkeye.storage import CaseStorage, make_case_id
 
 MAX_DISCOVERED_LINKS_PER_PAGE = 200
@@ -141,6 +146,7 @@ def investigate(
     ]
     evidence: list[EvidenceRecord] = []
     entities: list[ExtractedEntity] = []
+    observations: list[SemanticObservation] = []
     queue: deque[_CrawlTarget] = deque([_CrawlTarget("page-001", "frontier-0001")])
     known_urls = {normalized_seed}
     allowed_hosts = {validated_seed.hostname}
@@ -259,11 +265,18 @@ def investigate(
             page=current,
             redirects=collected.redirects,
         )
-        html_evidence = storage.save_html(
-            collected.html,
-            source_url=collected.final_url,
-            collected_at=collected.collected_at,
-            page_id=current.id,
+        readiness = collected.readiness
+        if readiness is None:
+            raise RuntimeError("Collector did not return capture-readiness evidence")
+        html_evidence = (
+            storage.save_html(
+                collected.html,
+                source_url=collected.final_url,
+                collected_at=collected.collected_at,
+                page_id=current.id,
+            )
+            if collected.html_persistable
+            else None
         )
         screenshot_evidence = storage.save_screenshot(
             collected.screenshot,
@@ -273,15 +286,107 @@ def investigate(
             image_dimensions=collected.image_dimensions,
             page_id=current.id,
         )
-        evidence.extend((html_evidence, screenshot_evidence))
+        visible_text_evidence = storage.save_capture_text(
+            collected.visible_text,
+            source_url=collected.final_url,
+            collected_at=collected.collected_at,
+            page_id=current.id,
+        )
+        response_metadata_evidence = storage.save_capture_json(
+            {
+                "status": readiness.response_status,
+                "url": readiness.response_url,
+                "headers": readiness.response_headers,
+                "content_type": readiness.content_type,
+                "redirects": [record.model_dump(mode="json") for record in collected.redirects],
+            },
+            artifact_kind="response_metadata",
+            source_url=collected.final_url,
+            collected_at=collected.collected_at,
+            page_id=current.id,
+        )
+        readiness_evidence = storage.save_capture_json(
+            readiness.model_dump(mode="json"),
+            artifact_kind="capture_readiness",
+            source_url=collected.final_url,
+            collected_at=collected.collected_at,
+            page_id=current.id,
+        )
+        initial_screenshot_evidence = None
+        if (
+            collected.initial_screenshot is not None
+            and collected.initial_image_dimensions is not None
+        ):
+            initial_screenshot_evidence = storage.save_screenshot(
+                collected.initial_screenshot,
+                source_url=collected.final_url,
+                collected_at=readiness.checkpoints[0].captured_at,
+                viewport=collected.viewport,
+                image_dimensions=collected.initial_image_dimensions,
+                page_id=current.id,
+                artifact_kind="initial_screenshot",
+            )
+        full_page_screenshot_evidence = None
+        if (
+            collected.full_page_screenshot is not None
+            and collected.full_page_image_dimensions is not None
+        ):
+            full_page_screenshot_evidence = storage.save_screenshot(
+                collected.full_page_screenshot,
+                source_url=collected.final_url,
+                collected_at=collected.collected_at,
+                viewport=collected.viewport,
+                image_dimensions=collected.full_page_image_dimensions,
+                page_id=current.id,
+                artifact_kind="full_page_screenshot",
+            )
+        evidence.extend(
+            record
+            for record in (
+                html_evidence,
+                screenshot_evidence,
+                initial_screenshot_evidence,
+                full_page_screenshot_evidence,
+                visible_text_evidence,
+                response_metadata_evidence,
+                readiness_evidence,
+            )
+            if record is not None
+        )
         classification = classify_capture(
             title=collected.title,
             final_url=collected.final_url,
-            visible_text=_visible_text_from_html(collected.html),
+            visible_text=collected.visible_text,
             navigation_status="captured",
         )
+        extraction_eligible = bool(
+            classification.content_usable
+            and classification.access_outcome is not None
+            and classification.access_outcome.value == "content"
+            and readiness.capture_adequacy is CaptureAdequacy.ADEQUATE
+            and html_evidence is not None
+            and readiness.html_bytes <= DIRECT_EXTRACTOR_LIMIT_BYTES
+        )
+        extraction_skip_reason = None
+        if not extraction_eligible:
+            if (
+                classification.access_outcome is None
+                or classification.access_outcome.value != "content"
+            ):
+                extraction_skip_reason = "access_outcome_is_not_content"
+            elif html_evidence is None:
+                extraction_skip_reason = "canonical_html_not_persisted"
+            elif readiness.html_bytes > DIRECT_EXTRACTOR_LIMIT_BYTES:
+                extraction_skip_reason = "direct_extractor_input_exceeds_2_mb"
+            elif readiness.capture_adequacy is not CaptureAdequacy.ADEQUATE:
+                extraction_skip_reason = "capture_adequacy_is_not_adequate"
+        public_status = derive_public_status(
+            navigation_status="captured",
+            access_outcome=classification.access_outcome,
+            capture_adequacy=readiness.capture_adequacy,
+        )
         page_entities: list[ExtractedEntity] = []
-        if classification.content_usable:
+        if extraction_eligible and html_evidence is not None:
             page_entities = extract_entities(
                 collected.html,
                 seed_url=normalized_seed,
@@ -290,10 +395,30 @@ def investigate(
                 entity_id_start=len(entities) + 1,
             )
             entities.extend(page_entities)
+            page_observations = extract_semantic_observations(
+                collected.html,
+                source_page_id=current.id,
+                source_url=collected.final_url,
+                source_artifact_id=html_evidence.id,
+                screenshot_evidence_id=screenshot_evidence.id,
+                semantic_elements=collected.semantic_elements,
+                redirects=collected.redirects,
+                observation_id_start=len(observations) + 1,
+            )
+            observations.extend(
+                _attach_observation_crops(
+                    storage=storage,
+                    observations=page_observations,
+                    screenshot=collected.screenshot,
+                    collected_at=collected.collected_at,
+                    evidence=evidence,
+                )
+            )
 
-        duplicate_of = content_hashes.get(html_evidence.sha256)
+        content_sha256 = readiness.html_sha256
+        duplicate_of = content_hashes.get(content_sha256)
         if duplicate_of is None:
-            content_hashes[html_evidence.sha256] = current.id
+            content_hashes[content_sha256] = current.id
         completion_reason = "duplicate_content" if duplicate_of else None
         _replace_page(
             pages,
@@ -303,13 +428,28 @@ def investigate(
             redirects=collected.redirects,
             navigation_status="captured",
             capture_outcome=classification.outcome,
-            content_usable=classification.content_usable,
+            content_usable=extraction_eligible,
+            access_outcome=classification.access_outcome,
+            capture_adequacy=readiness.capture_adequacy,
+            extraction_eligible=extraction_eligible,
+            extraction_skip_reason=extraction_skip_reason,
+            public_status=public_status,
+            limitation_reasons=readiness.limitation_reasons,
             classification_reasons=classification.reasons,
             page_title=collected.title,
-            html_evidence_id=html_evidence.id,
+            html_evidence_id=html_evidence.id if html_evidence is not None else None,
             screenshot_evidence_id=screenshot_evidence.id,
+            initial_screenshot_evidence_id=(
+                initial_screenshot_evidence.id if initial_screenshot_evidence else None
+            ),
+            full_page_screenshot_evidence_id=(
+                full_page_screenshot_evidence.id if full_page_screenshot_evidence else None
+            ),
+            visible_text_evidence_id=visible_text_evidence.id,
+            response_metadata_evidence_id=response_metadata_evidence.id,
+            readiness_evidence_id=readiness_evidence.id,
             redirect_evidence_id=redirect_evidence_id,
-            content_sha256=html_evidence.sha256,
+            content_sha256=content_sha256,
             content_type=collected.content_type,
             blocked_requests=collected.blocked_requests,
             blocked_popup_count=collected.blocked_popup_count,
@@ -328,14 +468,16 @@ def investigate(
             "page_completed "
             f"page_id={target.page_id} depth={current.depth} "
             f"outcome={classification.outcome.value} "
-            f"usable={classification.content_usable} entities={len(page_entities)}"
+            f"adequacy={readiness.capture_adequacy.value} "
+            f"eligible={extraction_eligible} entities={len(page_entities)}"
         )
 
         completed_page = _page_by_id(pages, target.page_id)
         if (
-            classification.content_usable
+            extraction_eligible
             and duplicate_of is None
             and completed_page.depth < max_depth
+            and html_evidence is not None
         ):
             _enqueue_discovered_links(
                 html=collected.html,
@@ -354,17 +496,20 @@ def investigate(
             reason = (
                 "unusable_parent_page"
                 if not classification.content_usable
+                else "extraction_ineligible_parent_page"
+                if not extraction_eligible
                 else "duplicate_content"
                 if duplicate_of is not None
                 else "depth_limit"
             )
-            _record_nonexpanded_links(
-                html=collected.html,
-                parent=completed_page,
-                parent_evidence_id=html_evidence.id,
-                reason=reason,
-                frontier=frontier,
-            )
+            if html_evidence is not None:
+                _record_nonexpanded_links(
+                    html=collected.html,
+                    parent=completed_page,
+                    parent_evidence_id=html_evidence.id,
+                    reason=reason,
+                    frontier=frontier,
+                )
 
     primary = pages[0]
     case_status = "completed" if primary.state == "completed" else "failed"
@@ -378,6 +523,12 @@ def investigate(
             "navigation_status": primary.navigation_status,
             "capture_outcome": primary.capture_outcome,
             "content_usable": primary.content_usable,
+            "access_outcome": primary.access_outcome,
+            "capture_adequacy": primary.capture_adequacy,
+            "extraction_eligible": primary.extraction_eligible,
+            "extraction_skip_reason": primary.extraction_skip_reason,
+            "public_status": primary.public_status,
+            "limitation_reasons": primary.limitation_reasons,
             "classification_reasons": primary.classification_reasons,
             "page_title": primary.page_title,
             "page_count": sum(page.state == "completed" for page in pages),
@@ -413,6 +564,7 @@ def investigate(
         frontier=frontier,
         evidence=evidence,
         entities=entities,
+        observations=observations,
         candidate_generation=candidate_generation,
     )
     storage.log(
@@ -426,6 +578,7 @@ def investigate(
         pages=pages,
         frontier=frontier,
         candidates=candidate_generation.document.candidates,
+        observations=observations,
     )
 
 
@@ -677,6 +830,11 @@ def _record_collection_failure(
     )
     redirects = error.redirects if isinstance(error, CollectionError) else []
     reason = _failure_reason(error)
+    public_status = derive_public_status(
+        navigation_status=navigation_status,
+        access_outcome=classification.access_outcome,
+        capture_adequacy=CaptureAdequacy.FAILED,
+    )
     _replace_page(
         pages,
         target.page_id,
@@ -684,6 +842,12 @@ def _record_collection_failure(
         navigation_status=navigation_status,
         capture_outcome=classification.outcome,
         content_usable=classification.content_usable,
+        access_outcome=classification.access_outcome,
+        capture_adequacy=CaptureAdequacy.FAILED,
+        extraction_eligible=False,
+        extraction_skip_reason="navigation_not_captured",
+        public_status=public_status,
+        limitation_reasons=[reason],
         classification_reasons=classification.reasons,
         redirects=redirects,
         redirect_evidence_id=redirect_evidence_id,
@@ -710,12 +874,16 @@ def _write_case_outputs(
     frontier: list[CrawlFrontierRecord],
     evidence: list[EvidenceRecord],
     entities: list[ExtractedEntity],
+    observations: list[SemanticObservation],
     candidate_generation: CandidateGeneration,
 ) -> None:
     storage.write_json("pages.json", [page.model_dump(mode="json") for page in pages])
     storage.write_json("frontier.json", [record.model_dump(mode="json") for record in frontier])
     storage.write_json("evidence.json", [record.model_dump(mode="json") for record in evidence])
     storage.write_json("entities.json", [entity.model_dump(mode="json") for entity in entities])
+    storage.write_json(
+        "observations.json", [observation.model_dump(mode="json") for observation in observations]
+    )
     storage.write_json("candidates.json", candidate_generation.document.model_dump(mode="json"))
     storage.write_json(
         "candidate_observations.json",
@@ -727,18 +895,73 @@ def _write_case_outputs(
     storage.write_json("case.json", case.model_dump(mode="json"))
 
 
-def _visible_text_from_html(html: str) -> str:
-    """Extract bounded visible-like text without scripts/styles contaminating classification."""
+def _attach_observation_crops(
+    *,
+    storage: CaseStorage,
+    observations: list[SemanticObservation],
+    screenshot: bytes,
+    collected_at: datetime,
+    evidence: list[EvidenceRecord],
+) -> list[SemanticObservation]:
+    """Create bounded crops for stable viewport boxes and retain observations on crop failure."""
 
-    soup = BeautifulSoup(html, "html.parser")
-    for element in soup(["script", "style", "noscript", "template"]):
-        element.decompose()
-    return soup.get_text(" ", strip=True)
+    try:
+        image = Image.open(BytesIO(screenshot)).convert("RGB")
+    except OSError:
+        return observations
+    attached: list[SemanticObservation] = []
+    for observation in observations:
+        coordinates = observation.crop_coordinates
+        if coordinates is None:
+            attached.append(observation)
+            continue
+        left = max(0, int(coordinates["x"]) - 12)
+        top = max(0, int(coordinates["y"]) - 12)
+        right = min(image.width, int(coordinates["x"] + coordinates["width"]) + 12)
+        bottom = min(image.height, int(coordinates["y"] + coordinates["height"]) + 12)
+        if right <= left or bottom <= top or (right - left) * (bottom - top) > 2_000_000:
+            attached.append(observation)
+            continue
+        crop = image.crop((left, top, right, bottom))
+        output = BytesIO()
+        crop.save(output, format="PNG")
+        crop_evidence = storage.save_evidence_crop(
+            output.getvalue(),
+            observation_id=observation.id,
+            source_url=observation.source_url,
+            collected_at=collected_at,
+            page_id=observation.source_page_id,
+            image_dimensions={"width": crop.width, "height": crop.height},
+        )
+        evidence.append(crop_evidence)
+        attached.append(
+            observation.model_copy(
+                update={
+                    "crop_evidence_id": crop_evidence.id,
+                    "crop_coordinates": {
+                        "x": float(left),
+                        "y": float(top),
+                        "width": float(right - left),
+                        "height": float(bottom - top),
+                    },
+                }
+            )
+        )
+    return attached
 
 
 def _navigation_status_for_error(error: Exception) -> str:
     if _failure_reason(error) == "timeout" or "timeout" in str(error).casefold():
         return "timed_out"
+    if _failure_reason(error) in {
+        "unsafe_destination",
+        "external_host",
+        "unsupported_content_type",
+        "redirect_limit",
+        "request_budget",
+        "response_budget",
+    }:
+        return "blocked_by_policy"
     return "failed"
 
 
