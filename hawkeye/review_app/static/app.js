@@ -860,6 +860,9 @@ function renderTimeline() {
       setActiveTimeline(index);
       const target = view.nodeById.get(item.targetId);
       if (target) selectNode(target, true);
+      else if (view.currentKind === "run" && item.event) {
+        renderRunEventInspector(view.currentDetails, item.event);
+      }
     });
     refs.timelineTrack.append(card);
   });
@@ -1182,6 +1185,54 @@ function renderRunInspector(details, selected) {
     children.push(evidenceBlock("Approval boundary", approve));
   }
   if (details.assertion) children.push(evidenceBlock("Append human review", renderReviewForm(details)));
+  refs.inspectorContent.replaceChildren(...children);
+}
+
+function eventValue(value) {
+  if (value === null || value === undefined) return "Not recorded";
+  if (typeof value === "object") return shortText(JSON.stringify(value), 180);
+  return String(value);
+}
+
+function renderRunEventInspector(details, event) {
+  const payload = event.payload || {};
+  const payloadEntries = [
+    "status",
+    "reason",
+    "tool_name",
+    "element_id",
+    "policy_preflight",
+    "executed",
+    "outcome_summary",
+    "artifact_id",
+    "observation_id",
+    "lead_id",
+    "assertion_id",
+    "lead_status",
+  ]
+    .filter((key) => Object.hasOwn(payload, key))
+    .map((key) => [key, eventValue(payload[key])]);
+  const header = inspectorHeader(
+    "Persisted event",
+    titleCase(event.kind.replaceAll(".", " ")),
+    "This timeline entry is an immutable event projection; it does not execute an action when inspected.",
+  );
+  const envelope = factList([
+    ["Sequence", event.sequence],
+    ["Occurred", formatTime(event.occurred_at)],
+    ["Event ID", event.event_id],
+    ["Causation", event.causation_event_id],
+    ["Schema", event.schema_version],
+  ]);
+  const children = [header, evidenceBlock("Event envelope", envelope)];
+  if (payloadEntries.length) children.push(evidenceBlock("Bounded payload", factList(payloadEntries)));
+  const artifacts = el("div", "artifact-grid");
+  (details.artifacts || []).forEach((artifact) => {
+    const link = el("a", "artifact-link", `${artifact.name} · ${artifact.bytes} B`);
+    link.href = runArtifactUrl(details.workspace_id, artifact.name);
+    artifacts.append(link);
+  });
+  children.push(evidenceBlock("Run artifacts", artifacts));
   refs.inspectorContent.replaceChildren(...children);
 }
 
