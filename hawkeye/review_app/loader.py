@@ -26,6 +26,7 @@ from hawkeye.models import (
     EvidenceRecord,
     ExtractedEntity,
     GraphDocument,
+    SemanticObservation,
 )
 
 _CASE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
@@ -62,6 +63,7 @@ class LoadedCase:
     pages: list[CrawlPageRecord]
     evidence_by_id: dict[str, EvidenceRecord]
     entities: list[ExtractedEntity]
+    observations: list[SemanticObservation]
     candidates: CandidateDocument | None
     candidate_observations: list[CandidateObservation]
     graph: GraphDocument | None
@@ -133,6 +135,11 @@ class CaseLoader:
             pages = _models_from_json(directory, "pages.json", CrawlPageRecord)
             evidence = _models_from_json(directory, "evidence.json", EvidenceRecord)
             entities = _models_from_json(directory, "entities.json", ExtractedEntity)
+            observations = (
+                _models_from_json(directory, "observations.json", SemanticObservation)
+                if _file_exists(directory, "observations.json")
+                else []
+            )
         except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
             raise CaseIntegrityError("Case core JSON cannot be validated") from error
         if case.case_id != case_id:
@@ -143,6 +150,7 @@ class CaseLoader:
         _index_unique(pages, "page")
         _index_unique(entities, "entity")
         _validate_page_and_entity_references(pages, evidence_by_id, entities)
+        _validate_semantic_observation_references(observations, evidence_by_id)
         _verify_all_evidence_artifacts(directory, evidence)
         graph = _load_graph(directory, evidence_by_id)
         candidates, candidate_observations = _load_candidates(directory, case, evidence_by_id)
@@ -160,6 +168,7 @@ class CaseLoader:
             pages=sorted(pages, key=lambda page: page.id),
             evidence_by_id=evidence_by_id,
             entities=sorted(entities, key=lambda entity: entity.id),
+            observations=sorted(observations, key=lambda item: item.id),
             candidates=candidates,
             candidate_observations=sorted(candidate_observations, key=lambda item: item.id),
             graph=graph,
@@ -305,6 +314,16 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
             loaded.case.capture_outcome.value if loaded.case.capture_outcome is not None else None
         ),
         "content_usable": loaded.case.content_usable,
+        "access_outcome": (
+            loaded.case.access_outcome.value if loaded.case.access_outcome is not None else None
+        ),
+        "capture_adequacy": (
+            loaded.case.capture_adequacy.value if loaded.case.capture_adequacy is not None else None
+        ),
+        "extraction_eligible": loaded.case.extraction_eligible,
+        "public_status": (
+            loaded.case.public_status.value if loaded.case.public_status is not None else None
+        ),
         "page_count": loaded.case.page_count,
         "candidate_count": loaded.case.candidate_count,
         "case_manifest_sha256": loaded.manifest_sha256,
@@ -340,8 +359,26 @@ def case_details(
                         page.capture_outcome.value if page.capture_outcome is not None else None
                     ),
                     "content_usable": page.content_usable,
+                    "access_outcome": (
+                        page.access_outcome.value if page.access_outcome is not None else None
+                    ),
+                    "capture_adequacy": (
+                        page.capture_adequacy.value if page.capture_adequacy is not None else None
+                    ),
+                    "extraction_eligible": page.extraction_eligible,
+                    "extraction_skip_reason": page.extraction_skip_reason,
+                    "public_status": (
+                        page.public_status.value if page.public_status is not None else None
+                    ),
+                    "limitation_reasons": [
+                        _safe_text(reason, 256) for reason in page.limitation_reasons
+                    ],
                     "html_evidence_id": page.html_evidence_id,
                     "screenshot_evidence_id": page.screenshot_evidence_id,
+                    "initial_screenshot_evidence_id": page.initial_screenshot_evidence_id,
+                    "full_page_screenshot_evidence_id": page.full_page_screenshot_evidence_id,
+                    "visible_text_evidence_id": page.visible_text_evidence_id,
+                    "readiness_evidence_id": page.readiness_evidence_id,
                     "classification_reasons": [
                         _safe_text(reason, 256) for reason in page.classification_reasons
                     ],
@@ -370,6 +407,25 @@ def case_details(
                     "source_page_id": loaded.evidence_by_id[entity.source_evidence_id].page_id,
                 }
                 for entity in loaded.entities
+            ],
+            "observations": [
+                {
+                    "id": observation.id,
+                    "type": observation.observation_type,
+                    "display_value": safe_display_entity(
+                        observation.observation_type, observation.normalized_value
+                    ),
+                    "source_page_id": observation.source_page_id,
+                    "source_artifact_id": observation.source_artifact_id,
+                    "screenshot_evidence_id": observation.screenshot_evidence_id,
+                    "crop_evidence_id": observation.crop_evidence_id,
+                    "surrounding_text": _safe_text(observation.surrounding_text, 500),
+                    "confidence": observation.confidence,
+                    "evidence_strength": observation.evidence_strength,
+                    "extraction_method": _safe_text(observation.extraction_method, 128),
+                    "limitations": [_safe_text(item, 256) for item in observation.limitations],
+                }
+                for observation in loaded.observations
             ],
             "candidate_policy_version": (
                 loaded.candidates.scoring_policy_version if loaded.candidates is not None else None
@@ -451,13 +507,20 @@ def safe_display_url(raw_url: str | None) -> str | None:
 def safe_display_entity(entity_type: str, value: str) -> str:
     """Redact high-risk evidence values for UI display while preserving original disk evidence."""
 
-    if entity_type in {"external_link", "external_asset_url"}:
+    if entity_type in {
+        "external_link",
+        "external_asset_url",
+        "public_outgoing_link",
+        "public_redirect_target",
+        "public_download_destination",
+        "public_whatsapp_link",
+    }:
         return safe_display_url(value) or "[invalid URL]"
-    if entity_type == "whatsapp_or_phone":
+    if entity_type in {"whatsapp_or_phone", "public_phone_number"}:
         compact = re.sub(r"\s+", "", value)
         if len(compact) > 4:
             return f"{compact[:2]}••••{compact[-4:]}"
-    if entity_type == "referral":
+    if entity_type in {"referral", "public_referral_code", "public_tracking_identifier"}:
         key, separator, _ = value.partition("=")
         return f"{_safe_text(key, 64)}=[redacted]" if separator else "[redacted referral]"
     return _safe_text(value, max_length=256)
@@ -726,6 +789,30 @@ def _validate_page_and_entity_references(
         evidence = evidence_by_id.get(entity.source_evidence_id)
         if evidence is None or evidence.type != "html_page":
             raise CaseIntegrityError("Entity references missing or non-HTML evidence")
+
+
+def _validate_semantic_observation_references(
+    observations: list[SemanticObservation], evidence_by_id: dict[str, EvidenceRecord]
+) -> None:
+    """Fail closed when the semantic inspector could point at absent artifacts."""
+
+    _index_unique(observations, "semantic observation")
+    for observation in observations:
+        source = evidence_by_id.get(observation.source_artifact_id)
+        screenshot = evidence_by_id.get(observation.screenshot_evidence_id)
+        crop = (
+            evidence_by_id.get(observation.crop_evidence_id)
+            if observation.crop_evidence_id is not None
+            else None
+        )
+        if source is None:
+            raise CaseIntegrityError("Semantic observation source artifact is missing")
+        if screenshot is None or screenshot.type != "screenshot":
+            raise CaseIntegrityError("Semantic observation screenshot evidence is invalid")
+        if observation.crop_evidence_id is not None and (
+            crop is None or crop.type != "evidence_crop"
+        ):
+            raise CaseIntegrityError("Semantic observation crop evidence is invalid")
 
 
 def _require_evidence_type(

@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from hawkeye.collector.safety import SafetyPolicy
+from hawkeye.pipeline import investigate
 from hawkeye.review_app.loader import (
     CaseIntegrityError,
     CaseLoader,
@@ -17,6 +19,7 @@ from hawkeye.review_app.loader import (
     case_details,
 )
 from hawkeye.review_app.workspace import MvpWorkspace
+from hawkeye.storage import make_case_id
 
 _STATIC_ROOT = Path(__file__).parent / "static"
 _CONTENT_SECURITY_POLICY = (
@@ -74,15 +77,21 @@ class _ReviewRequest(BaseModel):
     reason: str = Field(max_length=2000)
 
 
+class _CollectSeedRequest(BaseModel):
+    seed_url: str = Field(min_length=8, max_length=2048)
+
+
 def create_app(
     cases_root: Path | str,
     *,
     comparisons_root: Path | str | None = None,
     workspace_root: Path | str | None = None,
+    collection_safety_policy: SafetyPolicy | None = None,
 ) -> FastAPI:
     """Create the local console; optional MVP writes remain inside one explicit workspace."""
 
-    loader = CaseLoader(cases_root, comparisons_root=comparisons_root)
+    cases_path = Path(cases_root).expanduser().resolve()
+    loader = CaseLoader(cases_path, comparisons_root=comparisons_root)
     workspace = MvpWorkspace(workspace_root) if workspace_root is not None else None
     app = FastAPI(
         title="JudolGraph HAWK-EYE Investigator Console",
@@ -152,9 +161,31 @@ def create_app(
 
     if workspace is not None:
 
+        @app.post("/api/cases", include_in_schema=False)
+        def create_case(payload: _CollectSeedRequest, request: Request) -> dict[str, object]:
+            """Collect one public seed without interaction, expansion, or candidate crawling."""
+
+            _require_same_origin(request)
+            result = investigate(
+                payload.seed_url,
+                output=cases_path,
+                timeout_seconds=30,
+                case_timeout_seconds=45,
+                max_pages=1,
+                max_depth=0,
+                case_id=make_case_id(),
+                safety_policy=collection_safety_policy or SafetyPolicy(),
+            )
+            loaded = loader.load(result.case.case_id)
+            return case_details(loaded, comparisons=[])
+
         @app.get("/api/mvp/scenarios", include_in_schema=False)
         def mvp_scenarios() -> dict[str, object]:
             return {"scenarios": workspace.scenarios()}
+
+        @app.get("/api/mvp/capabilities", include_in_schema=False)
+        def mvp_capabilities() -> dict[str, object]:
+            return workspace.capability_status()
 
         @app.get("/api/mvp/runs", include_in_schema=False)
         def mvp_runs() -> dict[str, object]:

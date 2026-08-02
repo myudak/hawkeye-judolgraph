@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from hawkeye.collector.safety import SafetyPolicy
 from hawkeye.review_app.app import create_app
 
 
@@ -86,3 +87,26 @@ def test_cross_origin_mutation_and_artifact_traversal_are_blocked(tmp_path: Path
         workspace_id = created["workspace_id"]
         traversal = client.get(f"/api/mvp/runs/{workspace_id}/artifacts/..%2Fpage-a.json")
         assert traversal.status_code in {400, 404}
+
+
+def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_url: str) -> None:
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    app = create_app(
+        cases,
+        workspace_root=tmp_path / "workspace",
+        collection_safety_policy=SafetyPolicy(allow_loopback_for_testing=True),
+    )
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        created = client.post(
+            "/api/cases",
+            json={"seed_url": f"{fixture_server_url}normal-content.html"},
+        )
+
+        assert created.status_code == 200
+        payload = created.json()
+        assert payload["capture_adequacy"] == "adequate"
+        assert payload["access_outcome"] == "content"
+        assert payload["public_status"] == "captured"
+        assert payload["pages"][0]["readiness_evidence_id"]
+        assert client.get("/api/cases").json()["cases"][0]["case_id"] == payload["case_id"]
