@@ -8,6 +8,7 @@ const refs = {
   capabilityState: document.getElementById("capability-state"),
   intelContent: document.getElementById("intel-content"),
   graphCanvas: document.getElementById("graph-canvas"),
+  graphMinimap: document.getElementById("graph-minimap"),
   graphEmpty: document.getElementById("graph-empty"),
   graphTooltip: document.getElementById("graph-tooltip"),
   graphA11y: document.getElementById("graph-a11y"),
@@ -34,6 +35,7 @@ const evidenceSemantics = {
 };
 
 const ctx = refs.graphCanvas.getContext("2d", { alpha: true });
+const miniCtx = refs.graphMinimap.getContext("2d", { alpha: true });
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const colors = {
   case: "#70b7ff",
@@ -307,32 +309,46 @@ function buildCaseProjection(details) {
     pageNodes.set(pageId, item.id);
   });
   let sequence = Math.max(3, edges.length + 2);
-  (details.evidence || []).forEach((record, index) => {
+  const evidenceRecords = details.evidence || [];
+  const canonicalScreenshotId = details.pages?.[0]?.screenshot_evidence_id;
+  const screenshotRecords = evidenceRecords.filter((item) => String(item.type).includes("screenshot"));
+  const graphEvidenceIds = new Set(
+    evidenceRecords
+      .filter((item) => !String(item.type).includes("screenshot") || item.id === canonicalScreenshotId || (!canonicalScreenshotId && item.id === screenshotRecords.at(-1)?.id))
+      .map((item) => item.id),
+  );
+  evidenceRecords.forEach((record, index) => {
     sequence += 1;
-    const evidenceNode = normalizeNode({
-      id: `evidence:${record.id}`,
-      type: record.type,
-      label: titleCase(record.type),
-    }, nodes.length, {
-      sequence,
-      attributes: { evidence: record },
-    });
-    addUniqueNode(nodes, evidenceNode);
-    const sourceId = pageNodes.get(record.page_id) || primarySource?.id || nodes[0]?.id;
-    if (sourceId) {
-      addUniqueEdge(edges, normalizeEdge({
-        id: `captured:${record.id}`,
-        source: sourceId,
-        target: evidenceNode.id,
-        relation: "captured as",
-      }, edges.length, { sequence }));
+    let targetId = primarySource?.id || nodes[0]?.id;
+    if (graphEvidenceIds.has(record.id)) {
+      const evidenceNode = normalizeNode({
+        id: `evidence:${record.id}`,
+        type: record.type,
+        label: String(record.type).includes("screenshot") && screenshotRecords.length > 1
+          ? `Screenshot evidence · ${screenshotRecords.length} views`
+          : titleCase(record.type),
+      }, nodes.length, {
+        sequence,
+        attributes: { evidence: record },
+      });
+      addUniqueNode(nodes, evidenceNode);
+      targetId = evidenceNode.id;
+      const sourceId = pageNodes.get(record.page_id) || primarySource?.id || nodes[0]?.id;
+      if (sourceId) {
+        addUniqueEdge(edges, normalizeEdge({
+          id: `captured:${record.id}`,
+          source: sourceId,
+          target: evidenceNode.id,
+          relation: "captured as",
+        }, edges.length, { sequence }));
+      }
     }
     timeline.push({
       sequence,
       label: titleCase(record.type),
       detail: formatTime(record.collected_at),
       occurredAt: record.collected_at,
-      targetId: evidenceNode.id,
+      targetId,
     });
   });
 
@@ -458,6 +474,7 @@ function setGraph(projection) {
   renderTimeline();
   renderAccessibleGraph();
   window.setTimeout(fitGraph, 80);
+  window.setTimeout(fitGraph, 1100);
 }
 
 function renderAccessibleGraph() {
@@ -480,6 +497,10 @@ function resizeCanvas() {
   refs.graphCanvas.width = Math.floor(view.width * view.dpr);
   refs.graphCanvas.height = Math.floor(view.height * view.dpr);
   ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  const miniRect = refs.graphMinimap.getBoundingClientRect();
+  refs.graphMinimap.width = Math.floor(miniRect.width * view.dpr);
+  refs.graphMinimap.height = Math.floor(miniRect.height * view.dpr);
+  miniCtx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
 }
 
 function worldToScreen(item, time = 0) {
@@ -692,6 +713,56 @@ function drawNodes(time) {
   });
 }
 
+function drawMinimap() {
+  const width = refs.graphMinimap.clientWidth;
+  const height = refs.graphMinimap.clientHeight;
+  miniCtx.clearRect(0, 0, width, height);
+  const visible = view.nodes.filter(isVisible);
+  if (!visible.length) return;
+  const bounds = graphBounds();
+  const graphWidth = Math.max(160, bounds.maxX - bounds.minX + 80);
+  const graphHeight = Math.max(120, bounds.maxY - bounds.minY + 80);
+  const scale = Math.min((width - 18) / graphWidth, (height - 18) / graphHeight);
+  const offsetX = (width - graphWidth * scale) / 2;
+  const offsetY = (height - graphHeight * scale) / 2;
+  const toMini = (item) => ({
+    x: (item.x - bounds.minX + 40) * scale + offsetX,
+    y: (item.y - bounds.minY + 40) * scale + offsetY,
+  });
+  miniCtx.save();
+  miniCtx.globalAlpha = 0.42;
+  view.edges.filter(isVisible).forEach((edge) => {
+    const source = view.nodeById.get(edge.source);
+    const target = view.nodeById.get(edge.target);
+    if (!source || !target) return;
+    const a = toMini(source);
+    const b = toMini(target);
+    miniCtx.strokeStyle = edge.appearance === "solid_emphasized" ? colors.public_contact : "#699bc0";
+    miniCtx.lineWidth = 0.8;
+    miniCtx.beginPath();
+    miniCtx.moveTo(a.x, a.y);
+    miniCtx.lineTo(b.x, b.y);
+    miniCtx.stroke();
+  });
+  miniCtx.globalAlpha = 0.86;
+  visible.forEach((item) => {
+    const point = toMini(item);
+    miniCtx.fillStyle = colors[item.kind] || colors.default;
+    miniCtx.beginPath();
+    miniCtx.arc(point.x, point.y, item.primary ? 3.2 : 2.1, 0, Math.PI * 2);
+    miniCtx.fill();
+  });
+  const viewportWidth = view.width / view.camera.zoom;
+  const viewportHeight = view.height / view.camera.zoom;
+  const viewportX = (view.camera.x - viewportWidth / 2 - bounds.minX + 40) * scale + offsetX;
+  const viewportY = (view.camera.y - viewportHeight / 2 - bounds.minY + 40) * scale + offsetY;
+  miniCtx.globalAlpha = 0.72;
+  miniCtx.strokeStyle = "#d9edf7";
+  miniCtx.setLineDash([3, 3]);
+  miniCtx.strokeRect(viewportX, viewportY, viewportWidth * scale, viewportHeight * scale);
+  miniCtx.restore();
+}
+
 function drawFrame(time) {
   const delta = Math.min(40, time - view.frameTime);
   view.frameTime = time;
@@ -703,6 +774,7 @@ function drawFrame(time) {
   drawClusters(time);
   drawEdges(time);
   drawNodes(time);
+  drawMinimap();
   window.requestAnimationFrame(drawFrame);
 }
 
@@ -1175,6 +1247,12 @@ function renderSelector() {
     });
     refs.workspaceSelector.append(group);
   }
+  const actions = el("optgroup");
+  actions.label = "Actions";
+  const walkthrough = el("option", "", "New safe review walkthrough…");
+  walkthrough.value = "action:new-review";
+  actions.append(walkthrough);
+  refs.workspaceSelector.append(actions);
   if (!cases.length && !view.runs.length) {
     const option = el("option", "", "No saved evidence yet");
     option.value = "";
@@ -1245,6 +1323,23 @@ refs.workspaceSelector.addEventListener("change", () => {
   const [kind, id] = refs.workspaceSelector.value.split(":", 2);
   if (kind === "case" && id) void loadCase(id);
   if (kind === "run" && id) void loadRun(id);
+  if (kind === "action" && id === "new-review") {
+    refs.workspaceSelector.disabled = true;
+    setStatus("Creating a safe local Page A → Page B walkthrough…");
+    void postJson("/api/mvp/runs", {
+      scenario_id: "redirect-new-tab",
+      collection_mode: "synthetic_fixture",
+    }).then(async (created) => {
+      await refreshIndexes();
+      await loadRun(created.workspace_id);
+      toast("Safe review walkthrough created from reserved fixture evidence.", "success");
+    }).catch((error) => {
+      toast(error.message, "error");
+      renderSelector();
+    }).finally(() => {
+      refs.workspaceSelector.disabled = false;
+    });
+  }
 });
 
 refs.graphSearch.addEventListener("input", () => {
