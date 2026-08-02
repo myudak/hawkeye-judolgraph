@@ -26,10 +26,16 @@ def probe_codex_lb(
 
     if not 0 < timeout_seconds <= 5:
         raise ValueError("Capability-probe timeout must be greater than zero and at most 5 seconds")
-    endpoints = [
-        _probe_endpoint(endpoint, timeout_seconds, api_key=api_key)
-        for endpoint in CODEX_LB_ENDPOINTS
-    ]
+    endpoints: list[EndpointCapability] = []
+    for endpoint in CODEX_LB_ENDPOINTS:
+        result = _probe_endpoint(endpoint, timeout_seconds, api_key=api_key)
+        # A busy loopback service can miss one short probe even though the route is healthy. Retry
+        # only an unreachable result once; HTTP failures are authoritative and are never retried.
+        if not result.reachable:
+            retry = _probe_endpoint(endpoint, timeout_seconds, api_key=api_key)
+            if retry.reachable:
+                result = retry
+        endpoints.append(result)
     supported = next((item for item in endpoints if item.route_supported is True), None)
     safe_to_enable = bool(
         supported
