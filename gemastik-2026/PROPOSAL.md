@@ -263,6 +263,21 @@ tetapi aset itu diabaikan Git dan tidak digunakan pada screenshot proposal. Figu
 fixture `.invalid` yang disanitasi. Screenshot UI aktual, hash, viewport, commit, dan source run
 dicatat di `FIGURE_INDEX.md`; tidak ada mockup atau graf palsu.
 
+![Workspace graph-first dengan screenshot fixture terverifikasi](assets/proposal/figure-03-workspace.png)
+
+*Gambar 3. Workspace localhost aktual: Site Intel, canvas evidence graph, minimap, timeline, dan
+screenshot fixture terverifikasi.*
+
+![Page B dan konteks candidate assertion](assets/proposal/figure-05-page-b-assertion.png)
+
+*Gambar 5. Page B dari fixture `redirect-new-tab` setelah recollection, dengan artefak Page A/Page B
+yang dapat dibuka dari inspector.*
+
+![Policy preflight terblokir tanpa eksekusi](assets/proposal/figure-08-policy-block.png)
+
+*Gambar 8. Event `tool.blocked` tersimpan untuk kontrol Login; inspector menunjukkan alasan policy
+dan `executed=false`.*
+
 ## 9. Dokumentasi Cara Penggunaan Perangkat Lunak
 
 ### Instalasi lokal

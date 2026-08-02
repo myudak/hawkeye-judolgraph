@@ -1,3 +1,4 @@
 # Video assets
 
-TODO — add only actual-software storyboard frames from reserved `.invalid` fixture runs.
+Figures 6 and 7 are actual-software before/after review frames from one reserved `.invalid`
+fixture run. They are source frames for the still-unrecorded human-owned video.

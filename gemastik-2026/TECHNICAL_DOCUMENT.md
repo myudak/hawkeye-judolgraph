@@ -152,6 +152,11 @@ their exact source, viewport, commit, timestamp, and SHA-256 in `FIGURE_INDEX.md
 QQ workspace screenshot is local QA only and is not part of the proposal assets. No remote image,
 personal information, or fabricated graph is inserted.
 
+![Event replay from the append-only investigation timeline](assets/technical/figure-04-timeline.png)
+
+The captured replay is a presentation of persisted event sequence; the SQLite log and reducer,
+not canvas animation progress, determine the stable graph.
+
 ## Troubleshooting
 
 | Symptom | Meaning | Action |

@@ -12,7 +12,8 @@
 | Model-free operation works | agent fallback events | agent/runtime/benchmark tests | Deterministic fallback completed controlled tasks | Live Codex produced the result |
 | `/v1/responses` route exists locally | capability diagnostics v2 | actual bounded 400 response | Route present; required capabilities unknown | Model/tool/native-search support exists |
 | Page B is recollected before assertion | Page A/B artifacts and event order | runtime flow test | Synthetic assertion follows Page B artifact and observation | Real candidate is already verified |
-| Real candidates require approval | approval-required event | real-mode test/UI API test | Real mode stops before Page B collection | Approval performs or guarantees collection |
+| External candidates require approval | approval-required event | real-mode runtime test | External mode stops before Page B collection | Approval performs or guarantees external collection |
+| Blocked controls are inspectable without execution | `tool.requested`/`tool.blocked` events | blocked-preflight runtime test and Figure 8 | Reserved unsafe fixture controls store policy reason and `executed=false` | A live control was clicked or universal safety is proven |
 | Reviews are append-only | SQLite rows/triggers | review history/update rejection test | Review versions are immutable local events | Reviewer identity is authenticated |
 | Graph is event-derived and replayable | event log/reducer | duplicate replay consistency test | Duplicate event replay yields same graph state | Animation proves an event occurred |
 | Static recall is 0.2857 | raw benchmark JSON | 10 static attempts | Controlled observable recall | Real-world recall |
@@ -29,4 +30,3 @@
 - Official rules/page-count compliance.
 - External novelty comparison, legal characterization, or jurisdictional claims.
 - Dependency license clearance for redistribution.
-

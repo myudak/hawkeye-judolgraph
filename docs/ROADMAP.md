@@ -102,15 +102,17 @@ recollects fixture Page B; external candidate collection remains disabled in thi
 Completed evidence: monotonic idempotent events, causal links, a replay reducer, separate animation
 queue, dashed proposed / emphasized verified / hidden rejected edges, a 2D canvas with pan, zoom,
 drag, hit-testing, minimap and animated edges, screenshot-first evidence inspection, event replay,
-search/focus, reduced motion, and a three-mode ten-scenario benchmark.
+search/focus, reduced motion, stored unsafe-control preflight events, and a three-mode ten-scenario
+benchmark.
 
 ## G9 — Truthful GEMASTIK preliminary package — completed as Markdown source
 
 Completed evidence: proposal in the required nine-section order, technical document, three-minute
 video script, claim/evidence and implementation matrices, benchmark interpretation, license and
 originality drafts, figure index, and submission checklist under `gemastik-2026/`. No final PDF,
-screenshots, video, citations, team identity, signatures, or publication declaration are fabricated;
-those remain explicit human-owned tasks.
+video, team identity, signatures, or publication declaration is fabricated. Six actual sanitized
+post-gate screenshots are hash-indexed; final document-layout diagrams, external citation review,
+and the remaining declarations remain explicit human-owned tasks.
 
 ## Explicitly out of scope until separately approved
 

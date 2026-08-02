@@ -13,20 +13,22 @@ commits remain unchanged.
 
 Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d4`:
 
-- `python -m ruff format --check .` — passed, 118 files formatted.
+- `python -m ruff format --check .` — passed, 121 files already formatted.
 - `python -m ruff check .` — passed.
 - `python -m mypy hawkeye` — passed, 59 source files.
 - `node --check hawkeye/review_app/static/app.js` — passed.
-- `python -m pytest -q` — 158 passed in 380.88 seconds; one upstream FastAPI/Starlette
+- `python -m pytest -q` — 165 passed in 464.33 seconds; one upstream FastAPI/Starlette
   deprecation warning.
 - `git diff --check` — passed.
 - `python -m hawkeye benchmark --output <new-directory> --agent-attempts 3` — passed: ten
   fixtures, 30 agent-fallback attempts, unsafe-action block rate 1.0.
 - `python -m hawkeye demo --output <new-directory>` — passed: three legacy sanitized cases and
   one verified offline comparison generated.
-- Localhost UI walkthrough — passed: scenario 6 produced Page A → Page B, a dashed assertion,
-  append-only verified review, 18-event replay, and a `solid_emphasized` edge. Visual QA also
-  covered the responsive workspace layout.
+- Localhost UI walkthrough — passed: the saved QQ observation opened by default with its real local
+  screenshot and limited/extraction-withheld state; sanitized scenario 6 produced Page A → Page B,
+  a dashed assertion, append-only review version 1, 18-event replay, and a `solid_emphasized` edge;
+  scenario 8 showed persisted policy blocks with `executed=false`. Six post-gate fixture figures
+  were captured at 1280×720 and hash-indexed.
 
 ## Implemented product boundary
 
@@ -54,7 +56,7 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
   criminality, or legal conclusion is claimed.
 - The console remains localhost-only and single-machine; review labels are not authenticated users.
 - Final name, team/institution/category/advisor, external citations, publication/originality
-  confirmations, dependency-license legal review, official formatting, screenshots, video,
+  confirmations, dependency-license legal review, official formatting, video,
   signatures, PDF export, and upload require authorized humans. They are tracked in
   `gemastik-2026/SUBMISSION_CHECKLIST.md`.
 
@@ -63,5 +65,9 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 - `ad6b917` — capture adequacy and semantic evidence.
 - `cf648e8` — bounded expansion, agent fallback, investigation, event graph, benchmark, and UI.
 - `4944659` — compatibility, integrity verification, and historical-tag checks.
+- `0917a77` — approval-gated controlled fixture recollection.
+- `048641c` / `3acbbf8` — screenshot-first 2D canvas, minimap, replay, and safe walkthrough.
+- `f6d5737` — bounded transient probe retry.
+- `0dc6d52` / `445079c` — blocked policy preflight events and timeline event inspector.
 
 The package/final-status commit is recorded in the delivery handoff. Nothing is pushed or deployed.

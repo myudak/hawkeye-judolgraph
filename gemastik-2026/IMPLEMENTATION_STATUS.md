@@ -31,19 +31,24 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Optional live robustness observations | implemented | ignored `evaluation/live-cases/` output | 12-target one-run matrix | Local QQ default only | 11 navigation captures; no live extraction eligible; never official test truth |
 | Public deployment/authentication | deferred | none | none | none | Requires separate threat model and authorization milestone |
 | Final proposal PDF | deferred | Markdown package | checklist | none | Human confirmations and layout review required |
-| Actual final screenshots | planned | `gemastik-2026/assets/` | final demo gate | sanitized fixture UI | Captured only after final full gate; video remains human-owned |
+| Actual final screenshots | implemented | `gemastik-2026/assets/` | final demo/browser gate | six sanitized fixture figures | Video recording and document-layout diagrams remain human-owned |
 
 ## Current exact verification
 
-Verified on 2026-08-03 (Asia/Jakarta): Ruff format and lint passed; strict mypy passed for 59 source
-files; JavaScript syntax passed; pytest passed all 158 tests in 380.88 seconds; and `git diff
---check` passed. A fresh ten-fixture/three-mode benchmark completed with 30 deterministic-fallback
+Verified on 2026-08-03 (Asia/Jakarta): Ruff format checked 121 files; Ruff lint passed; strict mypy
+passed for 59 source files; JavaScript syntax passed; pytest passed all 165 tests in 464.33 seconds
+with one upstream FastAPI/Starlette deprecation warning; and `git diff --check` passed. A fresh
+ten-fixture/three-mode benchmark completed with 30 deterministic-fallback
 agent attempts and a 1.0 unsafe-action block rate. A fresh sanitized legacy CLI demo completed.
 
-The localhost UI walkthrough ran controlled scenario 6, recollected fixture Page B, displayed a
+Browser QA opened the saved QQ observation as the local default with its real stored screenshot,
+limited status, extraction withheld, nine canvas nodes/links, search, zoom, replay, and no horizontal
+overflow. Official figures used only sanitized fixtures: scenario 6 recollected Page B, displayed a
 dashed two-observation assertion, appended review version 0 → 1, and replayed 18 monotonic events to
-a `solid_emphasized` edge. The walkthrough used only reserved `.invalid` data and ignored local
-artifacts under `verification-output/`.
+a `solid_emphasized` edge; scenario 8 persisted two policy-preflight blocks with `executed=false`.
+Six post-gate screenshots and hashes are recorded in `FIGURE_INDEX.md`.
 
-Implementation commits: `ad6b917`, `cf648e8`, and compatibility commit `4944659`. The final package
-commit is reported in the repository handoff; no commit was pushed.
+Selected implementation commits: `92d711a` (capture fixes), `cf63b70` (gated agent), `a6720d4`
+(review/evidence), `0917a77` (approval recollection), `048641c`/`3acbbf8` (canvas workspace),
+`f6d5737` (probe retry), `0dc6d52` (blocked preflights), and `445079c` (event inspector). The final
+package commit is reported in the repository handoff; no commit was pushed.

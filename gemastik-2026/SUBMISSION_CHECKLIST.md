@@ -30,13 +30,13 @@
 
 ## Visual and video assets
 
-- [ ] Capture actual final UI screenshots after full gate.
-- [ ] Verify screenshots contain only fixture `.invalid` data.
-- [ ] Record screenshot hashes and source run IDs in `FIGURE_INDEX.md`.
+- [x] Capture actual final UI screenshots after full gate.
+- [x] Verify screenshots contain only fixture `.invalid` data.
+- [x] Record screenshot hashes and source run IDs in `FIGURE_INDEX.md`.
 - [ ] Record three-minute video from actual software.
 - [ ] Verify timestamps, subtitles, audio/music rights, resolution, and file size.
-- [ ] Show one blocked unsafe control without attempting a prohibited real action.
-- [ ] Show Page B artifact, assertion evidence, review append, and replayed edge.
+- [x] Capture one blocked fixture preflight with `executed=false`; include it in the recording.
+- [x] Capture Page B artifact, assertion state, review append, and replayed edge; include them in the recording.
 
 ## Formatting and delivery
 

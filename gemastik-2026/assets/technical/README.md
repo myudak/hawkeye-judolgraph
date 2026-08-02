@@ -1,4 +1,7 @@
 # Technical assets
 
-TODO — add architecture/readiness figures and actual local UI captures after the final gate.
+`figure-04-timeline.png` is an actual post-gate event-replay capture from the sanitized scenario 6
+run indexed in `../../FIGURE_INDEX.md`.
 
+TODO — requires human confirmation: render the final architecture/readiness diagrams during
+official document layout.

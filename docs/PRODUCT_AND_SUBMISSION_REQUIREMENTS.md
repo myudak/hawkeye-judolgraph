@@ -465,7 +465,8 @@ Sanitize any proposal screenshot and never publish sensitive artifacts.
 - Current Indonesian problem-urgency and impact sources.
 - User interviews/usability study and measurable impact baseline; until performed, do not claim them.
 - Exact dependency versions and authoritative license verification.
-- Final sanitized screenshots, three-minute video, YouTube visibility, file sizes, and upload archive.
+- Final document-layout diagrams, three-minute video, YouTube visibility, video file size, and upload
+  archive. Six sanitized post-gate screenshots are already hash-indexed.
 - Portal and organizer confirmation of dates, proposal template availability, and the competition-
   history ambiguity noted in Section 1.
 
