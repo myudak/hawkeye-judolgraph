@@ -1,6 +1,6 @@
 # [NAMA PRODUK FINAL]
 
-**Proposal GEMASTIK XIX 2026 — Divisi Pengembangan Perangkat Lunak**  
+**Proposal GEMASTIK XIX 2026 — Divisi Pengembangan Perangkat Lunak**
 **Project HAWK-EYE — nama internal pengembangan**
 
 > **Status dokumen:** draf proposal baru berbasis implementasi MVP yang telah diverifikasi. Nama
@@ -15,7 +15,7 @@
 | Olivia Oktaviani | 24060124120050 |
 | Syifa Aeni Mudrikah | 24060124120027 |
 
-**Universitas Diponegoro**  
+**Universitas Diponegoro**
 **2026**
 
 ---
@@ -139,7 +139,7 @@ wawancara pengguna karena sumber dan studinya belum diverifikasi. Materi tersebu
 melalui sumber resmi atau akademik sebelum submission final.
 
 **TODO — requires external source:** tambahkan statistik resmi Indonesia yang relevan, tanggal
-akses, kalimat yang didukung, dan batas interpretasinya.  
+akses, kalimat yang didukung, dan batas interpretasinya.
 **TODO — requires human confirmation:** lakukan uji kebutuhan/usability yang terdokumentasi; jangan
 mengarang jumlah partisipan atau hasilnya.
 
