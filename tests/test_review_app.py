@@ -611,6 +611,7 @@ def test_ui_assets_do_not_use_html_injection_or_external_navigation() -> None:
     assert "Evidence-similarity score" in script
     assert "accessible relationship table" in script
     assert "aria-current" in script
+    assert 'screenshots.find((item) => item.label === "Full page")' in script
     assert 'href="#case-view"' in html
     assert "prefers-reduced-motion" in styles
     assert ":focus-visible" in styles

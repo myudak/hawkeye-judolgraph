@@ -1218,7 +1218,7 @@ function findScreenshot(details, selected) {
   const selectedEvidence = selected?.attributes?.evidence;
   if (selectedEvidence && String(selectedEvidence.type).includes("screenshot")) return selectedEvidence;
   const page = details.pages?.find((item) => `page:${item.id}` === selected?.id) || details.pages?.[0];
-  const preferred = page?.screenshot_evidence_id || page?.full_page_screenshot_evidence_id || page?.initial_screenshot_evidence_id;
+  const preferred = page?.full_page_screenshot_evidence_id || page?.screenshot_evidence_id || page?.initial_screenshot_evidence_id;
   return details.evidence?.find((item) => item.id === preferred)
     || details.evidence?.find((item) => String(item.type).includes("screenshot"))
     || null;
@@ -1247,9 +1247,13 @@ function screenshotsForCase(details, selected) {
 function renderScreenshotGallery(details, selected) {
   const screenshots = screenshotsForCase(details, selected);
   if (!screenshots.length) return null;
+  const defaultScreenshot = screenshots.find((item) => item.label === "Full page")
+    || screenshots.find((item) => item.label === "Canonical")
+    || screenshots[0];
+  const defaultIndex = screenshots.indexOf(defaultScreenshot);
   const gallery = el("figure", "evidence-preview screenshot-gallery");
   const image = el("img");
-  const label = el("figcaption", "preview-label", screenshots[0].label);
+  const label = el("figcaption", "preview-label", defaultScreenshot.label);
   const strip = el("div", "screenshot-strip");
   const show = (item, button) => {
     image.src = caseArtifactUrl(details.case_id, item.record.id);
@@ -1262,7 +1266,7 @@ function renderScreenshotGallery(details, selected) {
     button.type = "button";
     button.addEventListener("click", () => show(item, button));
     strip.append(button);
-    if (index === 0) window.queueMicrotask(() => show(item, button));
+    if (index === defaultIndex) window.queueMicrotask(() => show(item, button));
   });
   image.loading = "eager";
   gallery.append(image, label, strip);
