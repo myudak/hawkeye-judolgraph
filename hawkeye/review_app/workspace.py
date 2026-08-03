@@ -461,4 +461,11 @@ def _graph_for_ui(graph: dict[str, object]) -> dict[str, object]:
 
 
 def _artifact_media_type(name: str) -> str:
-    return "image/png" if name.casefold().endswith(".png") else "application/json"
+    lowered = name.casefold()
+    if lowered.endswith(".png"):
+        return "image/png"
+    if lowered.endswith(".html"):
+        return "text/html; charset=utf-8"
+    if lowered.endswith(".txt"):
+        return "text/plain; charset=utf-8"
+    return "application/json"

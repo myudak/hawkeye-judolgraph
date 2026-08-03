@@ -555,6 +555,7 @@ class SemanticObservation(BaseModel):
     observation_type: Literal[
         "claimed_brand_identity",
         "public_telegram_alias",
+        "public_telegram_contact",
         "public_whatsapp_link",
         "public_phone_number",
         "public_email_address",

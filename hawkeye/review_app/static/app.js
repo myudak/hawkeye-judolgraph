@@ -48,6 +48,7 @@ const colors = {
   readiness: "#63dce9",
   observation: "#ffbd68",
   public_contact: "#ffbd68",
+  public_claim: "#69d2e7",
   external_destination: "#f09a63",
   redirect_target: "#f09a63",
   candidate: "#ffb75a",
@@ -194,7 +195,7 @@ function nodeKind(rawType) {
 function clusterFor(kind) {
   if (["case", "domain", "page", "seed_page", "collected_page"].includes(kind)) return "Captured pages";
   if (["screenshot", "document", "readiness"].includes(kind)) return "Evidence artifacts";
-  if (["observation", "public_contact", "claimed_brand"].includes(kind)) return "Observed signals";
+  if (["observation", "public_contact", "public_claim", "claimed_brand"].includes(kind)) return "Observed signals";
   if (["candidate", "candidate_domain", "external_destination", "redirect_target"].includes(kind)) return "Pending leads";
   return "Evidence graph";
 }
@@ -211,6 +212,7 @@ function nodeCode(kind) {
     readiness: "RDY",
     observation: "OBS",
     public_contact: "TEL",
+    public_claim: "CLM",
     external_destination: "EXT",
     redirect_target: "301",
     candidate: "LEAD",
@@ -401,18 +403,25 @@ function buildCaseProjection(details) {
     });
   });
 
-  const signalTypes = new Set([
-    "claimed_brand_identity",
+  const contactTypes = new Set([
     "public_telegram_alias",
+    "public_telegram_contact",
     "public_whatsapp_link",
     "public_phone_number",
     "public_email_address",
-    "public_payment_method",
-    "public_payment_provider",
-    "public_offer_claim",
-    "public_referral_code",
   ]);
-  (details.observations || []).filter((item) => signalTypes.has(item.type)).slice(0, 18).forEach((observation) => {
+  const claimCategories = new Map([
+    ["public_payment_method", "Payment indicators"],
+    ["public_payment_provider", "Payment indicators"],
+    ["public_offer_claim", "Offer claims"],
+    ["public_legal_or_license_claim", "Legal claims"],
+    ["public_referral_code", "Referral markers"],
+    ["public_tracking_identifier", "Tracking markers"],
+  ]);
+  const directSignals = (details.observations || []).filter((item) => (
+    item.type === "claimed_brand_identity" || contactTypes.has(item.type)
+  )).slice(0, 18);
+  directSignals.forEach((observation) => {
     sequence += 1;
     const kind = observation.type === "claimed_brand_identity" ? "claimed_brand" : "public_contact";
     const nodeId = `observation:${observation.id}`;
@@ -431,12 +440,50 @@ function buildCaseProjection(details) {
       id: `observed:${sourceId}:${nodeId}`,
       source: sourceId,
       target: nodeId,
-      relation: observation.type === "claimed_brand_identity" ? "claims brand" : "displays public signal",
+      relation: observation.type === "claimed_brand_identity" ? "claims brand" : "publishes public contact",
     }, edges.length, { sequence }));
     timeline.push({
       sequence,
       label: titleCase(observation.type),
       detail: "Evidence-backed semantic observation",
+      targetId: nodeId,
+    });
+  });
+
+  const claimGroups = new Map();
+  (details.observations || []).forEach((observation) => {
+    const category = claimCategories.get(observation.type);
+    if (!category) return;
+    const sourceId = pageIds.get(observation.source_page_id) || rootId;
+    const key = `${sourceId}:${category}`;
+    const group = claimGroups.get(key) || { sourceId, category, values: [], observations: [] };
+    if (!group.values.includes(observation.display_value)) group.values.push(observation.display_value);
+    group.observations.push(observation);
+    claimGroups.set(key, group);
+  });
+  claimGroups.forEach((group) => {
+    sequence += 1;
+    const nodeId = `claim:${group.sourceId}:${group.category.toLowerCase().replaceAll(" ", "-")}`;
+    addUniqueNode(nodes, normalizeNode({
+      id: nodeId,
+      type: "public_claim",
+      label: `${group.category} · ${group.values.slice(0, 4).join(", ")}`,
+      status: "observed",
+    }, nodes.length, {
+      sequence,
+      cluster: "Observed signals",
+      attributes: { claim_category: group.category, values: group.values, observations: group.observations },
+    }));
+    addUniqueEdge(edges, normalizeEdge({
+      id: `claim-edge:${group.sourceId}:${nodeId}`,
+      source: group.sourceId,
+      target: nodeId,
+      relation: "displays public claim",
+    }, edges.length, { sequence }));
+    timeline.push({
+      sequence,
+      label: group.category,
+      detail: `${group.values.length} evidence-backed public claim${group.values.length === 1 ? "" : "s"}`,
       targetId: nodeId,
     });
   });
@@ -1103,8 +1150,10 @@ function renderRunIntel(details) {
   const events = details.events || [];
   const capturedPages = source?.pages?.length
     || runNodes.filter((item) => ["seed_page", "collected_page"].includes(item.kind)).length;
-  const semanticEvidence = source?.observations?.length
-    || events.filter((item) => item.kind === "observation.created").length;
+  const semanticEvidence = Math.max(
+    source?.observations?.length || 0,
+    events.filter((item) => item.kind === "observation.created").length,
+  );
   const completedActions = details.action_summary?.status === "completed"
     ? 1
     : events.filter((item) => item.kind === "tool.completed").length;
@@ -1339,7 +1388,16 @@ function renderRunInspector(details, selected) {
     artifactGrid.append(link);
   });
   const children = [header];
-  if (details.source_case) {
+  const interactionScreenshot = selected?.attributes?.screenshot_artifact;
+  if (interactionScreenshot) {
+    const figure = el("figure", "evidence-preview");
+    const image = el("img");
+    image.src = runArtifactUrl(details.workspace_id, interactionScreenshot);
+    image.alt = `Interaction screenshot evidence for ${selected.label}`;
+    image.loading = "eager";
+    figure.append(image, el("figcaption", "preview-label", "Post-action screenshot evidence"));
+    children.push(figure);
+  } else if (details.source_case) {
     const gallery = renderScreenshotGallery(details.source_case, selected);
     if (gallery) children.push(gallery);
   }

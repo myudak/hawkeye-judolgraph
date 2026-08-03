@@ -105,6 +105,7 @@ class ProgressiveGraphNode(BaseModel):
         "collected_page",
         "claimed_brand",
         "public_contact",
+        "public_claim",
         "external_destination",
         "redirect_target",
         "candidate_domain",

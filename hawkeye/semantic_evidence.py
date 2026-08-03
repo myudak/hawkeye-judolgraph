@@ -13,6 +13,8 @@ from hawkeye.models import RedirectRecord, SemanticElementSnapshot, SemanticObse
 _EMAIL_RE = re.compile(r"(?<![\w.+-])([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})", re.I)
 _PHONE_RE = re.compile(r"(?<!\w)(\+?\d[\d\s().-]{7,}\d)(?!\w)")
 _TELEGRAM_RE = re.compile(r"(?<!\w)@([A-Za-z][A-Za-z0-9_]{3,31})")
+_WHATSAPP_PHONE_RE = re.compile(r"whats\s*app\s*[:\-]?\s*(\+?\d[\d\s().-]{7,}\d)", re.I)
+_TELEGRAM_PHONE_RE = re.compile(r"telegram\s*[:\-]?\s*(\+?\d[\d\s().-]{7,}\d)", re.I)
 _DOWNLOAD_EXTENSIONS = {
     ".apk",
     ".bin",
@@ -147,10 +149,19 @@ def extract_semantic_observations(
         path_parts = [part for part in split.path.split("/") if part]
         if hostname in {"t.me", "telegram.me", "www.t.me"} and path_parts:
             alias = path_parts[0].lstrip("@").casefold()
+            telegram_type = (
+                "public_telegram_contact"
+                if _digits(alias) and len(_digits(alias)) >= 8
+                else "public_telegram_alias"
+            )
             add(
-                "public_telegram_alias",
+                telegram_type,
                 href,
-                normalized_value=f"@{alias}",
+                normalized_value=(
+                    f"+{_digits(alias)}"
+                    if telegram_type == "public_telegram_contact"
+                    else f"@{alias}"
+                ),
                 element=anchor,
                 extraction_method="dom_anchor_telegram",
                 evidence_strength="strong",
@@ -203,6 +214,35 @@ def extract_semantic_observations(
                 )
 
     visible_text = soup.get_text(" ", strip=True)
+    channel_phone_spans: list[tuple[int, int]] = []
+    for match in _WHATSAPP_PHONE_RE.finditer(visible_text):
+        value = match.group(1)
+        digits = _digits(value)
+        if len(digits) >= 8:
+            channel_phone_spans.append(match.span(1))
+            add(
+                "public_whatsapp_link",
+                value,
+                normalized_value=f"https://wa.me/{digits}",
+                surrounding_text=_context(visible_text, match.start(1), match.end(1)),
+                confidence=0.9,
+                extraction_method="visible_text_channel_label",
+                evidence_strength="strong",
+            )
+    for match in _TELEGRAM_PHONE_RE.finditer(visible_text):
+        value = match.group(1)
+        digits = _digits(value)
+        if len(digits) >= 8:
+            channel_phone_spans.append(match.span(1))
+            add(
+                "public_telegram_contact",
+                value,
+                normalized_value=f"+{digits}",
+                surrounding_text=_context(visible_text, match.start(1), match.end(1)),
+                confidence=0.9,
+                extraction_method="visible_text_channel_label",
+                evidence_strength="strong",
+            )
     for match in _EMAIL_RE.finditer(visible_text):
         value = match.group(1)
         add(
@@ -214,6 +254,10 @@ def extract_semantic_observations(
             evidence_strength="strong",
         )
     for match in _PHONE_RE.finditer(visible_text):
+        if any(
+            start <= match.start(1) and match.end(1) <= end for start, end in channel_phone_spans
+        ):
+            continue
         value = match.group(1)
         digits = _digits(value)
         if len(digits) >= 8:

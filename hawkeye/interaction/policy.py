@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from .models import InteractiveElement
 
 _FORBIDDEN = re.compile(
-    r"\b(login|log in|sign in|register|sign up|create account|submit|send|chat|contact us|"
+    r"\b(login|log in|sign in|register|sign up|create account|submit|send|chat|"
     r"payment|pay|deposit|withdraw|withdrawal|bet|wager|download|install|captcha)\b",
     re.I,
 )

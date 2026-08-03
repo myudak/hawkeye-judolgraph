@@ -71,7 +71,7 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
                     id=edge_id,
                     source=parent,
                     target=node_id,
-                    relation="crawled_same_site_page",
+                    relation=str(payload.get("parent_relation", "crawled_same_site_page")),
                     appearance="solid",
                     supporting_event_ids=[event.event_id],
                 )
@@ -93,7 +93,13 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
             if (
                 kind in {"external_destination", "redirect_target"}
                 and source_node is not None
-                and _same_public_url(source_node.label, label)
+                and (
+                    _same_public_url(source_node.label, label)
+                    or (
+                        kind == "external_destination"
+                        and _same_public_host(source_node.label, label)
+                    )
+                )
             ):
                 if observation_id:
                     observation_nodes[observation_id] = source
@@ -103,32 +109,86 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
                     )
                 )
                 continue
-            node_id = next(
-                (node.id for node in nodes.values() if node.kind == kind and node.label == label),
-                str(payload.get("node_id", f"observation:{event.sequence}")),
-            )
+            proposed_node_id = str(payload.get("node_id", f"observation:{event.sequence}"))
+            if kind in {"external_destination", "redirect_target"}:
+                hostname = _public_hostname(label)
+                node_id = f"{kind}:{hostname}" if hostname else proposed_node_id
+                label = hostname or label
+            elif kind == "public_claim":
+                category = _claim_category(observation_type)
+                node_id = f"claim:{source}:{category}"
+            else:
+                node_id = next(
+                    (
+                        node.id
+                        for node in nodes.values()
+                        if node.kind == kind
+                        and node.label == label
+                        and (
+                            kind != "public_contact"
+                            or node.attributes.get("observation_type") == observation_type
+                        )
+                    ),
+                    proposed_node_id,
+                )
             status: Literal["observed", "collected"] = (
                 "collected" if payload.get("matched_case_id") else "observed"
             )
             existing = nodes.get(node_id)
+            attributes = {**(existing.attributes if existing else {}), **payload}
+            if kind == "public_claim":
+                values = sorted({*attributes.get("values", []), label})
+                observation_types = sorted(
+                    {*attributes.get("observation_types", []), observation_type}
+                )
+                category = _claim_category(observation_type)
+                attributes.update(
+                    {
+                        "claim_category": category,
+                        "values": values,
+                        "observation_types": observation_types,
+                        "observation_count": len(values),
+                    }
+                )
+                label = f"{category.replace('_', ' ').title()} · {', '.join(values[:4])}"
+            elif kind in {"external_destination", "redirect_target"}:
+                urls = sorted(
+                    {*attributes.get("observed_urls", []), str(payload.get("normalized_value", ""))}
+                )
+                attributes["observed_urls"] = [item for item in urls if item]
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
                 kind=kind,
                 label=label,
-                status=status,
-                attributes={**(existing.attributes if existing else {}), **payload},
+                status="collected" if existing and existing.status == "collected" else status,
+                attributes=attributes,
             )
             if observation_id:
                 observation_nodes[observation_id] = node_id
             edge_id = f"{relation}:{source}:{node_id}"
+            existing_edge = edges.get(edge_id)
             edges[edge_id] = ProgressiveGraphEdge(
                 id=edge_id,
                 source=source,
                 target=node_id,
                 relation=relation,
                 appearance="solid",
-                supporting_event_ids=[event.event_id],
-                supporting_observation_ids=[str(payload.get("observation_id", ""))],
+                supporting_event_ids=list(
+                    dict.fromkeys(
+                        [
+                            *(existing_edge.supporting_event_ids if existing_edge else []),
+                            event.event_id,
+                        ]
+                    )
+                ),
+                supporting_observation_ids=list(
+                    dict.fromkeys(
+                        [
+                            *(existing_edge.supporting_observation_ids if existing_edge else []),
+                            str(payload.get("observation_id", "")),
+                        ]
+                    )
+                ),
             )
             animations.extend(
                 [
@@ -142,14 +202,15 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
             )
         elif event.kind == "search.lead.discovered":
             label = str(payload.get("url", ""))
-            node_id = _node_id_with_label(nodes, label) or (
+            node_id = _node_id_with_public_url(nodes, label) or (
                 f"candidate:{payload.get('lead_id', event.sequence)}"
             )
             existing = nodes.get(node_id)
+            display_label = _public_hostname(label) or label or node_id
             nodes[node_id] = ProgressiveGraphNode(
                 id=node_id,
                 kind="candidate_domain",
-                label=label or node_id,
+                label=display_label,
                 status="lead",
                 attributes={**(existing.attributes if existing else {}), **payload},
             )
@@ -178,7 +239,7 @@ def reduce_events(events: list[InvestigationEvent]) -> ProgressiveGraphState:
         elif event.kind == "candidate_page.collected":
             proposed_id = str(payload.get("node_id", f"candidate-page:{event.sequence}"))
             label = str(payload.get("url", proposed_id))
-            node_id = _node_id_with_label(nodes, label) or proposed_id
+            node_id = _node_id_with_public_url(nodes, label) or proposed_id
             source_aliases[proposed_id] = node_id
             existing = nodes.get(node_id)
             nodes[node_id] = ProgressiveGraphNode(
@@ -269,6 +330,24 @@ def _node_id_with_label(nodes: dict[str, ProgressiveGraphNode], label: str) -> s
     )
 
 
+def _node_id_with_public_url(nodes: dict[str, ProgressiveGraphNode], label: str) -> str | None:
+    exact = _node_id_with_label(nodes, label)
+    if exact is not None:
+        return exact
+    hostname = _public_hostname(label)
+    if not hostname:
+        return None
+    matches = [
+        node
+        for node in nodes.values()
+        if node.kind in {"candidate_domain", "external_destination", "redirect_target"}
+        and (_public_hostname(node.label) or node.label.casefold()) == hostname
+    ]
+    return next((node.id for node in matches if node.status == "collected"), None) or next(
+        (node.id for node in matches), None
+    )
+
+
 def _same_public_url(left: str, right: str) -> bool:
     """Compare public URL identities without treating display-only slash variants as entities."""
 
@@ -292,10 +371,22 @@ def _same_public_url(left: str, right: str) -> bool:
     )
 
 
+def _same_public_host(left: str, right: str) -> bool:
+    left_host = _public_hostname(left)
+    right_host = _public_hostname(right)
+    return bool(left_host and left_host == right_host)
+
+
 def _observation_semantics(
     observation_type: str,
 ) -> tuple[
-    Literal["claimed_brand", "public_contact", "external_destination", "redirect_target"],
+    Literal[
+        "claimed_brand",
+        "public_contact",
+        "public_claim",
+        "external_destination",
+        "redirect_target",
+    ],
     str,
 ]:
     if observation_type == "claimed_brand_identity":
@@ -304,4 +395,35 @@ def _observation_semantics(
         return "external_destination", "publicly_links_to"
     if observation_type == "public_redirect_target":
         return "redirect_target", "publicly_redirects_to"
-    return "public_contact", "displays_public_claim"
+    if observation_type in {
+        "public_telegram_alias",
+        "public_telegram_contact",
+        "public_whatsapp_link",
+        "public_phone_number",
+        "public_email_address",
+    }:
+        return "public_contact", "publishes_public_contact"
+    return "public_claim", "displays_public_claim"
+
+
+def _claim_category(observation_type: str) -> str:
+    if observation_type in {"public_payment_method", "public_payment_provider"}:
+        return "payment_indicators"
+    if observation_type == "public_offer_claim":
+        return "offer_claims"
+    if observation_type == "public_legal_or_license_claim":
+        return "legal_claims"
+    if observation_type == "public_referral_code":
+        return "referral_markers"
+    if observation_type == "public_tracking_identifier":
+        return "tracking_markers"
+    if observation_type == "public_download_destination":
+        return "download_references"
+    return "public_claims"
+
+
+def _public_hostname(value: str) -> str:
+    try:
+        return (urlsplit(value).hostname or "").casefold().removeprefix("www.")
+    except ValueError:
+        return ""

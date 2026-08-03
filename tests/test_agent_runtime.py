@@ -13,6 +13,7 @@ import pytest
 from hawkeye.agent import CodexInvestigator
 from hawkeye.agent.models import AgentVisibleContext
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
+from hawkeye.interaction.models import StableElementReference
 
 
 def _context(scenario_index: int = 1) -> AgentVisibleContext:
@@ -93,6 +94,38 @@ def test_unavailable_endpoint_uses_same_normalized_decision_shape() -> None:
     assert result.mode == "deterministic_fallback"
     assert result.decision.model_dump(mode="json")["action"] == "tool_request"
     assert result.raw_response_persisted is False
+
+
+def test_fallback_prefers_contact_evidence_over_promotions() -> None:
+    def reference(element_id: str, label: str) -> StableElementReference:
+        return StableElementReference(
+            reference_id=f"ref-{element_id}",
+            discovery_snapshot_id="snapshot-contact",
+            element_id=element_id,
+            dom_path=f"a.{element_id}",
+            role="link",
+            tag="a",
+            accessible_name=label,
+            visible_text=label,
+            element_fingerprint=f"fingerprint-{element_id}",
+        )
+
+    context = AgentVisibleContext(
+        objective="Prefer a contact information route.",
+        current_case_state={"case_id": "fixture"},
+        normalized_observations=["public_offer_claim:bonus"],
+        safe_interactive_elements=[
+            reference("promo", "Promotion"),
+            reference("contact", "Hubungi Kami"),
+        ],
+        policy_budget=_context().policy_budget,
+        evidence_gap="Public phone and messaging identifiers are not yet observed.",
+    )
+
+    result = CodexInvestigator(None).choose(context)
+
+    assert result.decision.element_reference is not None
+    assert result.decision.element_reference.element_id == "contact"
 
 
 @contextmanager

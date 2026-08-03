@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
+from hawkeye.interaction.models import InteractiveElement
+from hawkeye.interaction.policy import validate_read_only_interaction
 
 
 def test_fixture_manifest_has_exactly_ten_required_scenarios() -> None:
@@ -86,3 +88,34 @@ def test_default_budget_contract_and_narrow_tools() -> None:
     }
     assert session.page_capture_state().tool_name == "page_capture_state"
     assert session.page_get_redirect_chain().tool_name == "page_get_redirect_chain"
+
+
+def test_contact_information_route_is_safe_but_live_chat_remains_blocked() -> None:
+    contact = InteractiveElement(
+        element_id="contact",
+        dom_path="a.contact",
+        role="link",
+        tag="a",
+        accessible_name="Contact Us",
+        visible_text="Contact Us",
+        declared_behavior="reveal_tab",
+    )
+    chat = contact.model_copy(
+        update={
+            "element_id": "chat",
+            "dom_path": "button.chat",
+            "tag": "button",
+            "role": "button",
+            "accessible_name": "Live Chat",
+            "visible_text": "Live Chat",
+        }
+    )
+
+    assert validate_read_only_interaction(contact)[:2] == (
+        True,
+        "validated_public_reveal",
+    )
+    assert validate_read_only_interaction(chat)[:2] == (
+        False,
+        "forbidden_action_keyword",
+    )

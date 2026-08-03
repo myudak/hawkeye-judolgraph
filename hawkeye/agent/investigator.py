@@ -128,13 +128,18 @@ class DeterministicInvestigator:
 def _fallback_priority(reference: StableElementReference) -> tuple[int, str]:
     label = f"{reference.accessible_name} {reference.visible_text}".casefold()
     priorities = (
-        ("promotion", 0),
-        ("promo", 0),
-        ("about", 1),
-        ("public", 1),
-        ("information", 1),
-        ("help", 2),
-        ("menu", 3),
+        ("contact us", 0),
+        ("hubungi", 0),
+        ("kontak", 0),
+        ("contact", 0),
+        ("support", 1),
+        ("help", 1),
+        ("about", 2),
+        ("information", 2),
+        ("public", 3),
+        ("promotion", 4),
+        ("promo", 4),
+        ("menu", 5),
     )
     score = next((value for term, value in priorities if term in label), 10)
     return score, reference.element_id

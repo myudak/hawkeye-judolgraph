@@ -183,13 +183,217 @@ def test_live_graph_collapses_root_capture_and_projects_meaningful_relation(
 
     graph = reduce_events(store.events("run-live"))
 
-    assert {node.id for node in graph.nodes} == {"seed:case-live", "observable:target"}
-    destination = next(node for node in graph.nodes if node.id == "observable:target")
+    assert {node.id for node in graph.nodes} == {
+        "seed:case-live",
+        "external_destination:target.example",
+    }
+    destination = next(
+        node for node in graph.nodes if node.id == "external_destination:target.example"
+    )
     assert destination.kind == "external_destination"
     assert destination.status == "collected"
     assert len(graph.edges) == 1
     assert graph.edges[0].source == "seed:case-live"
     assert graph.edges[0].relation == "publicly_links_to"
+
+
+def test_graph_groups_domains_and_never_labels_claim_keywords_as_contacts(
+    tmp_path: Path,
+) -> None:
+    store = InvestigationStore(tmp_path / "taxonomy.sqlite3")
+    started = store.append_event(
+        case_id="case-taxonomy",
+        run_id="run-taxonomy",
+        kind="run.started",
+        payload={"seed_url": "https://888.com/"},
+    )
+    captured = store.append_event(
+        case_id="case-taxonomy",
+        run_id="run-taxonomy",
+        kind="artifact.captured",
+        payload={"node_id": "page:root", "root": True, "label": "https://888.com/"},
+        causation_event_id=started.event_id,
+    )
+    observations = [
+        ("link-one", "public_outgoing_link", "https://www.888casino.com/slots"),
+        ("link-two", "public_outgoing_link", "https://888casino.com/blackjack"),
+        ("same-host", "public_outgoing_link", "https://888.com/about-us"),
+        ("deposit", "public_payment_method", "deposit"),
+        ("withdrawal", "public_payment_method", "withdrawal"),
+        ("bonus", "public_offer_claim", "bonus"),
+        ("tracking", "public_tracking_identifier", "utm_source=cmp"),
+        ("phone", "public_phone_number", "+639543355092"),
+        ("telegram", "public_telegram_contact", "+639543355092"),
+    ]
+    for observation_id, observation_type, value in observations:
+        store.append_event(
+            case_id="case-taxonomy",
+            run_id="run-taxonomy",
+            kind="observation.created",
+            payload={
+                "observation_id": observation_id,
+                "node_id": f"observable:{observation_id}",
+                "source_node_id": "page:root",
+                "observation_type": observation_type,
+                "normalized_value": value,
+            },
+            causation_event_id=captured.event_id,
+        )
+
+    graph = reduce_events(store.events("run-taxonomy"))
+
+    destination = next(node for node in graph.nodes if node.kind == "external_destination")
+    assert destination.label == "888casino.com"
+    assert all(
+        node.label != "888.com" for node in graph.nodes if node.kind == "external_destination"
+    )
+    assert destination.attributes["observed_urls"] == [
+        "https://888casino.com/blackjack",
+        "https://www.888casino.com/slots",
+    ]
+    payment = next(
+        node
+        for node in graph.nodes
+        if node.kind == "public_claim" and node.attributes["claim_category"] == "payment_indicators"
+    )
+    assert payment.attributes["values"] == ["deposit", "withdrawal"]
+    contacts = [node for node in graph.nodes if node.kind == "public_contact"]
+    assert [node.label for node in contacts] == ["+639543355092", "+639543355092"]
+    assert {node.attributes["observation_type"] for node in contacts} == {
+        "public_phone_number",
+        "public_telegram_contact",
+    }
+    assert all(node.label not in {"bonus", "deposit", "withdrawal"} for node in contacts)
+    destination_edges = [edge for edge in graph.edges if edge.target == destination.id]
+    assert len(destination_edges) == 1
+    assert len(destination_edges[0].supporting_observation_ids) == 2
+
+
+def test_candidate_priority_prefers_core_888_product_domains() -> None:
+    from hawkeye.investigation.live_runtime import _candidate_priority
+
+    assert _candidate_priority("888casino.com", "888.com", "888") == 0
+    assert _candidate_priority("888poker.com", "888.com", "888") == 0
+    assert _candidate_priority("888sport.com", "888.com", "888") == 0
+    assert _candidate_priority("888responsible.com", "888.com", "888") == 1
+    assert _candidate_priority("affiliates.888.com", "888.com", "888") == 3
+
+
+def test_contact_route_fallback_is_same_origin_and_contact_only() -> None:
+    from hawkeye.investigation.live_runtime import (
+        _contact_route_fallback,
+        _reference_label_matches,
+    )
+
+    assert (
+        _contact_route_fallback("https://qq101xfw.com/start", "Hubungi Kami")
+        == "https://qq101xfw.com/Contact"
+    )
+    assert (
+        _contact_route_fallback("https://example.test/start", "Support")
+        == "https://example.test/Help"
+    )
+    assert _contact_route_fallback("https://example.test/start", "Promotion") is None
+    assert _reference_label_matches("Contact Us", "Hubungi Kami") is True
+    assert _reference_label_matches("Promotion", "Hubungi Kami") is False
+
+
+def test_live_contact_action_persists_route_screenshot_and_contact_observations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hawkeye.investigation.live_runtime as live_runtime
+
+    now = datetime.now(UTC)
+    package = tmp_path / "contact-case"
+    pages = package / "pages"
+    pages.mkdir(parents=True)
+    (pages / "page-001.html").write_text(
+        "<html><body><a class='contact'>Contact Us</a><a>Promotion</a></body></html>",
+        encoding="utf-8",
+    )
+    result = InvestigationResult(
+        case_directory=str(package),
+        case=CaseRecord(
+            case_id="case-contact",
+            seed_url="https://contact.example/",
+            final_url="https://contact.example/",
+            status="completed",
+            started_at=now,
+            completed_at=now,
+            page_count=1,
+        ),
+        pages=[
+            CrawlPageRecord(
+                id="page-001",
+                url="https://contact.example/",
+                normalized_url="https://contact.example/",
+                final_url="https://contact.example/",
+                depth=0,
+                state="completed",
+                html_evidence_id="evidence-page-001",
+                screenshot_evidence_id="evidence-screenshot-001",
+            )
+        ],
+    )
+    contact_html = """
+    <html><body>
+      <h1>Hubungi Kami</h1>
+      <section>Nomor Kontak +639543355092</section>
+      <section>Whats App +639543355092</section>
+      <section>Telegram +639157800101</section>
+    </body></html>
+    """
+
+    def execute_contact(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {
+            "status": "completed",
+            "reason": "validated_public_reveal",
+            "url": "https://contact.example/Contact",
+            "state_artifact": "interaction-001.json",
+            "screenshot_artifact": "interaction-001.png",
+            "html_artifact": "interaction-001.html",
+            "visible_text_artifact": "interaction-001.txt",
+            "request_count": 1,
+            "blocked_request_count": 0,
+            "executed": True,
+            "_html": contact_html,
+        }
+
+    monkeypatch.setattr(live_runtime, "_execute_live_interaction", execute_contact)
+    output = tmp_path / "contact-run"
+    summary = run_live_investigation(
+        result,
+        output,
+        investigator=None,
+        known_cases=[],
+        safety_policy=SafetyPolicy(),
+    )
+    store = InvestigationStore(output / "investigation.sqlite3")
+    events = store.events(str(summary["run_id"]))
+    requested = next(
+        event
+        for event in events
+        if event.kind == "tool.requested" and event.payload.get("executed") is True
+    )
+    assert requested.payload["element_reference"]["accessible_name"] == "Contact Us"
+    contact_observations = [
+        event.payload
+        for event in events
+        if event.kind == "observation.created"
+        and event.payload.get("source_node_id", "").startswith("route:")
+    ]
+    assert {item["observation_type"] for item in contact_observations} >= {
+        "public_phone_number",
+        "public_whatsapp_link",
+        "public_telegram_contact",
+    }
+    graph = reduce_events(events)
+    route = next(node for node in graph.nodes if node.label.endswith("/Contact"))
+    assert route.attributes["screenshot_artifact"] == "interaction-001.png"
+    assert any(
+        edge.target == route.id and edge.relation == "opened_safe_public_route"
+        for edge in graph.edges
+    )
 
 
 def test_direct_frontier_anchor_auto_matches_an_already_collected_related_case(
@@ -253,7 +457,7 @@ def test_direct_frontier_anchor_auto_matches_an_already_collected_related_case(
 
     graph = summary["graph"]
     assert isinstance(graph, dict)
-    destination = next(node for node in graph["nodes"] if node["label"] == "https://888casino.com/")
+    destination = next(node for node in graph["nodes"] if node["label"] == "888casino.com")
     assert destination["kind"] == "external_destination"
     assert destination["status"] == "collected"
     assert any(edge["relation"] == "publicly_links_to" for edge in graph["edges"])

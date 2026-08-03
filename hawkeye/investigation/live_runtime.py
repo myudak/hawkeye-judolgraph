@@ -18,12 +18,21 @@ from hawkeye.interaction import InteractionBudget
 from hawkeye.interaction.models import InteractiveElement, StableElementReference
 from hawkeye.interaction.policy import validate_read_only_interaction
 from hawkeye.models import InvestigationResult, SemanticObservation
+from hawkeye.semantic_evidence import extract_semantic_observations
 
 from .models import CandidateLead
 from .reducer import reduce_events
 from .store import InvestigationStore
 
-_SAFE_REVEAL = re.compile(r"\b(promo(?:tion)?|about|information|menu|help|news|event)\b", re.I)
+_SAFE_REVEAL = re.compile(
+    r"\b(contact(?: us)?|hubungi(?: kami)?|kontak|support|promo(?:tion)?|about|"
+    r"information|menu|help|news|event)\b",
+    re.I,
+)
+_CONTACT_REVEAL = re.compile(
+    r"\b(contact(?: us)?|hubungi(?: kami)?|kontak|support|help)\b",
+    re.I,
+)
 _CANDIDATE_TOKEN = re.compile(r"[a-z]+\d+|\d+[a-z]+|\d{3,}", re.I)
 _NON_CANDIDATE_HOSTS = {
     "facebook.com",
@@ -226,18 +235,36 @@ def run_live_investigation(
         case_id=case_id,
         run_id=run_id,
         kind="evidence_gap.created",
-        payload={"gap": "Inspect one policy-permitted public information route."},
+        payload={
+            "gap": (
+                "Prefer a same-site Contact, Hubungi Kami, or support information route that may "
+                "reveal public phone, WhatsApp, Telegram, or email evidence."
+            )
+        },
         causation_event_id=collection.event_id,
     )
     objective = store.append_event(
         case_id=case_id,
         run_id=run_id,
         kind="agent.objective.created",
-        payload={"objective": "Choose at most one safe public information action."},
+        payload={
+            "objective": (
+                "Choose at most one safe read-only public information action. Prefer a same-site "
+                "Contact or Hubungi Kami route over promotions when available."
+            )
+        },
         causation_event_id=gap.event_id,
     )
+    contact_references = [
+        reference
+        for reference in permitted
+        if _CONTACT_REVEAL.search(reference.accessible_name or "")
+    ]
     context = AgentVisibleContext(
-        objective="Choose at most one safe public information action.",
+        objective=(
+            "Choose at most one safe read-only public information action. Prefer a same-site "
+            "Contact or Hubungi Kami route over promotions when available."
+        ),
         current_case_state={
             "case_id": case_id,
             "capture_adequacy": result.case.capture_adequacy.value
@@ -248,9 +275,14 @@ def run_live_investigation(
         normalized_observations=[
             f"{item.observation_type}:{item.normalized_value}" for item in projected_observations
         ][:100],
-        safe_interactive_elements=permitted[:40],
+        # Keep the model's choice aligned with this evidence gap. A promotion may still be a
+        # safe read-only action, but it must not displace a visible contact-information route.
+        safe_interactive_elements=(contact_references or permitted)[:40],
         policy_budget=InteractionBudget(max_interactions=1),
-        evidence_gap="Inspect one policy-permitted public information route.",
+        evidence_gap=(
+            "Prefer a same-site Contact, Hubungi Kami, or support information route that may "
+            "reveal public phone, WhatsApp, Telegram, or email evidence."
+        ),
     )
     step = (investigator or CodexInvestigator(None)).choose(context)
     if step.mode == "deterministic_fallback":
@@ -284,6 +316,7 @@ def run_live_investigation(
                 safety_policy=safety_policy,
                 artifacts=artifacts,
             )
+        interaction_html = str(action_summary.pop("_html", ""))
         completed = store.append_event(
             case_id=case_id,
             run_id=run_id,
@@ -295,23 +328,75 @@ def run_live_investigation(
         )
         if action_summary.get("status") == "completed":
             route_url = str(action_summary.get("url"))
-            store.append_event(
+            route_node_id = f"route:{hashlib.sha256(route_url.encode()).hexdigest()[:12]}"
+            route_event = store.append_event(
                 case_id=case_id,
                 run_id=run_id,
                 kind="artifact.captured",
                 payload={
-                    "node_id": f"route:{hashlib.sha256(route_url.encode()).hexdigest()[:12]}",
+                    "node_id": route_node_id,
                     "label": route_url,
                     "url": route_url,
                     "depth": 1,
-                    "capture_adequacy": "adequate",
-                    "extraction_tier": "verified",
+                    "parent_node_id": f"page:{result.pages[0].id}",
+                    "parent_relation": "opened_safe_public_route",
+                    "capture_adequacy": "not_assessed_for_interaction",
+                    "extraction_tier": "provisional",
                     "interaction_artifact": action_summary.get("state_artifact"),
                     "screenshot_artifact": action_summary.get("screenshot_artifact"),
+                    "html_artifact": action_summary.get("html_artifact"),
+                    "visible_text_artifact": action_summary.get("visible_text_artifact"),
                     "source_case_id": case_id,
                 },
                 causation_event_id=completed.event_id,
             )
+            if interaction_html:
+                contact_types = {
+                    "public_telegram_alias",
+                    "public_telegram_contact",
+                    "public_whatsapp_link",
+                    "public_phone_number",
+                    "public_email_address",
+                }
+                interaction_observations = extract_semantic_observations(
+                    interaction_html,
+                    source_page_id=route_node_id,
+                    source_url=route_url,
+                    source_artifact_id=str(action_summary.get("html_artifact")),
+                    screenshot_evidence_id=str(action_summary.get("screenshot_artifact")),
+                    observation_id_start=10_001,
+                )
+                for observation in _deduplicate_observations(
+                    [
+                        item
+                        for item in interaction_observations
+                        if item.observation_type in contact_types
+                    ]
+                ):
+                    event = store.append_event(
+                        case_id=case_id,
+                        run_id=run_id,
+                        kind="observation.created",
+                        payload={
+                            "observation_id": observation.id,
+                            "node_id": _observation_node_id(observation),
+                            "source_node_id": route_node_id,
+                            "observation_type": observation.observation_type,
+                            "normalized_value": observation.normalized_value,
+                            "raw_value": observation.raw_value,
+                            "source_artifact_id": observation.source_artifact_id,
+                            "screenshot_evidence_id": observation.screenshot_evidence_id,
+                            "surrounding_text": observation.surrounding_text,
+                            "confidence": observation.confidence,
+                            "evidence_strength": observation.evidence_strength,
+                            "limitations": [
+                                "interaction_route_uses_bounded_post_click_observation"
+                            ],
+                            "provisional": True,
+                        },
+                        causation_event_id=route_event.event_id,
+                    )
+                    observation_event_ids[observation.id] = event.event_id
 
     leads = _candidate_observations(
         projected_observations,
@@ -511,7 +596,10 @@ def _execute_live_interaction(
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             context = browser.new_context(
-                accept_downloads=False, viewport={"width": 1440, "height": 1024}
+                accept_downloads=False,
+                viewport={"width": 1440, "height": 1024},
+                locale="id-ID",
+                extra_http_headers={"Accept-Language": "id-ID,id;q=0.9,en;q=0.7"},
             )
             page = context.new_page()
 
@@ -547,22 +635,38 @@ def _execute_live_interaction(
                     "executed": False,
                 }
             observed_label = re.sub(r"\s+", " ", locator.inner_text(timeout=2_000)).strip()[:200]
-            if reference.visible_text and observed_label != reference.visible_text:
+            if reference.visible_text and not _reference_label_matches(
+                reference.visible_text, observed_label
+            ):
                 browser.close()
                 return {
                     "status": "stale_reference",
                     "reason": "visible_text_changed",
                     "executed": False,
                 }
+            before_url = page.url
             locator.click(timeout=5_000)
             page.wait_for_timeout(3_000)
+            route_fallback: str | None = None
+            if page.url == before_url:
+                route_fallback = _contact_route_fallback(source_url, reference.accessible_name)
+            if route_fallback is not None:
+                safety_policy.validate_crawl_url(route_fallback, refresh_dns=True)
+                response = page.goto(route_fallback, wait_until="domcontentloaded", timeout=30_000)
+                if response is not None and response.status >= 400:
+                    raise RuntimeError(f"contact route returned HTTP {response.status}")
+                page.wait_for_timeout(3_000)
             final_url = page.url
             screenshot = page.screenshot(full_page=False, timeout=5_000)
             html = page.content()
             visible_text = page.locator("body").inner_text(timeout=5_000)
             screenshot_name = "interaction-001.png"
             state_name = "interaction-001.json"
+            html_name = "interaction-001.html"
+            visible_text_name = "interaction-001.txt"
             (artifacts / screenshot_name).write_bytes(screenshot)
+            (artifacts / html_name).write_text(html, encoding="utf-8")
+            (artifacts / visible_text_name).write_text(visible_text, encoding="utf-8")
             state = {
                 "url": final_url,
                 "title": page.title(),
@@ -571,7 +675,10 @@ def _execute_live_interaction(
                 "screenshot_sha256": hashlib.sha256(screenshot).hexdigest(),
                 "request_count": request_count,
                 "blocked_request_count": len(blocked_requests),
+                "html_artifact": html_name,
+                "visible_text_artifact": visible_text_name,
                 "selected_element": reference.model_dump(mode="json"),
+                "navigation_fallback": route_fallback,
             }
             (artifacts / state_name).write_text(
                 json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -589,10 +696,33 @@ def _execute_live_interaction(
         "url": final_url,
         "state_artifact": state_name,
         "screenshot_artifact": screenshot_name,
+        "html_artifact": html_name,
+        "visible_text_artifact": visible_text_name,
         "request_count": request_count,
         "blocked_request_count": len(blocked_requests),
         "executed": True,
+        "_html": html,
     }
+
+
+def _contact_route_fallback(source_url: str, label: str) -> str | None:
+    """Resolve a visible SPA contact control that did not expose a link target.
+
+    This remains same-origin, is attempted only after the discovered control was clicked, and is
+    limited to a conventional public-information route rather than arbitrary generated crawling.
+    """
+
+    if not _CONTACT_REVEAL.search(label):
+        return None
+    path = "/Help" if re.search(r"\b(help|support)\b", label, re.I) else "/Contact"
+    parsed = urlsplit(source_url)
+    return f"{parsed.scheme}://{parsed.netloc}{path}"
+
+
+def _reference_label_matches(expected: str, observed: str) -> bool:
+    if expected == observed:
+        return True
+    return bool(_CONTACT_REVEAL.search(expected) and _CONTACT_REVEAL.search(observed))
 
 
 def _selector_for(tag: Tag) -> str:
@@ -621,6 +751,7 @@ def _meaningful_observations(
         "public_outgoing_link": 18,
         "public_redirect_target": 6,
         "public_telegram_alias": 10,
+        "public_telegram_contact": 10,
         "public_whatsapp_link": 10,
         "public_phone_number": 10,
         "public_email_address": 10,
@@ -674,7 +805,25 @@ def _candidate_observations(
             continue
         if token and token in target_host:
             candidates.append(item)
-    return sorted(candidates, key=lambda item: item.normalized_value)
+    return sorted(
+        candidates,
+        key=lambda item: (
+            _candidate_priority(_hostname(item.normalized_value), source_host, token),
+            item.normalized_value,
+        ),
+    )
+
+
+def _candidate_priority(target_host: str, source_host: str, token: str) -> int:
+    """Prefer named product-family domains over affiliates, regional hosts, and corporate links."""
+
+    if token and re.match(rf"^{re.escape(token)}(?:casino|poker|sport)\.", target_host):
+        return 0
+    if token and target_host.startswith(token):
+        return 1
+    if target_host.endswith(f".{source_host}"):
+        return 3
+    return 2
 
 
 def _frontier_observations(

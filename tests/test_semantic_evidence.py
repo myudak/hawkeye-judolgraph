@@ -8,6 +8,7 @@ from pathlib import Path
 from hawkeye.collector.safety import SafetyPolicy
 from hawkeye.models import SemanticObservation
 from hawkeye.pipeline import investigate
+from hawkeye.semantic_evidence import extract_semantic_observations
 
 
 def test_semantic_observation_types_normalization_provenance_and_crops(
@@ -83,3 +84,46 @@ def test_information_rich_unstable_capture_extracts_only_provisional_observation
         "provisional_observation_from_limited_capture" in item.limitations
         for item in result.observations
     )
+
+
+def test_channel_labeled_phone_numbers_become_real_contact_evidence() -> None:
+    html = """
+    <html><body>
+      <section><h2>Nomor Kontak</h2><p>+639543355092</p></section>
+      <section><h2>Whats App</h2><p>+639543355092</p></section>
+      <section><h2>Telegram</h2><p>+639157800101</p></section>
+    </body></html>
+    """
+    observations = extract_semantic_observations(
+        html,
+        source_page_id="route-contact",
+        source_url="https://example.test/Contact",
+        source_artifact_id="interaction-001.html",
+        screenshot_evidence_id="interaction-001.png",
+    )
+
+    assert any(
+        item.observation_type == "public_whatsapp_link"
+        and item.normalized_value == "https://wa.me/639543355092"
+        for item in observations
+    )
+    assert any(
+        item.observation_type == "public_telegram_contact"
+        and item.normalized_value == "+639157800101"
+        for item in observations
+    )
+    assert {
+        item.normalized_value
+        for item in observations
+        if item.observation_type == "public_phone_number"
+    } == {"+639543355092"}
+    assert [
+        item.normalized_value
+        for item in observations
+        if item.observation_type == "public_whatsapp_link"
+    ] == ["https://wa.me/639543355092"]
+    assert [
+        item.normalized_value
+        for item in observations
+        if item.observation_type == "public_telegram_contact"
+    ] == ["+639157800101"]
