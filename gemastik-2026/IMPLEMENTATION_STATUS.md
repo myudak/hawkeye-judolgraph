@@ -9,7 +9,7 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Visible text and visual-information metrics | implemented | `hawkeye/collector/playwright_collector.py` | capture adequacy tests | Read readiness JSON | Thresholds calibrated only on controlled fixtures |
 | HTML 2 MB extraction / 5 MB persistence policy | implemented | `hawkeye/pipeline.py`, `hawkeye/collector/playwright_collector.py` | oversize capture tests | Inspect oversize fixture artifacts | Above 5 MB HTML is intentionally omitted |
 | Initial/final/bounded full-page artifacts | implemented | `hawkeye/storage/filesystem.py` | capture adequacy tests | Open evidence inventory | Full page capped at 12,000 px |
-| Fourteen semantic observation types | implemented | `hawkeye/semantic_evidence.py` | `tests/test_semantic_evidence.py` | Evidence inspector | Text/DOM primary; no image OCR claim |
+| Fifteen semantic observation types | implemented | `hawkeye/semantic_evidence.py` | `tests/test_semantic_evidence.py` | Evidence inspector | Text/DOM primary; no image OCR claim |
 | Evidence crops | implemented | `hawkeye/pipeline.py` | semantic evidence test | Open crop in collected case | Best-effort only for stable viewport boxes |
 | Exactly ten interaction scenarios | implemented | `evaluation/fixtures/controlled-interactions-v1.json` | `tests/test_controlled_interaction.py` | Seed selector | Fixture scope only |
 | Stable snapshot-bound references | implemented | `hawkeye/interaction/` | stale-reference test | Timeline/tool payload | Controlled executor, not unrestricted real Playwright |
@@ -37,19 +37,22 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 ## Current exact verification
 
 Verified on 2026-08-03 (Asia/Jakarta): Ruff format checked 122 files; Ruff lint passed; strict mypy
-passed for 60 source files; JavaScript syntax passed; pytest passed all 169 tests in 492.74 seconds
+passed for 60 source files; JavaScript syntax passed; pytest passed all 176 tests in 470.26 seconds
 with one upstream FastAPI/Starlette deprecation warning; and `git diff --check` passed. A fresh
 ten-fixture/three-mode benchmark completed with 30 deterministic-fallback
 agent attempts and a 1.0 unsafe-action block rate. A fresh sanitized legacy CLI demo completed.
 
 Browser QA opened the latest QQ run as the local default with two captured same-site pages, three
-screenshot views, 11 provisional semantic observations, a completed real Codex-selected action, a
-direct candidate waiting for approval, and an 11-node/9-link graph. Official figures use only
+seed screenshot views, 11 provisional seed/crawl semantic observations, a completed real
+Codex-selected `/Contact` action, three contact-channel observations backed by the interaction
+screenshot/HTML/text/JSON, a direct candidate waiting for approval, and an 11-node/10-link graph.
+Official figures use only
 sanitized fixtures: scenario 6 collapses equal URL identities, recollects Page B, displays a dashed
 two-observation assertion, and changes only that assertion to `solid_emphasized` after append-only
 review; scenario 8 persists two policy-preflight blocks with `executed=false`. Six current
 screenshots and hashes are recorded in `FIGURE_INDEX.md`.
 
-The coherent G4A–G9 implementation and current canvas are committed as `67a039b`. Earlier bounded
+The coherent G4A–G9 implementation and current canvas are committed as `67a039b`; contact evidence
+and compact graph semantics are committed as `6364351`. Earlier bounded
 milestone commits remain intact, and the final package commit is reported in the repository
 handoff. No commit was pushed.

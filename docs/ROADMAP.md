@@ -74,7 +74,7 @@ delayed, hidden-rich, restriction, unavailable, blank-challenge, long-page, and 
 
 ## G4B — Semantic public evidence — completed
 
-Completed evidence: fourteen typed observable categories, immutable source page/artifact/event
+Completed evidence: fifteen typed observable categories, immutable source page/artifact/event
 provenance, normalized text/DOM observations, and best-effort bounded evidence crops. Image OCR and
 visual brand inference remain unclaimed.
 

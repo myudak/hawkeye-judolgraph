@@ -263,12 +263,15 @@ referral code, dan tracking identifier. Klaim payment/offer/legal yang lemah dil
 download diinspeksi tanpa dinavigasi.
 
 Referensi elemen memuat DOM path, role, tag, accessible name, visible text, href/action, fingerprint,
-dan snapshot. Referensi stale ditolak. Login, register, Contact Us, input/form, aplikasi eksternal,
-payment, dan download diblokir server-side.
+dan snapshot. Referensi stale ditolak. Route Contact/Hubungi Kami same-site boleh dibuka untuk
+membaca informasi publik, tetapi Live Chat, kirim pesan/form, login, register, aplikasi eksternal,
+payment, dan download tetap diblokir server-side.
 
 Probe lokal aktual menemukan route `/v1/responses`, memilih `gpt-5.6-terra` dari `/v1/models`, dan
-memverifikasi strict JSON-schema output. Pada validasi QQ 2026-08-03, Codex memilih referensi PROMO
-yang diterbitkan server; policy memvalidasi ulang dan browser menyimpan bukti route `/Promotion`.
+memverifikasi strict JSON-schema output. Pada validasi QQ final 2026-08-03, Codex memilih referensi
+Contact yang diterbitkan server; policy memvalidasi ulang dan browser menyimpan bukti PNG, HTML,
+teks, serta JSON route `/Contact`. Artifact tersebut menghasilkan evidence telepon, WhatsApp, dan
+Telegram yang terpisah.
 Jika probe, transport, schema, atau exact-reference check gagal, fallback deterministik memilih
 public reveal yang lolos policy dengan bentuk event/provenance yang sama. Benchmark resmi tetap
 menggunakan fixture/fallback agar reproducible.

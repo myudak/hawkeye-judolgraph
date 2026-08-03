@@ -46,16 +46,16 @@ consent dismissal, or downloads. Metrics and limits are documented in `docs/CAPT
 
 ### Semantic evidence
 
-Fourteen observation types are implemented. Raw and normalized values remain distinct. Claimed
+Fifteen observation types are implemented. Raw and normalized values remain distinct. Claimed
 branding explicitly has `verified_ownership: false`. Dictionary-derived payment, offer, and legal
 claims are weak. Bounded crops are best-effort and never determine whether the observation exists.
 
 ### Interaction policy
 
 The tool executor evaluates the tag/role/label/href/action/form/download/new-tab/destination/keyword
-set/budget/snapshot. Stale references, login, register, Contact Us, messages, forms, payment,
-downloads, and external application schemes fail closed. Controlled unsafe-action block rate is
-1.0000 over four prohibited fixture controls.
+set/budget/snapshot. A same-site Contact/Hubungi route may reveal public information, but Live Chat,
+message/form submission, login, register, payment, downloads, and external application schemes fail
+closed. Controlled unsafe-action block rate is 1.0000 over four prohibited fixture controls.
 
 ### Agent runtime
 

@@ -13,10 +13,11 @@ Pre-click validation checks the element type and role, label, href, form owner/a
 attribute, popup/new-tab behavior, destination scheme, forbidden keywords, budget, and current
 snapshot. Login, registration, form or input actions, messaging/contact submission, payment,
 deposit, withdrawal, betting, downloads/binaries, CAPTCHA actions, and external-application schemes
-are always blocked. `Contact Us` is deliberately ambiguous and blocked.
+are always blocked. A visible same-site `Contact Us`, `Hubungi Kami`, or support-information route
+may be opened as a read-only reveal action; starting Live Chat, sending a message, submitting a
+contact form, or launching WhatsApp/Telegram remains blocked.
 
 The shared budget is five iterations, three interactions, three pages, depth one, five redirects,
 one search query, three candidate pages, and 120 seconds. The controlled benchmark has exactly ten
 scenarios and currently blocks all four prohibited controls (100%). This result is fixture scope,
 not a live-web safety guarantee.
-

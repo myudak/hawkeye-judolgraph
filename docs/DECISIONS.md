@@ -205,3 +205,20 @@ The service discovers a model through the fixed loopback model route and must co
 JSON-schema probe. The decision schema is normalized to strict required nullable fields. A selected
 tool reference must exactly equal a server-issued safe reference. Codex never receives or executes
 Playwright; transport or validation failure activates the deterministic fallback.
+
+## ADR-022 — Contact routes reveal evidence; communication actions remain blocked
+
+**Status:** accepted; clarifies ADR-014 and ADR-019.
+
+A discovered same-site Contact, Hubungi Kami, or support-information control is a safe read-only
+reveal target when it passes the stable-reference and server-policy checks. The runtime prefers it
+for a contact-evidence gap, captures the resulting screenshot, HTML, visible text, and state JSON,
+and emits phone, WhatsApp, Telegram, or email observations only when they are present in that
+artifact. For locale-sensitive sites the interaction browser declares the Indonesian locale; an
+equivalent `Contact Us` → `Hubungi Kami` label change does not invalidate an otherwise stable
+reference. If a no-`href` SPA control does not navigate, one conventional same-origin Contact/Help
+route may be opened after the click and the fallback URL is recorded in the audit artifact.
+
+This does not authorize communication. Live Chat, form submission, message send, external-app
+launch, login, registration, payment, download, CAPTCHA, and access-control bypass remain blocked.
+Contact values are evidence-backed public observations, not operator identity or ownership claims.

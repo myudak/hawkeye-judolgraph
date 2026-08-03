@@ -149,10 +149,11 @@ with screenshot/readiness evidence and limited status. These artifacts remain ig
 evidence, not benchmark truth and not redistribution material.
 
 A final corrective QQ validation on the same date used the unified product path. It captured the
-seed and `/MobileExplore`, recorded 11 provisional semantic observations, used a strict
-`gpt-5.6-terra` decision to select the server-issued PROMO reference, saved `/Promotion` interaction
-evidence, and left `qq101uok.com` waiting for explicit approval. This remains an ignored qualitative
-observation, not benchmark truth.
+seed and `/MobileExplore`, recorded 11 provisional seed/crawl observations, used a strict
+`gpt-5.6-terra` decision to select the server-issued Contact reference, and saved the Indonesian
+`/Contact` screenshot/HTML/text/JSON. The interaction artifact yielded one telephone, one WhatsApp,
+and one Telegram observation while `qq101uok.com` remained waiting for explicit approval. This
+remains ignored qualitative evidence, not benchmark truth.
 
 ## Metrics for future labeled fixtures
 

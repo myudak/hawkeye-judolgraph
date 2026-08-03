@@ -17,7 +17,7 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 - `python -m ruff check .` — passed.
 - `python -m mypy hawkeye` — passed, 60 source files.
 - `node --check hawkeye/review_app/static/app.js` — passed.
-- `python -m pytest -q` — 169 passed in 492.74 seconds; one upstream FastAPI/Starlette
+- `python -m pytest -q` — 176 passed in 470.26 seconds; one upstream FastAPI/Starlette
   deprecation warning.
 - `git diff --check` — passed.
 - `python -m hawkeye benchmark --output <new-directory> --agent-attempts 3` — passed: ten
@@ -25,9 +25,14 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 - `python -m hawkeye demo --output <new-directory>` — passed: three legacy sanitized cases and
   one verified offline comparison generated.
 - Localhost UI walkthrough — passed: the final QQ run opened by default with two captured same-site
-  pages, initial/canonical/full-page screenshot evidence, 11 semantic observations, one real Codex
-  action, a direct candidate waiting for approval, and an 11-node/9-link evidence graph. Its still-
-  changing final render is truthfully limited while useful text remains provisional evidence.
+  pages, initial/canonical/full-page screenshot evidence, 11 seed/crawl semantic observations, one
+  real Codex-selected Contact action, a direct candidate waiting for approval, and an 11-node/10-
+  link evidence graph. The `/Contact` route carries screenshot/HTML/text/JSON artifacts and three
+  distinct public-contact observations: telephone `+639543355092`, WhatsApp
+  `https://wa.me/639543355092`, and Telegram `+639157800101`. Its still-changing final render is
+  truthfully limited while useful text remains provisional evidence. A fresh 888 run produced a
+  26-node/25-link graph with claim categories separated from contacts and prioritized approval leads
+  for `888casino.com`, `888poker.com`, and `888sport.com`.
   Sanitized scenario 6 collapses duplicate URL identities into a compact three-node/three-link
   graph, keeps the review assertion dashed until append-only verification, and scenario 8 exposes
   two persisted policy-preflight blocks with `executed=false`. Six current fixture figures were
@@ -55,8 +60,10 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 
 - The 12 live observations vary by geography, VPN exit, challenge, session, and time; they remain
   ignored local artifacts and are not test truth.
-- The final owner-authorized QQ validation captured two same-site pages, 11 provisional semantic
-  observations, a Codex-selected `/Promotion` action, and one approval-gated `qq101uok.com` lead.
+- The final owner-authorized QQ validation captured two same-site pages, 11 provisional seed/crawl
+  observations, a Codex-selected `/Contact` action, three artifact-backed public-contact channels,
+  and one approval-gated `qq101uok.com` lead. The Indonesian and English contact variants differ;
+  the interaction capture declares `id-ID` and records that locale-sensitive result.
 - Chromium DNS validation retains the documented TOCTOU residual risk.
 - Capture thresholds and interaction coverage are calibrated only on controlled fixtures.
 - No image OCR, universal live-web safety guarantee, ownership probability, operator identification,
@@ -76,5 +83,7 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 - `048641c` / `3acbbf8` — screenshot-first 2D canvas, minimap, replay, and safe walkthrough.
 - `f6d5737` — bounded transient probe retry.
 - `0dc6d52` / `445079c` — blocked policy preflight events and timeline event inspector.
+- `6364351` — contact-route evidence extraction, graph taxonomy/aggregation, and core 888 lead
+  priority.
 
 The package/final-status commit is recorded in the delivery handoff. Nothing is pushed or deployed.
