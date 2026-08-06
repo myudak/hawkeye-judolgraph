@@ -51,7 +51,7 @@ CAPTURE_SETTLE_EXTENSION_MS = (5000, 8000)
 PERSISTED_HTML_LIMIT_BYTES = 5_000_000
 DIRECT_EXTRACTOR_LIMIT_BYTES = 2_000_000
 MAX_FULL_PAGE_HEIGHT = 12_000
-COLLECTOR_VERSION = "g10-bounded-settle-scroll-2"
+COLLECTOR_VERSION = "g10-bounded-settle-1"
 CAPTURE_POLICY_VERSION = "public-read-only-v3"
 
 
@@ -537,21 +537,6 @@ class BrowserCollector:
                         extended_deltas = _checkpoint_deltas(checkpoints)
                         if extended_deltas and not extended_deltas[-1].material_change:
                             break
-                if _bounded_scroll_discovery(page):
-                    if guard.navigation_failure is not None:
-                        raise self._with_browser_counts(
-                            guard.navigation_failure,
-                            blocked_popup_count,
-                            blocked_download_count,
-                        )
-                    checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
-                        page,
-                        elapsed_ms=prior_elapsed + 500,
-                        timeout_ms=artifact_timeout_ms,
-                    )
-                    checkpoints.append(checkpoint)
-                    checkpoint_screenshots.append(checkpoint_screenshot)
-                    prior_elapsed += 500
                 title = page.title()
                 html_bytes = len(html.encode("utf-8"))
                 html_sha256 = hashlib.sha256(html.encode("utf-8")).hexdigest()
@@ -1002,35 +987,8 @@ def _bounded_int(value: object) -> int:
     return 0
 
 
-def _bounded_scroll_discovery(page: Page) -> bool:
-    """Trigger light-DOM lazy rendering at three read-only positions, then restore the top."""
-
-    dimensions = page.evaluate(
-        """() => ({
-            height: Math.max(document.body?.scrollHeight || 0,
-                document.documentElement?.scrollHeight || 0),
-            viewport: innerHeight
-        })"""
-    )
-    if not isinstance(dimensions, dict):
-        return False
-    height = _bounded_int(dimensions.get("height"))
-    viewport = _bounded_int(dimensions.get("viewport"))
-    if viewport <= 0 or height <= viewport + 80:
-        return False
-    maximum = max(0, height - viewport)
-    for position in (maximum // 2, maximum):
-        page.evaluate(
-            "position => scrollTo({top: position, left: 0, behavior: 'instant'})", position
-        )
-        page.wait_for_timeout(150)
-    page.evaluate("() => scrollTo({top: 0, left: 0, behavior: 'instant'})")
-    page.wait_for_timeout(150)
-    return True
-
-
 def _semantic_element_snapshots(page: Page) -> list[SemanticElementSnapshot]:
-    """Map visible light DOM, open shadow roots, and readable same-origin iframe elements."""
+    """Return a bounded map of visible evidence-bearing elements at the canonical checkpoint."""
 
     raw = page.evaluate(
         """() => {
@@ -1057,37 +1015,10 @@ def _semantic_element_snapshots(page: Page) -> list[SemanticElementSnapshot]:
                 }
                 return parts.join(" > ");
             };
-            const roots = [{root: document, context: "document", prefix: ""}];
-            const candidates = [];
-            const visited = new Set();
-            while (roots.length && candidates.length < 300) {
-                const entry = roots.shift();
-                if (!entry || visited.has(entry.root)) continue;
-                visited.add(entry.root);
-                const all = Array.from(entry.root.querySelectorAll("*"));
-                for (const element of all) {
-                    if (element.shadowRoot) {
-                        roots.push({root: element.shadowRoot, context: "open_shadow_root",
-                            prefix: `${entry.prefix}shadow:`});
-                    }
-                    if (element instanceof HTMLIFrameElement) {
-                        try {
-                            if (element.contentDocument) {
-                                roots.push({root: element.contentDocument,
-                                    context: "same_origin_iframe",
-                                    prefix: `${entry.prefix}iframe:`});
-                            }
-                        } catch (_) {
-                            // Cross-origin frames remain opaque by browser policy.
-                        }
-                    }
-                    if (element.matches(
-                        "a[href], h1, h2, [data-brand], [itemprop], address, strong, button"
-                    )) candidates.push({element, context: entry.context, prefix: entry.prefix});
-                    if (candidates.length >= 300) break;
-                }
-            }
-            return candidates.flatMap(({element, context, prefix}) => {
+            const candidates = Array.from(document.querySelectorAll(
+                "a[href], h1, h2, [data-brand], [itemprop], address, strong, button"
+            ));
+            return candidates.slice(0, 300).flatMap((element) => {
                 const style = getComputedStyle(element);
                 const rect = element.getBoundingClientRect();
                 if (style.display === "none" || style.visibility === "hidden" ||
@@ -1099,13 +1030,12 @@ def _semantic_element_snapshots(page: Page) -> list[SemanticElementSnapshot]:
                 const text = (element.innerText || element.textContent || "")
                     .replace(/\\s+/g, " ").trim().slice(0, 500);
                 return [{
-                    selector: `${prefix}${selectorFor(element)}`,
+                    selector: selectorFor(element),
                     tag: element.tagName.toLowerCase(),
                     role: element.getAttribute("role"),
                     accessible_name: (element.getAttribute("aria-label") || text).slice(0, 200),
                     visible_text: text,
                     href: element instanceof HTMLAnchorElement ? element.href : null,
-                    source_context: context,
                     x: Math.max(0, rect.x),
                     y: Math.max(0, rect.y),
                     width: Math.min(rect.width, innerWidth - Math.max(0, rect.x)),

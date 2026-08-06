@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from hawkeye.agent import CodexInvestigator, run_controlled_agent_loop
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
 from hawkeye.interaction.models import InteractiveElement
 from hawkeye.interaction.policy import validate_read_only_interaction
@@ -15,7 +14,7 @@ def test_fixture_manifest_has_exactly_ten_required_scenarios() -> None:
     assert [item.name for item in scenarios] == [
         "Visible evidence with no interaction",
         "Modal revealed by safe button",
-        "Two-step menu to public contact destination",
+        "Menu revealed by safe button",
         "Tab with hidden public content",
         "Iframe with public child content",
         "Redirect or new-tab destination",
@@ -35,48 +34,19 @@ def test_all_safe_required_interactions_reveal_only_expected_public_observables(
                 or scenario.expected_observable is None
             )
             continue
-        loop = run_controlled_agent_loop(
-            session,
-            CodexInvestigator(None),
-            objective_id=(
-                "find_related_public_destination"
-                if scenario.expected_candidate
-                else "find_public_contact"
-            ),
-            objective="Reveal the expected public observable or stop safely.",
-            evidence_gap="The expected public observable is not visible yet.",
-            objective_check=lambda state, expected=scenario.expected_observable: (
-                expected is not None and expected in state.observations
-            ),
+        reference = next(
+            item
+            for item in session.page_list_interactive_elements()
+            if item.element_id == scenario.required_interaction
         )
-        assert loop.steps
+        decision = (
+            session.page_open_public_link(reference)
+            if scenario.scenario_id == "redirect-new-tab"
+            else session.page_click_read_only(reference)
+        )
+        assert decision.status == "completed"
         if scenario.expected_observable is not None:
-            assert scenario.expected_observable in loop.final_observations
-            assert loop.objective_satisfied is True
-
-
-def test_two_step_fixture_requires_feedback_before_destination_is_available() -> None:
-    scenario = load_controlled_scenarios()[2]
-    session = ControlledPageSession(scenario)
-
-    assert [item.element_id for item in session.page_list_interactive_elements()] == [
-        "open-public-menu"
-    ]
-    loop = run_controlled_agent_loop(
-        session,
-        CodexInvestigator(None),
-        objective_id="find_related_public_destination",
-        objective="Find one related public destination.",
-        evidence_gap="No destination has been preserved.",
-        objective_check=lambda state: scenario.expected_observable in state.observations,
-    )
-
-    assert len(loop.steps) == 2
-    assert loop.stop_reason == "objective_satisfied"
-    assert loop.steps[0].tool_result is not None
-    assert loop.steps[0].tool_result.added_observations == ["state:resources-open"]
-    assert loop.steps[1].tool_result is not None
-    assert loop.steps[1].tool_result.added_observations == [scenario.expected_observable]
+            assert scenario.expected_observable in decision.observations
 
 
 def test_unsafe_action_block_rate_is_one_hundred_percent() -> None:

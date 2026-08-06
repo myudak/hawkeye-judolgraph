@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
-from hawkeye.agent import CodexInvestigator, run_controlled_agent_loop
+from hawkeye.agent import AgentVisibleContext, CodexInvestigator
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
 
 from .models import CandidateAssertion, CandidateLead, ProgressiveGraphState
@@ -112,14 +112,18 @@ def run_fixture_investigation(
         case_id=case_id,
         run_id=run_id,
         kind="agent.objective.created",
-        payload={
-            "objective_id": "find_related_public_destination",
-            "objective": "Close one explicit evidence gap using at most five safe steps.",
-            "max_iterations": session.budget.max_iterations,
-        },
+        payload={"objective": "Close one explicit evidence gap using at most one safe action."},
         causation_event_id=gap.event_id,
     )
-    references = {item.element_id: item for item in session.page_list_interactive_elements()}
+    context = AgentVisibleContext(
+        objective="Close one explicit evidence gap using at most one safe action.",
+        current_case_state={"case_id": case_id, "capture_adequacy": "adequate"},
+        normalized_observations=session.page_get_state().observations,
+        safe_interactive_elements=session.page_list_interactive_elements(),
+        policy_budget=session.budget,
+        evidence_gap="required public observable not yet preserved",
+    )
+    references = {item.element_id: item for item in context.safe_interactive_elements}
     for element_id in scenario.unsafe_control_ids:
         reference = references[element_id]
         requested_preflight = store.append_event(
@@ -150,53 +154,28 @@ def run_fixture_investigation(
             },
             causation_event_id=requested_preflight.event_id,
         )
-    loop = run_controlled_agent_loop(
-        session,
-        investigator or CodexInvestigator(None),
-        objective_id=(
-            "find_related_public_destination"
-            if scenario.expected_candidate
-            else "find_public_contact"
-        ),
-        objective="Close one explicit evidence gap using at most five safe steps.",
-        evidence_gap="Required public observable is not yet preserved.",
-        objective_check=lambda state: (
-            scenario.expected_observable is not None
-            and scenario.expected_observable in state.observations
-        ),
-    )
-    interaction_values: set[str] = set()
-    prior_event_id = objective.event_id
-    for loop_step in loop.steps:
-        step = loop_step.agent
-        if step.mode == "deterministic_fallback":
-            fallback_event = store.append_event(
-                case_id=case_id,
-                run_id=run_id,
-                kind="agent.fallback.activated",
-                payload={
-                    "iteration": loop_step.iteration,
-                    "failures": [item.model_dump(mode="json") for item in step.failures],
-                },
-                causation_event_id=prior_event_id,
-            )
-            prior_event_id = fallback_event.event_id
-        if step.decision.action != "tool_request" or step.decision.element_reference is None:
-            continue
+    step = (investigator or CodexInvestigator(None)).choose(context)
+    if step.mode == "deterministic_fallback":
+        store.append_event(
+            case_id=case_id,
+            run_id=run_id,
+            kind="agent.fallback.activated",
+            payload={"failures": [item.model_dump(mode="json") for item in step.failures]},
+            causation_event_id=objective.event_id,
+        )
+    if step.decision.action == "tool_request" and step.decision.element_reference is not None:
         requested = store.append_event(
             case_id=case_id,
             run_id=run_id,
             kind="tool.requested",
-            payload={
-                **step.decision.model_dump(mode="json"),
-                "iteration": loop_step.iteration,
-                "executed": True,
-            },
-            causation_event_id=prior_event_id,
+            payload=step.decision.model_dump(mode="json"),
+            causation_event_id=objective.event_id,
         )
-        tool_result = loop_step.tool_result
-        if tool_result is None:
-            continue
+        tool_result = (
+            session.page_open_public_link(step.decision.element_reference)
+            if step.decision.tool_name == "page_open_public_link"
+            else session.page_click_read_only(step.decision.element_reference)
+        )
         completed = store.append_event(
             case_id=case_id,
             run_id=run_id,
@@ -204,61 +183,24 @@ def run_fixture_investigation(
             payload=tool_result.model_dump(mode="json"),
             causation_event_id=requested.event_id,
         )
-        prior_event_id = completed.event_id
-        store.append_event(
-            case_id=case_id,
-            run_id=run_id,
-            kind="agent.step.observed",
-            payload={
-                "iteration": loop_step.iteration,
-                "status": tool_result.status,
-                "before_snapshot_id": tool_result.before_snapshot_id,
-                "after_snapshot_id": tool_result.snapshot_id,
-                "added_observations": tool_result.added_observations,
-                "removed_observations": tool_result.removed_observations,
-                "state_changed": tool_result.state_changed,
-            },
-            causation_event_id=completed.event_id,
-        )
-        interaction_values.update(
-            value for value in tool_result.added_observations if not value.startswith("state:")
-        )
-    for index, value in enumerate(sorted(interaction_values), start=1):
-        observation_id = f"obs-page-a-interaction-{index:03d}"
-        observation_ids.append(observation_id)
-        store.append_event(
-            case_id=case_id,
-            run_id=run_id,
-            kind="observation.created",
-            payload={
-                "observation_id": observation_id,
-                "node_id": f"observation:{observation_id}",
-                "source_node_id": "page:a",
-                "observation_type": _fixture_observation_type(value),
-                "normalized_value": value,
-                "artifact_id": "artifact-page-a",
-            },
-            causation_event_id=prior_event_id,
-        )
-    stopped = store.append_event(
-        case_id=case_id,
-        run_id=run_id,
-        kind="agent.stopped",
-        payload={
-            "objective_id": loop.objective_id,
-            "objective_satisfied": loop.objective_satisfied,
-            "stop_reason": loop.stop_reason,
-            "iterations": len(loop.steps),
-        },
-        causation_event_id=prior_event_id,
-    )
-    agent_mode = (
-        "not_required"
-        if not loop.steps
-        else "codex"
-        if all(item.agent.mode == "codex" for item in loop.steps)
-        else "deterministic_fallback"
-    )
+        new_values = sorted(set(tool_result.observations) - set(scenario.initial_observations))
+        for index, value in enumerate(new_values, start=1):
+            observation_id = f"obs-page-a-interaction-{index:03d}"
+            observation_ids.append(observation_id)
+            store.append_event(
+                case_id=case_id,
+                run_id=run_id,
+                kind="observation.created",
+                payload={
+                    "observation_id": observation_id,
+                    "node_id": f"observation:{observation_id}",
+                    "source_node_id": "page:a",
+                    "observation_type": _fixture_observation_type(value),
+                    "normalized_value": value,
+                    "artifact_id": "artifact-page-a",
+                },
+                causation_event_id=completed.event_id,
+            )
     assertion_id: str | None = None
     lead_status: str | None = None
     if scenario.expected_candidate:
@@ -268,7 +210,7 @@ def run_fixture_investigation(
             run_id=run_id,
             kind="search.started",
             payload={"strategy": "direct_observable_then_fixture_index"},
-            causation_event_id=stopped.event_id,
+            causation_event_id=objective.event_id,
         )
         synthetic = collection_mode == "synthetic_fixture"
         lead = CandidateLead(
@@ -368,7 +310,7 @@ def run_fixture_investigation(
         database_path=str(store.path),
         assertion_id=assertion_id,
         lead_status=lead_status,
-        agent_mode=agent_mode,
+        agent_mode=step.mode,
         graph=graph,
     )
     (destination / "run-summary.json").write_text(

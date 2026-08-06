@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from html import escape
 from io import BytesIO
 from pathlib import Path
 from time import monotonic
@@ -32,7 +30,6 @@ from hawkeye.crawl import (
     MAX_CRAWL_PAGES,
     MAX_PAGE_TIMEOUT_SECONDS,
     DiscoveredLink,
-    crawl_frontier_priority,
     crawl_hostname,
     discover_anchor_links,
     normalize_crawl_url,
@@ -49,10 +46,8 @@ from hawkeye.models import (
     ExtractedEntity,
     InvestigationResult,
     RedirectRecord,
-    SemanticElementSnapshot,
     SemanticObservation,
 )
-from hawkeye.ocr import run_bounded_ocr
 from hawkeye.semantic_evidence import extract_semantic_observations
 from hawkeye.storage import CaseStorage, make_case_id
 
@@ -84,8 +79,6 @@ def investigate(
     user_agent: str | None = None,
     safety_policy: SafetyPolicy | None = None,
     corpus_root: Path | str | None = None,
-    enable_ocr: bool = False,
-    ocr_executable: str | None = None,
 ) -> InvestigationResult:
     """Collect a seed plus a deterministic, same-host, depth-one BFS frontier.
 
@@ -360,27 +353,6 @@ def investigate(
             )
             if record is not None
         )
-        ocr_text_evidence = None
-        ocr_result = None
-        ocr_metadata_evidence = None
-        if enable_ocr:
-            ocr_source = collected.full_page_screenshot or collected.screenshot
-            ocr_result = run_bounded_ocr(ocr_source, executable=ocr_executable)
-            ocr_metadata_evidence = storage.save_ocr_metadata(
-                ocr_result.model_dump(mode="json"),
-                source_url=collected.final_url,
-                collected_at=collected.collected_at,
-                page_id=current.id,
-            )
-            evidence.append(ocr_metadata_evidence)
-            if ocr_result.status == "completed" and ocr_result.text:
-                ocr_text_evidence = storage.save_ocr_text(
-                    ocr_result.text,
-                    source_url=collected.final_url,
-                    collected_at=collected.collected_at,
-                    page_id=current.id,
-                )
-                evidence.append(ocr_text_evidence)
         classification = classify_capture(
             title=collected.title,
             final_url=collected.final_url,
@@ -467,11 +439,7 @@ def investigate(
                 source_url=collected.final_url,
                 source_artifact_id=html_evidence.id,
                 screenshot_evidence_id=screenshot_evidence.id,
-                semantic_elements=[
-                    item
-                    for item in collected.semantic_elements
-                    if item.source_context == "document"
-                ],
+                semantic_elements=collected.semantic_elements,
                 redirects=collected.redirects,
                 observation_id_start=len(observations) + 1,
             )
@@ -502,58 +470,6 @@ def investigate(
                     collected_at=collected.collected_at,
                     evidence=evidence,
                 )
-            )
-
-        if ocr_text_evidence is not None and ocr_result is not None:
-            ocr_html = f"<main>{escape(ocr_result.text)}</main>"
-            ocr_entities = extract_entities(
-                ocr_html,
-                seed_url=normalized_seed,
-                final_url=collected.final_url,
-                source_evidence_id=ocr_text_evidence.id,
-                entity_id_start=len(entities) + 1,
-            )
-            entities.extend(
-                item.model_copy(
-                    update={
-                        "confidence": min(item.confidence, 0.72),
-                        "extraction_method": f"ocr_{item.extraction_method}",
-                        "details": {
-                            **item.details,
-                            "evidence_tier": "provisional",
-                            "ocr_engine": ocr_result.engine,
-                        },
-                    }
-                )
-                for item in ocr_entities
-            )
-            ocr_observations = extract_semantic_observations(
-                ocr_html,
-                source_page_id=current.id,
-                source_url=collected.final_url,
-                source_artifact_id=ocr_text_evidence.id,
-                screenshot_evidence_id=screenshot_evidence.id,
-                semantic_elements=[],
-                redirects=[],
-                observation_id_start=len(observations) + 1,
-            )
-            observations.extend(
-                item.model_copy(
-                    update={
-                        "confidence": min(item.confidence, 0.72),
-                        "limitations": [
-                            *item.limitations,
-                            "provisional_observation_from_local_ocr",
-                            "ocr_text_requires_human_visual_confirmation",
-                        ],
-                        "attributes": {
-                            **item.attributes,
-                            "provisional": True,
-                            "extraction_method": "tesseract_local_ocr",
-                        },
-                    }
-                )
-                for item in ocr_observations
             )
 
         content_sha256 = readiness.html_sha256
@@ -587,8 +503,6 @@ def investigate(
             full_page_screenshot_evidence_id=(
                 full_page_screenshot_evidence.id if full_page_screenshot_evidence else None
             ),
-            ocr_text_evidence_id=(ocr_text_evidence.id if ocr_text_evidence else None),
-            ocr_metadata_evidence_id=(ocr_metadata_evidence.id if ocr_metadata_evidence else None),
             visible_text_evidence_id=visible_text_evidence.id,
             response_metadata_evidence_id=response_metadata_evidence.id,
             readiness_evidence_id=readiness_evidence.id,
@@ -625,7 +539,6 @@ def investigate(
         ):
             _enqueue_discovered_links(
                 html=collected.html,
-                semantic_elements=collected.semantic_elements,
                 parent=completed_page,
                 parent_evidence_id=html_evidence.id,
                 allowed_hosts=allowed_hosts,
@@ -650,7 +563,6 @@ def investigate(
             if html_evidence is not None:
                 _record_nonexpanded_links(
                     html=collected.html,
-                    semantic_elements=collected.semantic_elements,
                     parent=completed_page,
                     parent_evidence_id=html_evidence.id,
                     reason=reason,
@@ -768,7 +680,6 @@ def _validate_crawl_limits(
 def _enqueue_discovered_links(
     *,
     html: str,
-    semantic_elements: Iterable[SemanticElementSnapshot],
     parent: CrawlPageRecord,
     parent_evidence_id: str,
     allowed_hosts: set[str],
@@ -781,10 +692,9 @@ def _enqueue_discovered_links(
     max_depth: int,
 ) -> None:
     for index, link in enumerate(
-        _sorted_links(html, parent.final_url or parent.normalized_url, semantic_elements), start=1
+        _sorted_links(html, parent.final_url or parent.normalized_url), start=1
     ):
         frontier_id = _next_frontier_id(frontier)
-        priority_score, priority_reason = crawl_frontier_priority(link)
         record = CrawlFrontierRecord(
             id=frontier_id,
             depth=parent.depth + 1,
@@ -793,10 +703,8 @@ def _enqueue_discovered_links(
             normalized_url=link.normalized_url,
             source_page_id=parent.id,
             source_evidence_id=parent_evidence_id,
-            discovery_method=link.discovery_method,
+            discovery_method="html_anchor",
             anchor_text=link.anchor_text or None,
-            priority_score=priority_score,
-            priority_reason=priority_reason,
         )
         frontier.append(record)
         if index > MAX_DISCOVERED_LINKS_PER_PAGE:
@@ -842,7 +750,7 @@ def _enqueue_discovered_links(
                 parent_page_id=parent.id,
                 source_evidence_id=parent_evidence_id,
                 original_href=link.original_href,
-                discovery_method=link.discovery_method,
+                discovery_method="html_anchor",
                 anchor_text=link.anchor_text or None,
             )
         )
@@ -853,7 +761,6 @@ def _enqueue_discovered_links(
 def _record_nonexpanded_links(
     *,
     html: str,
-    semantic_elements: Iterable[SemanticElementSnapshot],
     parent: CrawlPageRecord,
     parent_evidence_id: str,
     reason: str,
@@ -862,9 +769,8 @@ def _record_nonexpanded_links(
     """Keep link observations auditable when policy deliberately prevents expansion."""
 
     for index, link in enumerate(
-        _sorted_links(html, parent.final_url or parent.normalized_url, semantic_elements), start=1
+        _sorted_links(html, parent.final_url or parent.normalized_url), start=1
     ):
-        priority_score, priority_reason = crawl_frontier_priority(link)
         frontier.append(
             CrawlFrontierRecord(
                 id=_next_frontier_id(frontier),
@@ -874,43 +780,17 @@ def _record_nonexpanded_links(
                 normalized_url=link.normalized_url,
                 source_page_id=parent.id,
                 source_evidence_id=parent_evidence_id,
-                discovery_method=link.discovery_method,
+                discovery_method="html_anchor",
                 anchor_text=link.anchor_text or None,
-                priority_score=priority_score,
-                priority_reason=priority_reason,
                 skip_reason=reason if index <= MAX_DISCOVERED_LINKS_PER_PAGE else "frontier_limit",
             )
         )
 
 
-def _sorted_links(
-    html: str,
-    base_url: str,
-    semantic_elements: Iterable[SemanticElementSnapshot] = (),
-) -> list[DiscoveredLink]:
-    links = discover_anchor_links(html, base_url)
-    for item in semantic_elements:
-        href = getattr(item, "href", None)
-        context = getattr(item, "source_context", "document")
-        if not isinstance(href, str) or context == "document":
-            continue
-        label = getattr(item, "accessible_name", "") or getattr(item, "visible_text", "")
-        links.append(
-            DiscoveredLink(
-                original_href=href,
-                normalized_url=normalize_crawl_url(href, base_url),
-                anchor_text=str(label)[:500],
-                discovery_method="browser_semantic",
-            )
-        )
-    deduplicated = {
-        (item.original_href, item.normalized_url, item.anchor_text, item.discovery_method): item
-        for item in links
-    }
+def _sorted_links(html: str, base_url: str) -> list[DiscoveredLink]:
     return sorted(
-        deduplicated.values(),
+        discover_anchor_links(html, base_url),
         key=lambda link: (
-            crawl_frontier_priority(link)[0],
             link.normalized_url is None,
             link.normalized_url or "",
             link.original_href,

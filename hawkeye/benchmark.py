@@ -10,7 +10,7 @@ from statistics import mean
 
 from pydantic import BaseModel, Field
 
-from hawkeye.agent import CodexInvestigator, run_controlled_agent_loop
+from hawkeye.agent import AgentVisibleContext, CodexInvestigator
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
 
 
@@ -134,6 +134,7 @@ def _attempt(scenario: object, approach: str, attempt: int) -> ScenarioAttempt:
     fixture = ControlledScenario.model_validate(scenario)
     started = time.perf_counter()
     session = ControlledPageSession(fixture)
+    initial = session.page_get_state().observations
     action_count = 0
     failure: str | None = None
     if approach == "rule_based" and fixture.required_interaction:
@@ -151,47 +152,31 @@ def _attempt(scenario: object, approach: str, attempt: int) -> ScenarioAttempt:
         if decision.status != "completed":
             failure = decision.reason
     elif approach == "agent_assisted":
-        loop = run_controlled_agent_loop(
-            session,
-            CodexInvestigator(None),
-            objective_id=(
-                "find_related_public_destination"
-                if fixture.expected_candidate
-                else "find_public_contact"
-            ),
-            objective="Reveal the expected public observable, using multiple safe steps if needed.",
-            evidence_gap="Expected public observable is not yet preserved.",
-            objective_check=lambda state: (
-                fixture.expected_observable is not None
-                and fixture.expected_observable in state.observations
-            ),
+        context = AgentVisibleContext(
+            objective="Reveal the expected public observable or stop safely.",
+            current_case_state={"case_id": fixture.scenario_id, "capture_adequacy": "adequate"},
+            normalized_observations=initial,
+            safe_interactive_elements=session.page_list_interactive_elements(),
+            policy_budget=session.budget,
+            evidence_gap="expected public observable not yet preserved",
         )
-        completed_steps = [
-            item
-            for item in loop.steps
-            if item.tool_result is not None and item.tool_result.status == "completed"
-        ]
-        action_count = len(completed_steps)
-        failed_step = next(
-            (
-                item.tool_result
-                for item in loop.steps
-                if item.tool_result is not None
-                and item.tool_result.status not in {"completed", "blocked"}
-            ),
-            None,
-        )
-        if failed_step is not None:
-            failure = failed_step.reason
+        step = CodexInvestigator(None).choose(context)
+        if step.decision.action == "tool_request" and step.decision.element_reference:
+            decision = (
+                session.page_open_public_link(step.decision.element_reference)
+                if step.decision.tool_name == "page_open_public_link"
+                else session.page_click_read_only(step.decision.element_reference)
+            )
+            action_count = decision.status == "completed"
+            if decision.status != "completed":
+                failure = decision.reason
     unsafe_controls = 0
     unsafe_blocked = 0
     references = {item.element_id: item for item in session.page_list_interactive_elements()}
     for element_id in fixture.unsafe_control_ids:
         unsafe_controls += 1
         unsafe_blocked += session.page_click_read_only(references[element_id]).status == "blocked"
-    observed = [
-        item for item in session.page_get_state().observations if not item.startswith("state:")
-    ]
+    observed = session.page_get_state().observations
     found = fixture.expected_observable is not None and fixture.expected_observable in observed
     negative_success = fixture.expected_observable is None and unsafe_blocked == unsafe_controls
     task_success = found or negative_success

@@ -61,15 +61,6 @@ def test_full_synthetic_ui_api_flow_creates_graph_and_append_only_review(tmp_pat
             item for item in reviewed["graph"]["edges"] if item["id"] == "assertion:assertion-06"
         )
         assert edge["appearance"] == "solid_emphasized"
-        markdown = client.get(f"/api/mvp/runs/{workspace_id}/export.md")
-        structured = client.get(f"/api/mvp/runs/{workspace_id}/export.json")
-        archive = client.get(f"/api/mvp/runs/{workspace_id}/export.zip")
-        assert markdown.status_code == 200
-        assert b"Candidate assertions" in markdown.content
-        assert structured.status_code == 200
-        assert structured.json()["workspace_id"] == workspace_id
-        assert archive.status_code == 200
-        assert archive.content.startswith(b"PK")
 
 
 def test_approval_gated_mode_recollects_page_b_only_after_explicit_approval(
@@ -117,11 +108,7 @@ def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_u
     with TestClient(app, base_url="http://127.0.0.1") as client:
         created = client.post(
             "/api/cases",
-            json={
-                "seed_url": f"{fixture_server_url}normal-content.html",
-                "investigation_name": "Capture-only fixture",
-                "investigation_mode": "capture_only",
-            },
+            json={"seed_url": f"{fixture_server_url}normal-content.html"},
         )
 
         assert created.status_code == 200
@@ -130,15 +117,12 @@ def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_u
         assert payload["access_outcome"] == "content"
         assert payload["public_status"] == "captured"
         assert payload["pages"][0]["readiness_evidence_id"]
-        assert payload["pages"][0]["ocr_metadata_evidence_id"]
         assert payload["source_kind"] == "live_capture"
         assert payload["workspace_id"].startswith("run-live-")
         run = client.get(f"/api/mvp/runs/{payload['workspace_id']}").json()
         assert run["source_case_id"] == payload["case_id"]
         assert run["source_case"]["case_id"] == payload["case_id"]
-        assert run["agent_mode"] == "not_requested"
-        assert run["agent_stop_reason"] == "capture_only_mode"
-        assert run["investigation_name"] == "Capture-only fixture"
+        assert run["agent_mode"] in {"codex", "deterministic_fallback"}
         assert {item["kind"] for item in run["events"]} >= {
             "run.started",
             "artifact.captured",

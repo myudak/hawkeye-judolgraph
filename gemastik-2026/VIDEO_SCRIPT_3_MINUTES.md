@@ -16,7 +16,7 @@ Do not composite fake graph data or use a live site as the official demo.
 | 02:00–02:12 | Enter reviewer label/reason, select verified, append | “Human review records a new immutable version. Verified means only that selected evidence supports this stated relation.” | Reason must repeat limitation |
 | 02:12–02:25 | Edge becomes emphasized; press Replay and watch the actual timeline | “The canvas is replayed from stored events; animation never controls persistent truth.” | Refresh once to prove persistence |
 | 02:25–02:35 | Switch to login/register or download scenario; show policy test output rather than executing | “Controlled prohibited actions are blocked at 100% across the fixture corpus.” | Show checked-in benchmark/policy table; never click live controls |
-| 02:35–02:45 | Benchmark comparison table | “Static recall was 0.2857, rule-based recall 0.8571, and the feedback-driven deterministic agent path reached 1.0000 on ten controlled scenarios, with complete provenance.” | Include “synthetic only” label |
+| 02:35–02:45 | Benchmark comparison table | “Static recall was 0.2857. Rule-based and deterministic agent-assisted recall were 1.0000 on ten controlled scenarios, with complete provenance.” | Include “synthetic only” label |
 | 02:45–03:00 | Limitations panel and final chain | “This is localhost-only, real candidates require approval, live sites are observational, and no result establishes ownership, operator identity, criminality, or legal status.” | End with human-review requirement |
 
 ## Recording checklist

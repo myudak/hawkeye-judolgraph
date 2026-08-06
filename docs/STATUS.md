@@ -3,10 +3,9 @@
 ## Current milestone
 
 **G4A–G9 — GEMASTIK preliminary MVP** is implemented and locally verified. The product now combines
-capture adequacy, optional bounded OCR, ten controlled safe-expansion scenarios, a capability-gated
-multi-step Codex path with deterministic fallback, approval-gated live candidate recollection,
-exact cross-case assertions, temporal diffs, append-only human review, a WebGraph-informed 2D canvas
-over event-reduced truth, a three-mode benchmark, one bounded
+capture adequacy, semantic evidence, ten controlled safe-expansion scenarios, a capability-gated
+Codex path with deterministic fallback, approval-gated live candidate recollection, append-only human review,
+a WebGraph-informed 2D canvas over event-reduced truth, a three-mode benchmark, one bounded
 12-target live robustness matrix, and a truthful Markdown submission package. G2/G3 tags and
 commits remain unchanged.
 
@@ -41,21 +40,17 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 
 ## Implemented product boundary
 
-- Canonical collection always uses 0/500/1500/3000 ms checkpoints, may extend observation to
-  5000/8000 ms for an information-rich changing page, and performs one fixed read-only
-  middle/bottom/top sweep on scrollable pages before the final canonical checkpoint.
+- Canonical collection always uses 0/500/1500/3000 ms checkpoints and may extend observation to
+  5000/8000 ms for an information-rich page still changing at the base boundary.
 - Capture access, adequacy, extraction eligibility, and public status are separate fields.
 - New capture artifacts are hash/size/type verified by the legacy local loader.
 - Semantic observations are public observables, not assertions; crop generation is best effort.
-- Interaction tools use snapshot-bound references in a maximum-five-decision/three-interaction
-  objective loop with explicit stale/no-op/budget stop reasons.
+- Interaction tools use snapshot-bound references and a one-action evidence-gap budget.
 - The current codex-lb probe discovers `gpt-5.6-terra` and verifies strict structured output. The
   final QQ validation used Codex; transport/schema/reference failure remains a logged fallback.
 - Synthetic recollection and live direct-link recollection are implemented. A live candidate is
   collected once only after `candidate_page.approved`; generated candidates are never auto-crawled.
 - Assertions and reviews are append-only; current review status is derived from history.
-- Exact cross-case public identifiers may create pending assertions with both artifact chains;
-  same-host captures retain an added/removed/unchanged temporal comparison.
 - Graph truth is reduced from persisted events; canvas force motion, particles, minimap, and replay
   never create graph truth. The canvas excludes diagnostic artifact nodes; initial/canonical/full
   screenshots and artifacts remain in the inspector.
@@ -71,9 +66,8 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
   the interaction capture declares `id-ID` and records that locale-sensitive result.
 - Chromium DNS validation retains the documented TOCTOU residual risk.
 - Capture thresholds and interaction coverage are calibrated only on controlled fixtures.
-- Local OCR is optional and currently unavailable on this machine because Tesseract is not
-  installed; OCR-derived signals would remain provisional. No universal live-web safety guarantee,
-  ownership probability, operator identification, criminality, or legal conclusion is claimed.
+- No image OCR, universal live-web safety guarantee, ownership probability, operator identification,
+  criminality, or legal conclusion is claimed.
 - The console remains localhost-only and single-machine; review labels are not authenticated users.
 - Final name, team/institution/category/advisor, external citations, publication/originality
   confirmations, dependency-license legal review, official formatting, video,

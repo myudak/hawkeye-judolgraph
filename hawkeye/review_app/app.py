@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
@@ -80,8 +79,6 @@ class _ReviewRequest(BaseModel):
 
 class _CollectSeedRequest(BaseModel):
     seed_url: str = Field(min_length=8, max_length=2048)
-    investigation_name: str = Field(default="", max_length=120)
-    investigation_mode: Literal["guided", "capture_only"] = "guided"
 
 
 def create_app(
@@ -187,15 +184,12 @@ def create_app(
                 max_depth=1,
                 case_id=make_case_id(),
                 safety_policy=active_safety_policy,
-                enable_ocr=True,
             )
             loaded = loader.load(result.case.case_id)
             details = case_details(loaded, comparisons=[])
             investigation = workspace.create_live_run(
                 result,
-                known_cases=_known_case_match_context(loader, exclude_case_id=result.case.case_id),
-                investigation_name=payload.investigation_name,
-                guided=payload.investigation_mode == "guided",
+                known_cases=loader.list_cases(),
             )
             return {**details, **investigation}
 
@@ -257,30 +251,6 @@ def create_app(
                 headers={"Content-Disposition": f'attachment; filename="{artifact_name}"'},
             )
 
-        @app.get("/api/mvp/runs/{workspace_id}/export.md", include_in_schema=False)
-        def mvp_export_markdown(workspace_id: str) -> Response:
-            return Response(
-                content=workspace.export_markdown(workspace_id),
-                media_type="text/markdown; charset=utf-8",
-                headers={"Content-Disposition": 'attachment; filename="summary.md"'},
-            )
-
-        @app.get("/api/mvp/runs/{workspace_id}/export.json", include_in_schema=False)
-        def mvp_export_json(workspace_id: str) -> Response:
-            return Response(
-                content=workspace.export_json(workspace_id),
-                media_type="application/json",
-                headers={"Content-Disposition": 'attachment; filename="case.json"'},
-            )
-
-        @app.get("/api/mvp/runs/{workspace_id}/export.zip", include_in_schema=False)
-        def mvp_export_archive(workspace_id: str) -> Response:
-            return Response(
-                content=workspace.export_archive(workspace_id),
-                media_type="application/zip",
-                headers={"Content-Disposition": 'attachment; filename="hawkeye-case.zip"'},
-            )
-
     return app
 
 
@@ -306,35 +276,3 @@ def _require_same_origin(request: Request) -> None:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")
-
-
-def _known_case_match_context(
-    loader: CaseLoader, *, exclude_case_id: str
-) -> list[dict[str, object]]:
-    """Build a trusted internal exact-match corpus without exposing it as an API response."""
-
-    context: list[dict[str, object]] = []
-    for summary in loader.list_cases():
-        case_id = summary.get("case_id")
-        if not isinstance(case_id, str) or case_id == exclude_case_id:
-            continue
-        try:
-            loaded = loader.load(case_id)
-        except (CaseIntegrityError, CaseNotFoundError):
-            continue
-        context.append(
-            {
-                **summary,
-                "observations": [
-                    {
-                        "id": item.id,
-                        "observation_type": item.observation_type,
-                        "normalized_value": item.normalized_value,
-                        "source_artifact_id": item.source_artifact_id,
-                        "screenshot_evidence_id": item.screenshot_evidence_id,
-                    }
-                    for item in loaded.observations
-                ],
-            }
-        )
-    return context

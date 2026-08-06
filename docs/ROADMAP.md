@@ -75,24 +75,21 @@ delayed, hidden-rich, restriction, unavailable, blank-challenge, long-page, and 
 ## G4B — Semantic public evidence — completed
 
 Completed evidence: fifteen typed observable categories, immutable source page/artifact/event
-provenance, normalized text/DOM observations, best-effort bounded evidence crops, and an optional
-bounded local Tesseract adapter whose completed/unavailable/failed state is persisted. OCR-derived
-signals are provisional and require visual confirmation; visual brand inference remains unclaimed.
+provenance, normalized text/DOM observations, and best-effort bounded evidence crops. Image OCR and
+visual brand inference remain unclaimed.
 
 ## G5 — Controlled safe expansion — completed
 
 Completed evidence: exactly ten authoritative synthetic scenarios; six narrow snapshot-bound tools;
-a feedback-driven maximum-five-decision/three-interaction objective loop; stale/no-op recovery;
-controlled read-only scrolling; link discovery in open shadow roots and readable same-origin
-iframes; and server-side prohibition of login, registration, download, form submission, ambiguous
-controls, and unsafe destinations.
+one-action budgets; stale-reference rejection; and server-side prohibition of login, registration,
+download, form submission, ambiguous controls, and unsafe destinations.
 
 ## G6 — Bounded Codex runtime — completed with verified Codex and fallback paths
 
 Completed evidence: a local codex-lb route probe, strict schema validation, bounded retries/failure
 records, exact issued-reference validation, and a deterministic investigator fallback. The final
 2026-08-03 probe discovered `gpt-5.6-terra`, verified strict JSON-schema output, and completed the
-live QQ objective through Codex. Fixture benchmarks remain deterministic fallback truth.
+live QQ one-action objective through Codex. Fixture benchmarks remain deterministic fallback truth.
 
 ## G7 — Candidate recollection and human review — completed with explicit live approval boundary
 
@@ -101,9 +98,7 @@ evidence-backed candidate assertions, append-only SQLite assertions/reviews, and
 review state. Approval-gated controlled mode records approval before it deterministically
 recollects fixture Page B. Live direct-link candidates remain waiting until a user records approval;
 the approved URL is then collected once with page/depth budgets of one/zero before an evidence-backed
-`publicly_links_to` assertion can enter review. Exact normalized public contacts, redirects,
-downloads, and referral identifiers can also connect current evidence to an already verified local
-case as a pending assertion; temporal comparison reports added/removed/unchanged observables.
+`publicly_links_to` assertion can enter review.
 
 ## G8 — Event-driven progressive graph and evaluation — completed
 
@@ -112,9 +107,6 @@ queue, dashed proposed / emphasized verified / hidden rejected edges, a 2D canva
 drag, hit-testing, minimap and animated edges, screenshot-first evidence inspection, event replay,
 search/focus, reduced motion, stored unsafe-control preflight events, and a three-mode ten-scenario
 benchmark.
-The menu scenario now requires two dependent safe actions, so rule-based recall is 0.8571 while the
-feedback-driven agent-assisted fallback reaches 1.0000 with the same complete provenance and 1.0000
-unsafe-action block rate.
 
 ## G9 — Truthful GEMASTIK preliminary package — completed as Markdown source
 
@@ -124,8 +116,6 @@ originality drafts, figure index, and submission checklist under `gemastik-2026/
 video, team identity, signatures, or publication declaration is fabricated. Six actual sanitized
 post-gate screenshots are hash-indexed; final document-layout diagrams, external citation review,
 and the remaining declarations remain explicit human-owned tasks.
-The localhost console now uses a start/recent-cases view, canvas evidence workspace, and printable
-summary with Markdown, JSON, and ZIP export.
 
 ## Explicitly out of scope until separately approved
 

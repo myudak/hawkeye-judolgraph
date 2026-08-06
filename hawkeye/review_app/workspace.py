@@ -6,9 +6,7 @@ import json
 import os
 import re
 import uuid
-import zipfile
 from datetime import UTC, datetime
-from io import BytesIO
 from pathlib import Path
 
 from hawkeye.agent import CodexInvestigator, CodexLbClient, probe_codex_lb
@@ -116,8 +114,6 @@ class MvpWorkspace:
         result: InvestigationResult,
         *,
         known_cases: list[dict[str, object]],
-        investigation_name: str = "",
-        guided: bool = True,
     ) -> dict[str, object]:
         """Turn a completed live capture into the same auditable agent/event workflow."""
 
@@ -129,8 +125,6 @@ class MvpWorkspace:
             investigator=self._investigator,
             known_cases=known_cases,
             safety_policy=self.safety_policy,
-            investigation_name=investigation_name,
-            guided=guided,
         )
         return {"workspace_id": run_directory_id, **summary}
 
@@ -160,16 +154,6 @@ class MvpWorkspace:
                         "agent_model": payload.get("agent_model"),
                         "source_kind": payload.get("source_kind"),
                         "source_case_id": payload.get("source_case_id"),
-                        "seed_url": payload.get("seed_url"),
-                        "investigation_name": payload.get("investigation_name"),
-                        "investigation_mode": payload.get("investigation_mode"),
-                        "capture_adequacy": payload.get("capture_adequacy"),
-                        "extraction_tier": payload.get("extraction_tier"),
-                        "agent_stop_reason": payload.get("agent_stop_reason"),
-                        "agent_steps": payload.get("agent_steps", 0),
-                        "updated_at": datetime.fromtimestamp(
-                            directory.stat().st_mtime, tz=UTC
-                        ).isoformat(),
                     }
                 )
         return runs
@@ -182,10 +166,7 @@ class MvpWorkspace:
         store = InvestigationStore(directory / "investigation.sqlite3")
         events = store.events(summary["run_id"])
         graph = reduce_events(events)
-        assertion_rows = store.assertions(summary["run_id"])
         assertion_id = summary.get("assertion_id")
-        if not isinstance(assertion_id, str) and assertion_rows:
-            assertion_id = assertion_rows[0].assertion_id
         assertion: dict[str, object] | None = None
         reviews: list[dict[str, object]] = []
         current_status: str | None = None
@@ -193,16 +174,6 @@ class MvpWorkspace:
             assertion = store.assertion(assertion_id).model_dump(mode="json")
             reviews = [item.model_dump(mode="json") for item in store.review_history(assertion_id)]
             current_status = store.current_assertion_status(assertion_id)
-        assertions = [item.model_dump(mode="json") for item in assertion_rows]
-        assertion_statuses = {
-            item.assertion_id: store.current_assertion_status(item.assertion_id)
-            for item in assertion_rows
-        }
-        all_reviews = [
-            review.model_dump(mode="json")
-            for item in assertion_rows
-            for review in store.review_history(item.assertion_id)
-        ]
         lead_status = summary.get("lead_status")
         if any(event.kind == "candidate_page.approved" for event in events) and not any(
             event.kind == "candidate_page.collected" for event in events
@@ -214,31 +185,17 @@ class MvpWorkspace:
             "run_id": summary["run_id"],
             "agent_mode": summary.get("agent_mode"),
             "agent_model": summary.get("agent_model"),
-            "agent_stop_reason": summary.get("agent_stop_reason"),
-            "agent_steps": summary.get("agent_steps", 0),
             "source_kind": summary.get("source_kind", "controlled_fixture"),
             "source_case_id": summary.get("source_case_id"),
-            "seed_url": summary.get("seed_url"),
-            "investigation_name": summary.get("investigation_name"),
-            "investigation_mode": summary.get("investigation_mode"),
             "candidate_case_id": summary.get("candidate_case_id"),
             "capture_adequacy": summary.get("capture_adequacy"),
             "extraction_tier": summary.get("extraction_tier"),
             "action_summary": summary.get("action_summary"),
-            "action_summaries": summary.get("action_summaries", []),
-            "temporal_comparison": summary.get("temporal_comparison"),
             "pending_leads": summary.get("pending_leads", []),
             "lead_status": lead_status,
             "assertion": assertion,
-            "assertions": assertions,
-            "assertion_statuses": assertion_statuses,
             "current_assertion_status": current_status,
             "reviews": reviews,
-            "all_reviews": all_reviews,
-            "pending_review_count": sum(
-                status in {"needs_review", "needs_more_evidence", "uncertain"}
-                for status in assertion_statuses.values()
-            ),
             "events": [_event_for_ui(item.model_dump(mode="json")) for item in events],
             "graph": _graph_for_ui(graph.model_dump(mode="json")),
             "artifacts": [
@@ -323,80 +280,6 @@ class MvpWorkspace:
 
     def artifact_media_type(self, artifact_name: str) -> str:
         return _artifact_media_type(artifact_name)
-
-    def export_json(self, workspace_id: str) -> bytes:
-        """Return a deterministic, human-review-aware machine-readable run export."""
-
-        return (
-            json.dumps(self.details(workspace_id), indent=2, sort_keys=True, ensure_ascii=False)
-            + "\n"
-        ).encode("utf-8")
-
-    def export_markdown(self, workspace_id: str) -> bytes:
-        """Return a concise Markdown report without promoting candidates to conclusions."""
-
-        details = self.details(workspace_id)
-        event_rows = details.get("events", [])
-        event_count = len(event_rows) if isinstance(event_rows, list) else 0
-        lines = [
-            "# Project HAWK-EYE investigation summary",
-            "",
-            f"- Case: `{_markdown_value(details.get('case_id'))}`",
-            f"- Seed: `{_markdown_value(details.get('seed_url'))}`",
-            f"- Mode: `{_markdown_value(details.get('investigation_mode'))}`",
-            f"- Agent stop: `{_markdown_value(details.get('agent_stop_reason'))}`",
-            f"- Lead status: `{_markdown_value(details.get('lead_status'))}`",
-            f"- Persisted events: {event_count}",
-            f"- Pending human reviews: {details.get('pending_review_count', 0)}",
-            "",
-            "## Candidate assertions",
-            "",
-            "> Candidates are pending evidence-backed leads, not ownership or criminal findings.",
-            "",
-        ]
-        assertions = details.get("assertions", [])
-        if isinstance(assertions, list) and assertions:
-            for assertion in assertions:
-                if not isinstance(assertion, dict):
-                    continue
-                lines.append(
-                    "- "
-                    f"`{_markdown_value(assertion.get('subject'))}` "
-                    f"**{_markdown_value(assertion.get('assertion_type'))}** "
-                    f"`{_markdown_value(assertion.get('object'))}`"
-                )
-        else:
-            lines.append("- No candidate assertion was created.")
-        lines.extend(["", "## Event chronology", ""])
-        events = details.get("events", [])
-        if isinstance(events, list):
-            for event in events[:200]:
-                if not isinstance(event, dict):
-                    continue
-                lines.append(
-                    f"- `{_markdown_value(event.get('occurred_at'))}` "
-                    f"{_markdown_value(event.get('kind'))} "
-                    f"(`{_markdown_value(event.get('event_id'))}`)"
-                )
-        return ("\n".join(lines) + "\n").encode("utf-8")
-
-    def export_archive(self, workspace_id: str) -> bytes:
-        """Package report, structured export, database, and bounded run artifacts."""
-
-        directory = self._directory(workspace_id)
-        output = BytesIO()
-        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("summary.md", self.export_markdown(workspace_id))
-            archive.writestr("case.json", self.export_json(workspace_id))
-            for name in ("run-summary.json", "investigation.sqlite3"):
-                path = directory / name
-                if path.is_file():
-                    archive.write(path, arcname=name)
-            artifact_root = directory / "artifacts"
-            for path in sorted(artifact_root.iterdir()):
-                if path.is_file() and path.stat().st_size <= 10_000_000:
-                    archive.write(path, arcname=f"artifacts/{path.name}")
-        return output.getvalue()
 
     def _recollect_live_candidate(
         self,
@@ -513,13 +396,9 @@ class MvpWorkspace:
             kind="run.completed",
             payload={"assertion_id": assertion_id, "lead_status": "recollected"},
         )
-        existing_assertion_ids = summary.get("assertion_ids", [])
-        if not isinstance(existing_assertion_ids, list):
-            existing_assertion_ids = []
         updated = {
             **summary,
             "assertion_id": assertion_id,
-            "assertion_ids": [*existing_assertion_ids, assertion_id],
             "lead_status": "recollected",
             "pending_leads": [],
             "candidate_case_id": captured.case.case_id,
@@ -590,7 +469,3 @@ def _artifact_media_type(name: str) -> str:
     if lowered.endswith(".txt"):
         return "text/plain; charset=utf-8"
     return "application/json"
-
-
-def _markdown_value(value: object) -> str:
-    return str(value if value is not None else "not recorded").replace("`", "'")[:500]

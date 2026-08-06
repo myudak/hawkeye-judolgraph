@@ -31,7 +31,6 @@ class ControlledPageSession:
         self._snapshot_sequence = 1
         self._started_at = datetime.now(UTC)
         self._url = scenario.seed_url
-        self._executed_element_ids: set[str] = set()
 
     @property
     def snapshot_id(self) -> str:
@@ -46,15 +45,10 @@ class ControlledPageSession:
             interaction_count=self._interaction_count,
             page_count=self._page_count,
             redirect_chain=self.scenario.redirect_chain,
-            available_element_ids=[
-                item.element_id for item in self._available_elements(include_executed=False)
-            ],
         )
 
     def page_list_interactive_elements(self) -> list[StableElementReference]:
-        return [
-            self._reference(element) for element in self._available_elements(include_executed=False)
-        ]
+        return [self._reference(element) for element in self.scenario.elements]
 
     def page_click_read_only(self, reference: StableElementReference) -> InteractionDecision:
         return self._execute(reference, tool_name="page_click_read_only")
@@ -87,99 +81,43 @@ class ControlledPageSession:
         tool_name: str,
         require_link: bool = False,
     ) -> InteractionDecision:
-        before_snapshot = self.snapshot_id
-        before_observations = set(self._observations)
         if reference.discovery_snapshot_id != self.snapshot_id:
-            return self._decision(
-                "stale_reference",
-                tool_name,
-                "discovery_snapshot_mismatch",
-                before_snapshot_id=before_snapshot,
-            )
+            return self._decision("stale_reference", tool_name, "discovery_snapshot_mismatch")
         element = next(
-            (
-                item
-                for item in self._available_elements(include_executed=False)
-                if item.element_id == reference.element_id
-            ),
+            (item for item in self.scenario.elements if item.element_id == reference.element_id),
             None,
         )
         if (
             element is None
             or self._reference(element).element_fingerprint != reference.element_fingerprint
         ):
-            return self._decision(
-                "stale_reference",
-                tool_name,
-                "element_fingerprint_mismatch",
-                before_snapshot_id=before_snapshot,
-            )
+            return self._decision("stale_reference", tool_name, "element_fingerprint_mismatch")
         if self._interaction_count >= self.budget.max_interactions:
-            return self._decision(
-                "budget_exhausted",
-                tool_name,
-                "interaction_budget_exhausted",
-                before_snapshot_id=before_snapshot,
-            )
+            return self._decision("budget_exhausted", tool_name, "interaction_budget_exhausted")
         if require_link and element.declared_behavior != "open_public_link":
-            return self._decision(
-                "blocked",
-                tool_name,
-                "tool_requires_public_link",
-                before_snapshot_id=before_snapshot,
-            )
+            return self._decision("blocked", tool_name, "tool_requires_public_link")
         permitted, reason, checks = validate_read_only_interaction(element)
         checks["interaction_count"] = self._interaction_count
         checks["max_interactions"] = self.budget.max_interactions
         checks["current_page_state"] = self.snapshot_id
         if not permitted:
-            return self._decision(
-                "blocked",
-                tool_name,
-                reason,
-                policy_checks=checks,
-                before_snapshot_id=before_snapshot,
-            )
+            return self._decision("blocked", tool_name, reason, policy_checks=checks)
         self._interaction_count += 1
-        self._executed_element_ids.add(element.element_id)
         self._observations.extend(element.reveals_observations)
         destination = element.destination_url or element.href
         if element.declared_behavior == "open_public_link" and destination:
             if self._page_count >= self.budget.max_pages:
-                return self._decision(
-                    "budget_exhausted",
-                    tool_name,
-                    "page_budget_exhausted",
-                    before_snapshot_id=before_snapshot,
-                )
+                return self._decision("budget_exhausted", tool_name, "page_budget_exhausted")
             self._page_count += 1
             self._url = destination
         self._snapshot_sequence += 1
-        after_observations = set(self._observations)
         return self._decision(
             "completed",
             tool_name,
             reason,
             destination_url=destination,
             policy_checks=checks,
-            before_snapshot_id=before_snapshot,
-            added_observations=sorted(after_observations - before_observations),
-            removed_observations=sorted(before_observations - after_observations),
-            state_changed=(
-                after_observations != before_observations
-                or self.snapshot_id != before_snapshot
-                or destination is not None
-            ),
         )
-
-    def _available_elements(self, *, include_executed: bool) -> list[InteractiveElement]:
-        observed = set(self._observations)
-        return [
-            item
-            for item in self.scenario.elements
-            if set(item.available_after).issubset(observed)
-            and (include_executed or item.element_id not in self._executed_element_ids)
-        ]
 
     def _reference(self, element: InteractiveElement) -> StableElementReference:
         payload = {
@@ -217,10 +155,6 @@ class ControlledPageSession:
         *,
         destination_url: str | None = None,
         policy_checks: dict[str, object] | None = None,
-        before_snapshot_id: str | None = None,
-        added_observations: list[str] | None = None,
-        removed_observations: list[str] | None = None,
-        state_changed: bool = False,
     ) -> InteractionDecision:
         return InteractionDecision(
             status=status,  # type: ignore[arg-type]
@@ -230,8 +164,4 @@ class ControlledPageSession:
             observations=sorted(set(self._observations)),
             destination_url=destination_url,
             policy_checks=policy_checks or {},  # type: ignore[arg-type]
-            before_snapshot_id=before_snapshot_id,
-            added_observations=added_observations or [],
-            removed_observations=removed_observations or [],
-            state_changed=state_changed,
         )

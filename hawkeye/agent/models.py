@@ -56,14 +56,6 @@ class AgentVisibleContext(BaseModel):
     policy_budget: InteractionBudget
     prior_tool_results: list[InteractionDecision] = Field(default_factory=list, max_length=10)
     evidence_gap: str = Field(max_length=1000)
-    objective_id: Literal[
-        "find_public_contact",
-        "find_related_public_destination",
-        "find_supporting_evidence_for_candidate_relation",
-    ] = "find_public_contact"
-    iteration: int = Field(default=1, ge=1, le=5)
-    attempted_reference_ids: list[str] = Field(default_factory=list, max_length=20)
-    latest_state_delta: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentDecision(BaseModel):
@@ -100,17 +92,6 @@ class AgentDecision(BaseModel):
     assertion_object: str | None = Field(default=None, max_length=2000)
     supporting_observation_ids: list[str] = Field(default_factory=list, max_length=50)
     outcome_summary: str = Field(max_length=1000)
-    objective_satisfied: bool = False
-    stop_reason: (
-        Literal[
-            "objective_satisfied",
-            "no_safe_action",
-            "insufficient_evidence",
-            "budget_exhausted",
-            "agent_stop",
-        ]
-        | None
-    ) = None
 
     @model_validator(mode="after")
     def validate_action_shape(self) -> AgentDecision:
@@ -123,8 +104,6 @@ class AgentDecision(BaseModel):
             or not self.supporting_observation_ids
         ):
             raise ValueError("assertion_proposal requires type, endpoints, and evidence IDs")
-        if self.action == "stop" and self.stop_reason is None:
-            self.stop_reason = "objective_satisfied" if self.objective_satisfied else "agent_stop"
         return self
 
 
@@ -141,26 +120,3 @@ class AgentStepResult(BaseModel):
     failures: list[AgentFailure] = Field(default_factory=list)
     raw_response_persisted: Literal[False] = False
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class AgentLoopStep(BaseModel):
-    iteration: int = Field(ge=1, le=5)
-    agent: AgentStepResult
-    tool_result: InteractionDecision | None = None
-
-
-class AgentLoopResult(BaseModel):
-    objective_id: str
-    steps: list[AgentLoopStep] = Field(max_length=5)
-    stop_reason: Literal[
-        "objective_satisfied",
-        "no_safe_action",
-        "insufficient_evidence",
-        "budget_exhausted",
-        "repeated_noop",
-        "repeated_stale_reference",
-        "agent_stop",
-        "max_iterations",
-    ]
-    objective_satisfied: bool
-    final_observations: list[str]

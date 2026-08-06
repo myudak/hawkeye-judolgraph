@@ -180,7 +180,7 @@ class CrawlPageRecord(BaseModel):
     parent_page_id: str | None = None
     source_evidence_id: str | None = None
     original_href: str | None = None
-    discovery_method: Literal["seed", "html_anchor", "browser_semantic"] = "seed"
+    discovery_method: Literal["seed", "html_anchor"] = "seed"
     anchor_text: str | None = None
     final_url: str | None = None
     redirects: list[RedirectRecord] = Field(default_factory=list)
@@ -202,8 +202,6 @@ class CrawlPageRecord(BaseModel):
     screenshot_evidence_id: str | None = None
     initial_screenshot_evidence_id: str | None = None
     full_page_screenshot_evidence_id: str | None = None
-    ocr_text_evidence_id: str | None = None
-    ocr_metadata_evidence_id: str | None = None
     visible_text_evidence_id: str | None = None
     response_metadata_evidence_id: str | None = None
     readiness_evidence_id: str | None = None
@@ -228,13 +226,11 @@ class CrawlFrontierRecord(BaseModel):
     normalized_url: str | None = None
     source_page_id: str | None = None
     source_evidence_id: str | None = None
-    discovery_method: Literal["seed", "html_anchor", "browser_semantic", "redirect"] = "seed"
+    discovery_method: Literal["seed", "html_anchor", "redirect"] = "seed"
     anchor_text: str | None = None
     target_page_id: str | None = None
     skip_reason: str | None = None
     redirect_status_code: int | None = Field(default=None, ge=100, le=599)
-    priority_score: int | None = Field(default=None, ge=0, le=10)
-    priority_reason: str | None = None
 
 
 class CandidateObservation(BaseModel):
@@ -511,8 +507,6 @@ class EvidenceRecord(BaseModel):
         "visible_text",
         "response_metadata",
         "capture_readiness",
-        "ocr_text",
-        "ocr_metadata",
         "network_event",
         "evidence_crop",
     ]
@@ -548,7 +542,6 @@ class SemanticElementSnapshot(BaseModel):
     accessible_name: str = ""
     visible_text: str = ""
     href: str | None = None
-    source_context: Literal["document", "open_shadow_root", "same_origin_iframe"] = "document"
     x: float
     y: float
     width: float = Field(gt=0)
