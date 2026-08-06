@@ -118,9 +118,15 @@ class DeterministicInvestigator:
         return AgentDecision(
             action="stop",
             outcome_summary=(
-                "Evidence is sufficient for the bounded objective."
-                if context.normalized_observations
+                "The bounded objective is already satisfied."
+                if context.current_case_state.get("objective_satisfied") is True
                 else "No policy-permitted action can close the explicit evidence gap."
+            ),
+            objective_satisfied=context.current_case_state.get("objective_satisfied") is True,
+            stop_reason=(
+                "objective_satisfied"
+                if context.current_case_state.get("objective_satisfied") is True
+                else "no_safe_action"
             ),
         )
 

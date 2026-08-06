@@ -66,7 +66,7 @@ Public seed
 → bounded same-site capture (up to 3 pages, depth 1)
 → verified or explicitly provisional semantic evidence
 → explicit evidence gap
-→ one Codex-selected or deterministic safe interaction
+→ bounded Codex-selected or deterministic safe interaction loop
 → public observable
 → direct candidate discovery or local-case hostname match
 → explicit approval before an unseen candidate is collected
@@ -104,6 +104,9 @@ Kandidat nyata tidak pernah dikumpulkan otomatis. Mode real-world berhenti pada
 langsung dikumpulkan satu kali dengan budget satu halaman/depth nol. Domain yang sudah memiliki
 case lokal tidak dikumpulkan ulang: hostname yang sama langsung diproyeksikan sebagai tujuan
 terkumpul. Semua relasi tetap `needs_review` dan tidak menyatakan kepemilikan.
+Identifier publik ternormalisasi yang sama persis—kontak, redirect, download, atau referral—dapat
+menghasilkan assertion cross-case pending dengan kedua rantai artefak. Snapshot terbaru pada host
+yang sama juga dibandingkan sebagai added/removed/unchanged observations tanpa menimpa histori.
 
 Konsol tidak dipublikasikan. Tidak ada autentikasi multi-user, deployment publik, PostgreSQL,
 distributed queue, Kubernetes, microservice kompleks, atau dependensi paid search. Perubahan ke
@@ -152,8 +155,8 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 - Mengekstrak 14 tipe observasi semantik publik.
 - Mendaftar elemen interaktif menggunakan referensi stabil.
 - Memblokir tindakan terlarang sebelum klik.
-- Menjalankan satu keputusan agen terstruktur atau fallback deterministik.
-- Mencocokkan tautan langsung ke case lokal berdasarkan hostname; menyimpan lead baru, candidate
+- Menjalankan loop objective agen terstruktur atau fallback deterministik dengan feedback delta.
+- Mencocokkan tautan langsung dan identifier exact ke case lokal; menyimpan temporal diff, lead baru, candidate
   recollection setelah approval, assertion, review, dan event SQLite.
 - Membangun graf canvas stabil dengan pan/zoom/drag/hit-testing/minimap, timeline/replay, screenshot-first
   evidence inspector, search/focus, dan daftar relasi accessible dari bukti/event tersimpan.
@@ -210,9 +213,10 @@ flowchart TD
     X["Codex strict-schema decision"] --> V["Exact server-issued reference validation"]
     F["Deterministic fallback"] --> P
     V --> P
-    P -->|"one safe action"| B["Narrow interaction executor"]
+    P -->|"bounded safe step"| B["Narrow interaction executor"]
     P -->|"blocked"| L["Persisted policy event<br/>executed = false"]
     B --> I["Interaction screenshot + resulting public observable"]
+    I -->|"bounded observation delta"| X
     E --> D["Direct-link and hostname matching"]
     I --> D
     D -->|"known local hostname"| K["Collected related case node"]
@@ -252,7 +256,9 @@ animation queue.
 ## 7. Implementasi Perangkat Lunak
 
 Kolektor menunggu checkpoint wajib dan hanya menambah dua settle checkpoint berbatas tanpa
-berinteraksi. DOM tersembunyi tidak dapat berpura-pura
+klik atau submit. Pada halaman panjang, satu sweep read-only tengah/bawah/atas memicu light-DOM
+lazy rendering sebelum checkpoint final. Link publik pada open shadow root dan same-origin iframe
+dapat masuk frontier yang tetap dibatasi; isolasi cross-origin tidak ditembus. DOM tersembunyi tidak dapat berpura-pura
 sebagai visible evidence karena klasifikasi menggunakan `innerText` dan metrik visual. HTML hingga
 5 MB dipersist; input ekstraktor dibatasi 2 MB. Halaman di atas 5 MB tetap menyimpan visible text,
 screenshot, metadata, ukuran, hash, readiness, serta alasan omission.
@@ -261,6 +267,11 @@ Lapisan semantik mencakup claimed brand identity, Telegram, WhatsApp, telepon, e
 redirect target, download destination, payment method/provider, offer claim, legal/license claim,
 referral code, dan tracking identifier. Klaim payment/offer/legal yang lemah dilabel weak. Link
 download diinspeksi tanpa dinavigasi.
+
+OCR screenshot memakai adapter Tesseract lokal opsional dengan batas byte, pixel, dimensi, output,
+dan timeout. Status completed/unavailable/failed selalu menjadi artefak. Hasil OCR, bila tersedia,
+tetap provisional dan membutuhkan konfirmasi visual manusia. Mesin verifikasi saat ini tidak
+memiliki binary Tesseract sehingga paket tidak mengklaim OCR live berhasil.
 
 Referensi elemen memuat DOM path, role, tag, accessible name, visible text, href/action, fingerprint,
 dan snapshot. Referensi stale ditolak. Route Contact/Hubungi Kami same-site boleh dibuka untuk
@@ -272,8 +283,11 @@ memverifikasi strict JSON-schema output. Pada validasi QQ final 2026-08-03, Code
 Contact yang diterbitkan server; policy memvalidasi ulang dan browser menyimpan bukti PNG, HTML,
 teks, serta JSON route `/Contact`. Artifact tersebut menghasilkan evidence telepon, WhatsApp, dan
 Telegram yang terpisah.
-Jika probe, transport, schema, atau exact-reference check gagal, fallback deterministik memilih
-public reveal yang lolos policy dengan bentuk event/provenance yang sama. Benchmark resmi tetap
+Keputusan dijalankan sebagai loop objective maksimum lima decision/tiga interaction. Delta
+observasi sesudah setiap tool kembali menjadi input langkah berikutnya; stale/no-op berulang dan
+budget mempunyai stop reason eksplisit. Jika probe, transport, schema, atau exact-reference check
+gagal, fallback deterministik memilih public reveal berikutnya yang lolos policy dengan bentuk
+event/provenance yang sama. Benchmark resmi tetap
 menggunakan fixture/fallback agar reproducible.
 
 Canonical synthetic scenario `redirect-new-tab` menghasilkan Page A artifact, explicit evidence
@@ -283,24 +297,28 @@ candidate tampil dashed; review verified mengubahnya menjadi solid emphasized me
 
 Benchmark aktual menjalankan 50 attempts: 10 static, 10 rule-based, dan 30 agent-assisted (tiga
 attempt per scenario). Hasil lengkap terdapat pada `BENCHMARK_RESULTS.md`. Unsafe block rate fixture
-adalah 1.0000. Angka ini tidak digeneralisasi ke situs live.
+adalah 1.0000. Scenario menu dua langkah memberi recall rule-based 0.8571 dan agent-assisted 1.0000;
+ini mengukur manfaat feedback loop pada fixture, bukan kecerdasan atau akurasi live.
 
 ## 8. Screenshot Mockup Interface Perangkat Lunak
 
 Meskipun nama bagian mengikuti struktur template, seluruh gambar di bawah adalah tangkapan aktual
 dari software localhost, bukan mockup yang digambar terpisah.
 
-Interface final preliminary MVP memakai komposisi graph-first satu layar:
+Interface final preliminary MVP memakai alur tiga layar yang tetap graph-first saat investigasi:
 
-1. command bar berisi URL publik, **Scan**, selector bukti tersimpan, dan status agent/fallback;
-2. **Site Intel** untuk status akses, kecukupan tangkapan, jumlah artefak/observasi/lead, serta
+1. layar awal berisi seed URL, nama opsional, mode guided/capture-only, batas keselamatan, dan
+   recent cases;
+2. workspace berisi case summary untuk status akses, kecukupan tangkapan, jumlah artefak/observasi/lead, serta
    batas interpretasi;
 3. graph canvas animatif dengan force relaxation, glow, relation particles, pan, zoom, drag,
    hit-testing, minimap, search, focus, fit, dan reduced-motion;
 4. evidence inspector yang langsung menampilkan screenshot tersimpan, status capture, artifact
    links, semantic observations, kandidat, dan limitation;
 5. timeline aktual berdasarkan timestamp artefak atau event SQLite, dengan replay/pause/speed;
-6. safe review walkthrough dari selector, Page A/Page B fixture artifacts, candidate assertion,
+6. layar ringkasan berisi halaman terkumpul, observasi, kandidat, status review, kronologi,
+   manifest, ekspor Markdown/JSON/ZIP, dan print;
+7. safe review walkthrough dari selector, Page A/Page B fixture artifacts, candidate assertion,
    dan form review append-only.
 
 Default lokal dapat membuka run QQ terbaru apabila root live lokal dipilih,
@@ -348,7 +366,7 @@ python -m hawkeye serve --cases verification-output/demo-cases `
 ```
 
 Buka `http://127.0.0.1:8760/`. Masukkan URL publik dan tekan **Scan**. Aplikasi menangkap maksimal
-tiga halaman same-site, mengekstrak evidence, menjalankan maksimal satu aksi publik yang lolos
+tiga halaman same-site, mengekstrak evidence, menjalankan loop publik berbatas yang lolos
 policy, lalu membuka run graph/timeline yang sama. Gunakan carousel **Initial / Canonical / Full
 page** pada inspector. Domain terkait yang sudah tersimpan muncul sebagai collected destination;
 lead baru tetap dashed dan tombol **Approve candidate collection** diperlukan sebelum recollection.

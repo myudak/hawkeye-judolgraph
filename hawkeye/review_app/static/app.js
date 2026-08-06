@@ -25,6 +25,21 @@ const refs = {
   fitGraph: document.getElementById("fit-graph"),
   statusLine: document.getElementById("status-line"),
   toastRegion: document.getElementById("toast-region"),
+  landingView: document.getElementById("landing-view"),
+  workspaceView: document.getElementById("workspace-view"),
+  summaryView: document.getElementById("summary-view"),
+  workspaceCommand: document.getElementById("workspace-command"),
+  workspaceTitle: document.getElementById("workspace-title"),
+  workspaceUrl: document.getElementById("workspace-url"),
+  recentCases: document.getElementById("recent-cases"),
+  investigationName: document.getElementById("investigation-name"),
+  brandHome: document.getElementById("brand-home"),
+  newInvestigation: document.getElementById("new-investigation"),
+  openSummary: document.getElementById("open-summary"),
+  backToGraph: document.getElementById("back-to-graph"),
+  summaryContent: document.getElementById("summary-content"),
+  summarySubtitle: document.getElementById("summary-subtitle"),
+  inspectorTabs: Array.from(document.querySelectorAll("[data-inspector-tab]")),
 };
 
 const evidenceSemantics = {
@@ -95,7 +110,7 @@ function valueOr(value, fallback = "Not recorded") {
 }
 
 function titleCase(value) {
-  return valueOr(value).replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return valueOr(value).replaceAll("_", " ").replaceAll(".", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function shortText(value, length = 34) {
@@ -133,6 +148,21 @@ function toast(message, kind = "") {
   const item = el("div", `toast ${kind}`.trim(), message);
   refs.toastRegion.append(item);
   window.setTimeout(() => item.remove(), 4200);
+}
+
+function showScreen(name) {
+  refs.landingView.hidden = name !== "landing";
+  refs.workspaceView.hidden = name !== "workspace";
+  refs.summaryView.hidden = name !== "summary";
+  refs.workspaceCommand.hidden = name === "landing";
+  document.body.dataset.screen = name;
+  if (name === "workspace") {
+    resizeCanvas();
+    fitGraph();
+    for (let step = 0; step < 12; step += 1) physicsStep(16);
+    paintFrame(performance.now());
+  }
+  window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
 }
 
 async function requestJson(path, options = {}) {
@@ -880,7 +910,7 @@ function drawNodes(time) {
     ctx.textBaseline = "middle";
     ctx.fillText(nodeCode(item.kind), 0, 0);
     ctx.restore();
-    if (!searchDimmed && (selected || hovered || item.primary || view.camera.zoom > 0.74)) roundedLabel(item.label, point.x, point.y + radius + 10, selected);
+    if (!searchDimmed && (selected || hovered || item.primary || view.camera.zoom > 1.05)) roundedLabel(item.label, point.x, point.y + radius + 10, selected);
   });
 }
 
@@ -934,7 +964,7 @@ function drawMinimap() {
   miniCtx.restore();
 }
 
-function drawFrame(time) {
+function paintFrame(time) {
   const delta = Math.min(40, time - view.frameTime);
   view.frameTime = time;
   physicsStep(delta);
@@ -946,6 +976,10 @@ function drawFrame(time) {
   drawEdges(time);
   drawNodes(time);
   drawMinimap();
+}
+
+function drawFrame(time) {
+  paintFrame(time);
   window.requestAnimationFrame(drawFrame);
 }
 
@@ -1497,6 +1531,9 @@ async function loadCase(caseId) {
     selectNode(view.nodeById.get(view.selectedId));
     refs.seedInput.value = details.final_url_display || details.seed_url_display || refs.seedInput.value;
     refs.workspaceSelector.value = `case:${caseId}`;
+    refs.workspaceTitle.textContent = hostnameFrom(details.final_url_display || details.seed_url_display);
+    refs.workspaceUrl.textContent = details.final_url_display || details.seed_url_display || "Saved capture";
+    showScreen("workspace");
     setStatus(`${hostnameFrom(details.final_url_display)} · manifest verified · ${details.evidence?.length || 0} artifacts`);
   } catch (error) {
     renderError(error.message);
@@ -1513,10 +1550,210 @@ async function loadRun(workspaceId) {
     setGraph(buildRunProjection(details));
     selectNode(view.nodeById.get(view.selectedId));
     refs.workspaceSelector.value = `run:${workspaceId}`;
+    refs.workspaceTitle.textContent = hostnameFrom(details.seed_url || details.case_id);
+    refs.workspaceUrl.textContent = details.seed_url || details.case_id || "Saved investigation";
+    showScreen("workspace");
     setStatus(`${details.case_id} · ${details.events?.length || 0} persisted events · ${titleCase(details.lead_status)}`);
   } catch (error) {
     renderError(error.message);
   }
+}
+
+function renderRecentCases() {
+  refs.recentCases.replaceChildren();
+  const recent = [
+    ...view.runs.map((item) => ({
+      kind: "run",
+      id: item.workspace_id,
+      title: hostnameFrom(item.seed_url || item.case_id),
+      subtitle: item.case_id,
+      state: titleCase(item.lead_status || item.agent_stop_reason || "captured"),
+      updated: item.updated_at,
+    })),
+    ...view.cases.filter((item) => item.integrity === "verified").map((item) => ({
+      kind: "case",
+      id: item.case_id,
+      title: hostnameFrom(item.final_url_display || item.seed_url_display),
+      subtitle: item.case_id,
+      state: titleCase(item.capture_adequacy || "verified"),
+      updated: item.completed_at,
+    })),
+  ].slice(0, 6);
+  if (!recent.length) {
+    refs.recentCases.append(el("p", "quiet-copy", "No verified local cases yet."));
+    return;
+  }
+  recent.forEach((item) => {
+    const button = el("button", "recent-case");
+    button.type = "button";
+    const identity = el("span");
+    identity.append(el("strong", "", item.title), el("small", "", item.subtitle));
+    button.append(
+      identity,
+      el("span", "case-state", item.state),
+      el("span", "open-label", item.updated ? formatTime(item.updated) : "Open →"),
+    );
+    button.addEventListener("click", () => {
+      if (item.kind === "run") void loadRun(item.id);
+      else void loadCase(item.id);
+    });
+    refs.recentCases.append(button);
+  });
+}
+
+function summaryCard(title, detail, content) {
+  const card = el("section", "summary-card");
+  const header = el("header");
+  header.append(el("h2", "", title), el("small", "", detail));
+  card.append(header, content);
+  return card;
+}
+
+function summaryRows(items, emptyText = "Nothing recorded.") {
+  const list = el("div", "summary-list");
+  if (!items.length) {
+    list.append(el("p", "quiet-copy", emptyText));
+    return list;
+  }
+  items.forEach((item) => {
+    const row = el("div", "summary-row");
+    row.append(el("span", "", item[0]), el("span", "", item[1]));
+    list.append(row);
+  });
+  return list;
+}
+
+function renderSummary() {
+  const details = view.currentDetails;
+  if (!details) return;
+  const isRun = view.currentKind === "run";
+  const sourceCase = isRun ? details.source_case || {} : details;
+  const pages = sourceCase.pages || [];
+  const observations = sourceCase.observations || [];
+  const events = details.events || [];
+  const artifacts = isRun ? details.artifacts || [] : details.evidence || [];
+  const assertions = details.assertions || (details.assertion ? [details.assertion] : []);
+  const pendingLeads = details.pending_leads || [];
+  const pending = Number(details.pending_review_count || 0) + pendingLeads.length;
+  const candidateCount = assertions.length + pendingLeads.length;
+  const host = hostnameFrom(details.seed_url || sourceCase.final_url_display || sourceCase.seed_url_display || details.case_id);
+  refs.summarySubtitle.textContent = `${host} · replay is reconstructed from persisted evidence and events.`;
+
+  const stats = el("div", "summary-stat-grid");
+  [
+    [pages.length || details.pages_captured || 0, "Pages captured"],
+    [observations.length || events.filter((item) => item.kind === "observation.created").length, "Public observations"],
+    [candidateCount, "Candidate relations"],
+    [pending, "Pending review"],
+  ].forEach(([value, label]) => {
+    const stat = el("div", "summary-stat");
+    stat.append(el("strong", "", value), el("span", "", label));
+    stats.append(stat);
+  });
+
+  const left = el("div", "summary-column");
+  left.append(summaryCard("Investigation at a glance", valueOr(details.case_id), stats));
+  const scopeRows = [
+    ["Seed", details.seed_url || sourceCase.seed_url_display || "Not recorded"],
+    ["Collection", isRun ? titleCase(details.source_kind || "event sourced") : "Deterministic capture"],
+    ["Agent stop", titleCase(details.agent_stop_reason || "not applicable")],
+    ["Safety", "Public, read-only, policy gated"],
+    ["Inference", "Candidates require human review"],
+  ];
+  left.append(summaryCard("Scope and limitations", "truthful operating envelope", summaryRows(scopeRows)));
+  left.append(summaryCard(
+    "Collected pages",
+    `${pages.length} saved page records`,
+    summaryRows(pages.map((page) => [page.final_url_display || page.final_url || page.normalized_url || page.url || page.id, titleCase(page.capture_adequacy || page.state || "captured")]), "No collected page list is attached to this run."),
+  ));
+  left.append(summaryCard(
+    "Candidate relationships",
+    `${assertions.length} assertions · ${pendingLeads.length} approval leads`,
+    summaryRows([
+      ...assertions.map((item) => [`${item.subject || item.subject_node_id || "subject"} → ${item.object || item.object_node_id || "candidate"}`, titleCase(item.assertion_type || item.relation || item.predicate || "candidate")]),
+      ...pendingLeads.map((item) => [item.url || item.lead_id, "Waiting For Approval"]),
+    ], "No candidate relationship or lead was observed."),
+  ));
+
+  const right = el("div", "summary-column");
+  const exports = el("div", "export-grid");
+  if (isRun) {
+    [["Export Markdown", "md"], ["Export JSON", "json"], ["Export case archive", "zip"]].forEach(([label, extension]) => {
+      const link = el("a", "", label);
+      link.href = `/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/export.${extension}`;
+      link.download = `${details.case_id || "hawkeye-case"}.${extension}`;
+      exports.append(link);
+    });
+  }
+  const print = el("button", "", "Print summary");
+  print.type = "button";
+  print.addEventListener("click", () => window.print());
+  exports.append(print);
+  right.append(summaryCard("Export and print", "human and machine-readable", exports));
+
+  const chronology = el("div", "chronology");
+  events.slice(0, 80).forEach((event) => {
+    const item = el("div", "chronology-item");
+    const time = el("time", "", formatTime(event.occurred_at || event.created_at));
+    const description = el("div");
+    description.append(el("strong", "", titleCase(event.kind)), el("small", "", event.event_id || "persisted event"));
+    item.append(time, description);
+    chronology.append(item);
+  });
+  if (!events.length) chronology.append(el("p", "quiet-copy", "This deterministic case predates the append-only event runtime."));
+  right.append(summaryCard("Event chronology", `${events.length} persisted events`, chronology));
+  right.append(summaryCard(
+    "Artifact manifest",
+    `${artifacts.length} integrity-tracked files`,
+    summaryRows(artifacts.map((item) => [item.name || item.path || item.id, `${item.bytes || item.type || "saved"}`]), "No artifact manifest is attached."),
+  ));
+  refs.summaryContent.replaceChildren(left, right);
+}
+
+function renderInspectorTab(tab) {
+  refs.inspectorTabs.forEach((button) => {
+    const active = button.dataset.inspectorTab === tab;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  const details = view.currentDetails;
+  if (!details || tab === "evidence") {
+    selectNode(view.nodeById.get(view.selectedId));
+    return;
+  }
+  if (tab === "overview") {
+    refs.inspectorContent.replaceChildren(
+      inspectorHeader("Investigation overview", hostnameFrom(details.seed_url || details.final_url_display || details.case_id), "A concise view of scope, state, and review posture."),
+      evidenceBlock("Status", factList([
+        ["Case", details.case_id],
+        ["Lead state", details.lead_status || "Not applicable"],
+        ["Agent stop", details.agent_stop_reason || "Not applicable"],
+        ["Events", details.events?.length || 0],
+      ])),
+    );
+    return;
+  }
+  if (tab === "artifacts") {
+    const grid = el("div", "artifact-grid");
+    (details.artifacts || details.evidence || []).forEach((artifact) => {
+      const link = el("a", "artifact-link", artifact.name || artifact.path || artifact.id);
+      if (view.currentKind === "run") link.href = runArtifactUrl(details.workspace_id, artifact.name);
+      else link.href = caseArtifactUrl(details.case_id, artifact.id);
+      grid.append(link);
+    });
+    refs.inspectorContent.replaceChildren(inspectorHeader("Artifact manifest", "Saved evidence files", "Each link resolves only through a verified local manifest."), evidenceBlock("Artifacts", grid));
+    return;
+  }
+  refs.inspectorContent.replaceChildren(
+    inspectorHeader("Technical envelope", "Bounded runtime", "Implementation state and collection limitations, not a conclusion about ownership."),
+    evidenceBlock("Runtime", factList([
+      ["Source", details.source_kind || "deterministic case"],
+      ["Events", details.events?.length || 0],
+      ["Agent steps", details.agent_steps || 0],
+      ["Pending review", details.pending_review_count || 0],
+    ])),
+  );
 }
 
 function renderSelector() {
@@ -1563,6 +1800,7 @@ async function refreshIndexes() {
   view.cases = casesResult.status === "fulfilled" ? casesResult.value.cases || [] : [];
   view.runs = runsResult.status === "fulfilled" ? runsResult.value.runs || [] : [];
   renderSelector();
+  renderRecentCases();
 }
 
 async function loadCapability() {
@@ -1585,15 +1823,8 @@ async function boot() {
   refs.seedInput.value = ["https", "://", "qq101xfw.com"].join("");
   await refreshIndexes();
   void loadCapability();
-  const verified = view.cases.filter((item) => item.integrity === "verified");
-  const preferred = verified.find((item) => item.final_url_display?.includes("qq101xfw.com"))
-    || verified.find((item) => item.final_url_display?.includes("qq888bet4cv.com"))
-    || verified[0];
-  const liveRun = view.runs.find((item) => item.source_kind === "live_capture");
-  if (liveRun) await loadRun(liveRun.workspace_id);
-  else if (preferred) await loadCase(preferred.case_id);
-  else if (view.runs[0]) await loadRun(view.runs[0].workspace_id);
-  else setStatus("Enter one public URL to create a bounded observation.");
+  showScreen("landing");
+  setStatus(`${view.runs.length} investigations · ${view.cases.length} saved captures · ready`);
 }
 
 refs.scanForm.addEventListener("submit", async (event) => {
@@ -1603,7 +1834,12 @@ refs.scanForm.addEventListener("submit", async (event) => {
   refs.scanButton.textContent = "Scanning…";
   setStatus("Capturing up to 3 same-site pages · waiting for render stability · one safe agent action…");
   try {
-    const details = await postJson("/api/cases", { seed_url: seedUrl });
+    const mode = document.querySelector('input[name="investigation_mode"]:checked')?.value || "guided";
+    const details = await postJson("/api/cases", {
+      seed_url: seedUrl,
+      investigation_name: refs.investigationName.value.trim(),
+      investigation_mode: mode,
+    });
     await refreshIndexes();
     await loadRun(details.workspace_id);
     toast("Public capture and investigation timeline saved.", "success");
@@ -1614,6 +1850,18 @@ refs.scanForm.addEventListener("submit", async (event) => {
     refs.scanButton.disabled = false;
     refs.scanButton.replaceChildren(el("span", "", "→"), document.createTextNode(" Scan"));
   }
+});
+
+refs.brandHome.addEventListener("click", () => showScreen("landing"));
+refs.newInvestigation.addEventListener("click", () => showScreen("landing"));
+refs.openSummary.addEventListener("click", () => {
+  if (!view.currentDetails) return;
+  renderSummary();
+  showScreen("summary");
+});
+refs.backToGraph.addEventListener("click", () => showScreen("workspace"));
+refs.inspectorTabs.forEach((button) => {
+  button.addEventListener("click", () => renderInspectorTab(button.dataset.inspectorTab || "evidence"));
 });
 
 refs.workspaceSelector.addEventListener("change", () => {

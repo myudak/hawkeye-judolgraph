@@ -184,7 +184,7 @@ recollection restriction in ADR-016 for the preliminary MVP.
 
 Every URL scan now performs one coherent workflow: up to three same-site pages at depth one,
 mandatory readiness checkpoints with bounded settle extensions, verified or provisional semantic
-evidence, one policy-permitted agent action, append-only events, and the progressive graph. A
+evidence, a policy-permitted bounded agent objective, append-only events, and the progressive graph. A
 readable page that remains dynamic may produce explicitly provisional evidence instead of being
 discarded. No authentication, challenge, geo, rate-limit, or access-control bypass is added.
 
@@ -222,3 +222,45 @@ route may be opened after the click and the fallback URL is recorded in the audi
 This does not authorize communication. Live Chat, form submission, message send, external-app
 launch, login, registration, payment, download, CAPTCHA, and access-control bypass remain blocked.
 Contact values are evidence-backed public observations, not operator identity or ownership claims.
+
+## ADR-023 — Agent assistance is a bounded feedback loop, not one model click
+
+**Status:** accepted; supersedes the one-action limit in ADR-019.
+
+The objective loop admits three task IDs and at most five decisions/three interactions. Every
+decision sees attempted references and the latest before/after observation delta. Repeated stale or
+no-op outcomes stop explicitly. The authoritative `safe-menu` fixture requires a menu reveal and a
+second Contact action; rule mode stops after the reveal, while agent-assisted fallback uses the
+delta for step two. This is the measured source of the benchmark difference, not an intelligence or
+live-web accuracy claim.
+
+## ADR-024 — Exact cross-case joins and temporal diffs remain reviewable evidence
+
+**Status:** accepted; clarifies ADR-020.
+
+Only exact normalized identifiers from verified local case packages automatically produce a
+cross-case pending assertion. Phone/WhatsApp/Telegram/email, redirect, download, and referral
+matches retain both cases' artifact and observation references. Fuzzy similarity never becomes an
+ownership probability. A new same-host capture is compared to the previous verified local snapshot
+as added/removed/unchanged observable sets; it does not silently overwrite history.
+
+## ADR-025 — Scroll, encapsulated DOM, and OCR are bounded capture extensions
+
+**Status:** accepted.
+
+Long pages receive one fixed middle/bottom/top read-only scroll sweep before the canonical final
+state. Public links visible in open shadow roots and readable same-origin iframes may enter the same
+depth/page-limited frontier; cross-origin frame isolation is not bypassed. Optional local Tesseract
+OCR has byte, pixel, dimension, output, and timeout limits. Its status is always persisted, and any
+derived signal is provisional with a human visual-confirmation limitation. Missing Tesseract is an
+honest `unavailable` result.
+
+## ADR-026 — The console is a three-view evidence instrument
+
+**Status:** accepted; extends ADR-018.
+
+The UI separates case creation, graph investigation, and report/export instead of placing every
+control around the canvas. Canvas animation remains a projection of event truth. Capture-only mode
+skips model-guided interaction and persists that stop reason. Markdown, JSON, and ZIP exports are
+generated from the same verified run/event/review state and never upgrade a candidate into a
+conclusion.

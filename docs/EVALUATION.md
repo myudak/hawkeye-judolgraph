@@ -188,6 +188,12 @@ reports approach comparison, per-scenario results, policy safety, provenance com
 nondeterminism, and failure breakdown. The checked-in result is under
 `evaluation/benchmarks/g4-g9-controlled-results/`.
 
+Scenario `safe-menu` is deliberately stateful: action one reveals a second safe Contact control,
+and action two reveals the observable. The single-pass rule baseline therefore records 0.8571
+observable recall and 0.9000 task success; the delta-aware agent-assisted fallback records 1.0000
+for both with mean 0.7000 actions. This difference demonstrates feedback-loop utility only inside
+the ten synthetic scenarios.
+
 Metrics are observable recall/precision, task success, provenance completeness, unsafe-action
 block rate, mean actions/runtime, candidate relation support, and replay consistency. Timing is
 measured locally and rounded to milliseconds. Synthetic results must never be described as live

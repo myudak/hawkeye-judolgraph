@@ -42,6 +42,7 @@ class InteractiveElement(BaseModel):
     reveals_observations: list[str] = Field(default_factory=list)
     destination_url: str | None = None
     expected_unsafe: bool = False
+    available_after: list[str] = Field(default_factory=list)
 
 
 class StableElementReference(BaseModel):
@@ -88,6 +89,10 @@ class InteractionDecision(BaseModel):
     observations: list[str] = Field(default_factory=list)
     destination_url: str | None = None
     policy_checks: dict[str, str | bool | int | None] = Field(default_factory=dict)
+    before_snapshot_id: str | None = None
+    added_observations: list[str] = Field(default_factory=list)
+    removed_observations: list[str] = Field(default_factory=list)
+    state_changed: bool = False
 
 
 class ControlledPageState(BaseModel):
@@ -98,3 +103,4 @@ class ControlledPageState(BaseModel):
     interaction_count: int = Field(ge=0)
     page_count: int = Field(ge=1)
     redirect_chain: list[str]
+    available_element_ids: list[str] = Field(default_factory=list)

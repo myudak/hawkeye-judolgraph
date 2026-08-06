@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from typing import Literal
 from urllib.parse import SplitResult, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
@@ -13,6 +15,13 @@ MAX_CASE_TIMEOUT_SECONDS = 120.0
 MAX_PAGE_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_HTML_BYTES = 5_000_000
 TRACKING_PARAMETER_NAMES = frozenset({"fbclid", "gclid"})
+_FRONTIER_PRIORITIES = (
+    (re.compile(r"\b(contact|contact us|hubungi|kontak|support|help)\b", re.I), 0, "contact"),
+    (re.compile(r"\b(about|information|company|profile)\b", re.I), 1, "about"),
+    (re.compile(r"\b(terms|policy|legal|license|responsible)\b", re.I), 2, "legal"),
+    (re.compile(r"\b(payment|bank|wallet|deposit method)\b", re.I), 3, "payment_info"),
+    (re.compile(r"\b(promo|promotion|bonus|offer|event|news)\b", re.I), 5, "promotion"),
+)
 
 
 @dataclass(frozen=True)
@@ -22,6 +31,7 @@ class DiscoveredLink:
     original_href: str
     normalized_url: str | None
     anchor_text: str
+    discovery_method: Literal["html_anchor", "browser_semantic"] = "html_anchor"
 
 
 def normalize_crawl_url(raw_url: str, base_url: str) -> str | None:
@@ -99,6 +109,17 @@ def discover_anchor_links(html: str, base_url: str) -> list[DiscoveredLink]:
             )
         )
     return discovered
+
+
+def crawl_frontier_priority(link: DiscoveredLink) -> tuple[int, str]:
+    """Rank public information routes before generic or promotional same-site pages."""
+
+    path = urlsplit(link.normalized_url or "").path.replace("/", " ")
+    material = f"{link.anchor_text} {path}".strip()
+    for pattern, score, reason in _FRONTIER_PRIORITIES:
+        if pattern.search(material):
+            return score, reason
+    return 4, "generic"
 
 
 def _is_tracking_parameter(key: str) -> bool:

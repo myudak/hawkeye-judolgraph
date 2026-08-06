@@ -9,10 +9,12 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Visible text and visual-information metrics | implemented | `hawkeye/collector/playwright_collector.py` | capture adequacy tests | Read readiness JSON | Thresholds calibrated only on controlled fixtures |
 | HTML 2 MB extraction / 5 MB persistence policy | implemented | `hawkeye/pipeline.py`, `hawkeye/collector/playwright_collector.py` | oversize capture tests | Inspect oversize fixture artifacts | Above 5 MB HTML is intentionally omitted |
 | Initial/final/bounded full-page artifacts | implemented | `hawkeye/storage/filesystem.py` | capture adequacy tests | Open evidence inventory | Full page capped at 12,000 px |
-| Fifteen semantic observation types | implemented | `hawkeye/semantic_evidence.py` | `tests/test_semantic_evidence.py` | Evidence inspector | Text/DOM primary; no image OCR claim |
+| Fifteen semantic observation types | implemented | `hawkeye/semantic_evidence.py` | `tests/test_semantic_evidence.py` | Evidence inspector | DOM remains primary |
+| Bounded optional screenshot OCR | implemented | `hawkeye/ocr.py`, case pipeline/storage | `tests/test_ocr.py`, UI capture test | OCR metadata artifact | Tesseract is not installed on the verification machine; derived evidence is provisional |
 | Evidence crops | implemented | `hawkeye/pipeline.py` | semantic evidence test | Open crop in collected case | Best-effort only for stable viewport boxes |
 | Exactly ten interaction scenarios | implemented | `evaluation/fixtures/controlled-interactions-v1.json` | `tests/test_controlled_interaction.py` | Seed selector | Fixture scope only |
-| Stable snapshot-bound references | implemented | `hawkeye/interaction/` | stale-reference test | Timeline/tool payload | Controlled executor, not unrestricted real Playwright |
+| Multi-step snapshot-bound objective loop | implemented | `hawkeye/agent/loop.py`, interaction/runtime modules | stale/no-op/two-step benchmark tests | Per-step graph timeline | Maximum five decisions and three interactions; not unrestricted computer use |
+| Bounded scroll/shadow/frame discovery | implemented | collector and crawl pipeline | crawl/capture tests | Frontier provenance | Open shadow roots and same-origin frames only; browser isolation is not bypassed |
 | Server-side unsafe-action policy | implemented | `hawkeye/interaction/policy.py` | policy/benchmark tests | Policy safety table | Cannot prove universal live-web safety |
 | codex-lb capability probe | implemented | `hawkeye/agent/capability.py` | `tests/test_agent_runtime.py` | Show capability JSON | Fixed loopback routes only; native search unused |
 | Structured Codex decision validation | implemented | `hawkeye/agent/investigator.py` | invalid-schema/reference tests | QQ Codex timeline | Model path depends on a successful local strict-output probe |
@@ -20,12 +22,12 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Direct/redirect/new-tab/iframe discovery | implemented | controlled fixture/runtime modules | interaction/runtime tests | Canonical redirect scenario | Native/paid search excluded |
 | Synthetic fixture index search | implemented | `hawkeye/investigation/runtime.py` | runtime tests | Page B recollection | Reserved `.invalid` fixtures only |
 | Page B approval boundary | implemented | runtime/workspace modules | approval-gated UI/API and live graph tests | Approval → one-page Page B | Only directly observed candidates; no automatic generated-candidate crawl |
-| Cross-case direct-link matching | implemented | live runtime/reducer/UI projection | 888-family runtime test | 888 anchor → saved case | Hostname/evidence match is not ownership |
+| Cross-case exact matching and temporal diff | implemented | live runtime/store/UI projection | runtime exact-contact/temporal test | Shared contact pending assertion | Exact identifiers only; evidence match is not ownership |
 | Evidence-backed candidate assertions | implemented | investigation models/store/runtime | runtime tests | Assertion panel | Relationship support only, never ownership |
 | Append-only SQLite reviews | implemented | `hawkeye/investigation/store.py` | review-history tests | Append review | Single-machine label, no authenticated identity |
 | Append-only event log | implemented | `hawkeye/investigation/store.py` | event tests | Timeline | Local SQLite only |
 | Idempotent progressive graph | implemented | `hawkeye/investigation/reducer.py` | replay test | Canvas replay/refresh | Persistent truth remains independent of canvas state |
-| Canvas graph/pan/zoom/drag/hit-test/minimap | implemented | review app static assets | Node syntax, static safety, browser QA | Saved QQ and fixture run | Dependency-free vanilla JS; no 3D layouts |
+| Three-view start/workspace/summary console | implemented | review app static assets and export API | Node syntax, UI/API/export tests, browser QA | Recent case → graph → summary | Localhost-only, dependency-free vanilla JS |
 | Screenshot carousel/timeline/search/review | implemented | review app static assets/workspace API | `tests/test_mvp_workspace_ui.py`, browser QA | Local UI | Initial/canonical/full-page views depend on capture availability |
 | Reduced-motion mode | implemented | review app static assets | frontend syntax/UI API gate | OS reduced-motion setting | Motion is removed; graph information remains |
 | Three-mode benchmark | implemented | `hawkeye/benchmark.py`, checked-in results | `tests/test_benchmark.py` | Benchmark table | Runtime rounds to milliseconds; fast runs can show 0 ms |

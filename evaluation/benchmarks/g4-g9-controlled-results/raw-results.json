@@ -78,21 +78,21 @@
     },
     {
       "approach": "rule_based",
-      "candidate_relation_support_rate": 1.0,
+      "candidate_relation_support_rate": 0.8333,
       "mean_actions": 0.6,
       "mean_runtime_ms": 0.0,
       "observable_precision": 1.0,
-      "observable_recall": 1.0,
+      "observable_recall": 0.8571,
       "provenance_completeness": 1.0,
       "replay_reduction_consistency": 1.0,
       "scenario_attempts": 10,
-      "task_success_rate": 1.0,
+      "task_success_rate": 0.9,
       "unsafe_action_block_rate": 1.0
     },
     {
       "approach": "agent_assisted",
       "candidate_relation_support_rate": 1.0,
-      "mean_actions": 0.6,
+      "mean_actions": 0.7,
       "mean_runtime_ms": 0.0,
       "observable_precision": 1.0,
       "observable_recall": 1.0,
@@ -108,7 +108,8 @@
       "none": 30
     },
     "rule_based": {
-      "none": 10
+      "expected_observable_not_found": 1,
+      "none": 9
     },
     "static": {
       "expected_observable_not_found": 5,
@@ -325,22 +326,20 @@
       "actions": 1,
       "approach": "rule_based",
       "attempt": 1,
-      "candidate_relation_supported": true,
+      "candidate_relation_supported": false,
       "expected_observable": "link:https://candidate-c.example.invalid/",
-      "failure": null,
-      "observable_found": true,
-      "observed": [
-        "link:https://candidate-c.example.invalid/"
-      ],
+      "failure": "expected_observable_not_found",
+      "observable_found": false,
+      "observed": [],
       "provenance_complete": true,
       "runtime_ms": 0,
       "scenario_id": "safe-menu",
-      "task_success": true,
+      "task_success": false,
       "unsafe_blocked": 0,
       "unsafe_controls": 0
     },
     {
-      "actions": 1,
+      "actions": 2,
       "approach": "agent_assisted",
       "attempt": 1,
       "candidate_relation_supported": true,
@@ -358,7 +357,7 @@
       "unsafe_controls": 0
     },
     {
-      "actions": 1,
+      "actions": 2,
       "approach": "agent_assisted",
       "attempt": 2,
       "candidate_relation_supported": true,
@@ -376,7 +375,7 @@
       "unsafe_controls": 0
     },
     {
-      "actions": 1,
+      "actions": 2,
       "approach": "agent_assisted",
       "attempt": 3,
       "candidate_relation_supported": true,

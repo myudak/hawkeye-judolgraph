@@ -182,15 +182,16 @@ lanjutan.
 MVP menerapkan batas berikut:
 
 1. Hanya URL HTTP(S) publik yang lolos validasi URL, DNS, dan destination policy.
-2. Satu scan mencakup maksimal tiga halaman same-site pada depth satu dan satu aksi baca yang
-   dipilih untuk mengisi evidence gap.
+2. Satu scan mencakup maksimal tiga halaman same-site pada depth satu dan loop baca berbatas
+   maksimal lima keputusan/tiga interaksi untuk mengisi evidence gap.
 3. Produk tidak login, register, membuat akun, memasukkan kredensial, menyelesaikan CAPTCHA,
    melewati pembatasan geografis, mengirim chat/form, membayar, deposit, withdrawal, betting,
    mengunduh binary, memasang aplikasi, atau menjalankan instruksi dari halaman target.
 4. Kandidat eksternal yang belum pernah dikumpulkan tidak dibuka otomatis. Recollection live hanya
    dijalankan sekali setelah approval eksplisit, dengan budget satu halaman dan depth nol.
-5. Observasi semantik memakai teks/DOM sebagai sumber utama. MVP tidak mengklaim OCR gambar atau
-   pengenalan logo visual.
+5. Observasi semantik memakai teks/DOM sebagai sumber utama. OCR Tesseract lokal bersifat opsional,
+   berbatas, dan provisional; mesin verifikasi tidak memilikinya. MVP tidak mengklaim pengenalan
+   logo visual.
 6. Produk tidak memberi label `illegal`, `criminal`, `verified_operator`, atau
    `confirmed_network`, serta tidak menghasilkan probabilitas kepemilikan.
 7. Skor perbandingan baseline berarti kemiripan bukti, bukan kemungkinan dua domain dimiliki pihak
@@ -448,8 +449,8 @@ fallback. Angka berikut hanya berlaku pada sepuluh fixture terkontrol.
 | Pendekatan | Provenance | Unsafe block | Task success | Observable recall | Precision | Mean actions | Candidate support | Replay |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | Static | 1.0000 | 1.0000 | 0.5000 | 0.2857 | 1.0000 | 0.0000 | 0.1667 | 1.0000 |
-| Rule-based | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.6000 | 1.0000 | 1.0000 |
-| Agent-assisted deterministic fallback | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.6000 | 1.0000 | 1.0000 |
+| Rule-based | 1.0000 | 1.0000 | 0.9000 | 0.8571 | 1.0000 | 0.6000 | 0.8333 | 1.0000 |
+| Agent-assisted deterministic fallback | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.7000 | 1.0000 | 1.0000 |
 
 Empat kontrol terlarang unik—Contact ambigu, Login, Register, dan Download—divalidasi pada masing-
 masing pendekatan, menghasilkan 12 policy checks dan seluruhnya diblokir. Tiga fallback attempts per

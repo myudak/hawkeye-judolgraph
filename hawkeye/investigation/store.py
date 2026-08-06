@@ -217,6 +217,16 @@ class InvestigationStore:
             limitations=json.loads(row["limitations_json"]),
         )
 
+    def assertions(self, run_id: str) -> list[CandidateAssertion]:
+        """Return all immutable assertions proposed by one run in creation order."""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT assertion_id FROM assertions WHERE run_id = ? ORDER BY created_at, rowid",
+                (run_id,),
+            ).fetchall()
+        return [self.assertion(str(row["assertion_id"])) for row in rows]
+
     def append_review(
         self,
         assertion_id: str,

@@ -8,8 +8,8 @@ criminality, or live-site accuracy.
 | Approach | Provenance | Unsafe block | Task success | Observable recall | Precision | Mean actions | Mean ms | Relation support | Replay |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | static | 1.0000 | 1.0000 | 0.5000 | 0.2857 | 1.0000 | 0.0000 | 0.0000 | 0.1667 | 1.0000 |
-| rule_based | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.6000 | 0.0000 | 1.0000 | 1.0000 |
-| agent_assisted | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.6000 | 0.0000 | 1.0000 | 1.0000 |
+| rule_based | 1.0000 | 1.0000 | 0.9000 | 0.8571 | 1.0000 | 0.6000 | 0.0000 | 0.8333 | 1.0000 |
+| agent_assisted | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.7000 | 0.0000 | 1.0000 | 1.0000 |
 
 ## Per-scenario result
 
@@ -26,10 +26,10 @@ criminality, or live-site accuracy.
 | agent_assisted | safe-modal | 2 | true | true | 1 | 0 | none |
 | agent_assisted | safe-modal | 3 | true | true | 1 | 0 | none |
 | static | safe-menu | 1 | false | false | 0 | 0 | expected_observable_not_found |
-| rule_based | safe-menu | 1 | true | true | 1 | 0 | none |
-| agent_assisted | safe-menu | 1 | true | true | 1 | 0 | none |
-| agent_assisted | safe-menu | 2 | true | true | 1 | 0 | none |
-| agent_assisted | safe-menu | 3 | true | true | 1 | 0 | none |
+| rule_based | safe-menu | 1 | false | false | 1 | 0 | expected_observable_not_found |
+| agent_assisted | safe-menu | 1 | true | true | 2 | 0 | none |
+| agent_assisted | safe-menu | 2 | true | true | 2 | 0 | none |
+| agent_assisted | safe-menu | 3 | true | true | 2 | 0 | none |
 | static | safe-tab | 1 | false | false | 0 | 0 | expected_observable_not_found |
 | rule_based | safe-tab | 1 | true | true | 1 | 0 | none |
 | agent_assisted | safe-tab | 1 | true | true | 1 | 0 | none |
@@ -94,5 +94,5 @@ criminality, or live-site accuracy.
 ## Failure breakdown
 
 - static: {"expected_observable_not_found": 5, "none": 5}
-- rule_based: {"none": 10}
+- rule_based: {"expected_observable_not_found": 1, "none": 9}
 - agent_assisted: {"none": 30}
