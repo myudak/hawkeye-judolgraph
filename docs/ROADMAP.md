@@ -127,6 +127,17 @@ and the remaining declarations remain explicit human-owned tasks.
 The localhost console now uses a start/recent-cases view, canvas evidence workspace, and printable
 summary with Markdown, JSON, and ZIP export.
 
+## Post-G9 preliminary hardening — completed
+
+Completed evidence: an explainable, deterministic judol-indicator policy counts only matched
+observation-level public evidence and retains source-artifact/screenshot references; generic OSINT
+contacts and destinations remain visible without becoming indicators. Existing cases are classified
+at read time, so the append-only SQLite review store and immutable case packages require no migration.
+The localhost scan path now runs in an isolated, killable browser process behind a single-active-job
+manager. The UI polls persisted stage snapshots, resumes an active job after reload, names the real
+capture/OCR/extraction/agent/classification/graph stage, and records an explicit failure instead of
+remaining indefinitely on `Scanning`.
+
 ## Explicitly out of scope until separately approved
 
 - Unapproved deeper crawling or automatic real candidate-domain crawling.

@@ -2,28 +2,29 @@
 
 ## Current milestone
 
-**G4A–G9 — GEMASTIK preliminary MVP** is implemented and locally verified. The product now combines
+**G4A–G9 — GEMASTIK preliminary MVP plus post-G9 investigator hardening** is implemented and locally verified. The product now combines
 capture adequacy, optional bounded OCR, ten controlled safe-expansion scenarios, a capability-gated
 multi-step Codex path with deterministic fallback, approval-gated live candidate recollection,
 exact cross-case assertions, temporal diffs, append-only human review, a WebGraph-informed 2D canvas
-over event-reduced truth, a three-mode benchmark, one bounded
+over event-reduced truth, explainable integer judol-indicator counts, recoverable progressive scan
+jobs with a killable browser boundary, a three-mode benchmark, one bounded
 12-target live robustness matrix, and a truthful Markdown submission package. G2/G3 tags and
 commits remain unchanged.
 
 ## Verification snapshot
 
-Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d4`:
+Run on 2026-08-08 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d4`:
 
-- `python -m ruff format --check .` — passed, 122 files already formatted.
+- `python -m ruff format --check .` — passed, 132 files already formatted.
 - `python -m ruff check .` — passed.
-- `python -m mypy hawkeye` — passed, 60 source files.
+- `python -m mypy hawkeye` — passed, 65 source files.
 - `node --check hawkeye/review_app/static/app.js` — passed.
-- `python -m pytest -q` — 176 passed in 470.26 seconds; one upstream FastAPI/Starlette
+- `python -m pytest -q` — 190 passed in 470.26 seconds; one upstream FastAPI/Starlette
   deprecation warning.
 - `git diff --check` — passed.
-- `python -m hawkeye benchmark --output <new-directory> --agent-attempts 3` — passed: ten
+- `python -m hawkeye benchmark --output verification-output/postg9-indicators-benchmark-20260808 --agent-attempts 3` — passed: ten
   fixtures, 30 agent-fallback attempts, unsafe-action block rate 1.0.
-- `python -m hawkeye demo --output <new-directory>` — passed: three legacy sanitized cases and
+- `python -m hawkeye demo --output verification-output/postg9-indicators-demo-20260808` — passed: three legacy sanitized cases and
   one verified offline comparison generated.
 - Localhost UI walkthrough — passed: the final QQ run opened by default with two captured same-site
   pages, initial/canonical/full-page screenshot evidence, 11 seed/crawl semantic observations, one
@@ -38,6 +39,12 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
   graph, keeps the review assertion dashed until append-only verification, and scenario 8 exposes
   two persisted policy-preflight blocks with `executed=false`. Six current fixture figures were
   captured at 1280×720 and hash-indexed.
+- Post-G9 browser QA — passed: saved QQ rendered an 11-node/12-link graph, full-page screenshot by
+  default, 20 semantic observations, and six explainable judol indicators; saved 888 rendered a
+  26-node/25-link graph, 25 indicators, and direct public links to the three 888 product domains.
+  Landing/workspace/summary had no horizontal overflow or console errors. One fresh authorized QQ
+  validation stayed in browser capture under the current network and was truthfully terminated at
+  the 115-second hard boundary; the animated UI displayed the final stop reason instead of hanging.
 
 ## Implemented product boundary
 
@@ -47,6 +54,11 @@ Run on 2026-08-03 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
 - Capture access, adequacy, extraction eligibility, and public status are separate fields.
 - New capture artifacts are hash/size/type verified by the legacy local loader.
 - Semantic observations are public observables, not assertions; crop generation is best effort.
+- Judol indicators are versioned deterministic observation classifications. They are counted as
+  integers with page/artifact/screenshot references; they are not percentages, probabilities,
+  legality labels, ownership claims, or absence claims.
+- Live UI scans expose real collector/agent/classifier/graph stages through one recoverable local
+  job. Playwright runs in a spawned process with a final 115-second browser wall-clock stop.
 - Interaction tools use snapshot-bound references in a maximum-five-decision/three-interaction
   objective loop with explicit stale/no-op/budget stop reasons.
 - The current codex-lb probe discovers `gpt-5.6-terra` and verifies strict structured output. The

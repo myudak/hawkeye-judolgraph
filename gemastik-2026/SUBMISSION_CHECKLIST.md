@@ -33,6 +33,8 @@
 - [x] Capture actual final UI screenshots after full gate.
 - [x] Verify screenshots contain only fixture `.invalid` data.
 - [x] Record screenshot hashes and source run IDs in `FIGURE_INDEX.md`.
+- [ ] TODO — requires completed test: render and inspect the final human-exported PDF and recorded
+  video after identities, signatures, and official formatting are supplied.
 - [ ] Record three-minute video from actual software.
 - [ ] Verify timestamps, subtitles, audio/music rights, resolution, and file size.
 - [x] Capture one blocked fixture preflight with `executed=false`; include it in the recording.

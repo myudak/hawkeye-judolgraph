@@ -12,7 +12,17 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from hawkeye.collector.safety import SafetyPolicy
-from hawkeye.pipeline import investigate
+from hawkeye.pipeline import ProgressCallback
+from hawkeye.review_app.jobs import (
+    InvestigationJobAlreadyRunning,
+    InvestigationJobManager,
+    InvestigationJobNotFound,
+)
+from hawkeye.review_app.live_capture import (
+    LiveCaptureTimeoutError,
+    LiveCaptureWorkerError,
+    run_isolated_live_capture,
+)
 from hawkeye.review_app.loader import (
     CaseIntegrityError,
     CaseLoader,
@@ -129,6 +139,24 @@ def create_app(
     async def bounded_input_error(_: Request, error: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"error": str(error)[:500]})
 
+    @app.exception_handler(LiveCaptureTimeoutError)
+    async def live_capture_timeout(_: Request, error: LiveCaptureTimeoutError) -> JSONResponse:
+        return JSONResponse(status_code=504, content={"error": str(error)[:500]})
+
+    @app.exception_handler(LiveCaptureWorkerError)
+    async def live_capture_worker_error(_: Request, error: LiveCaptureWorkerError) -> JSONResponse:
+        return JSONResponse(status_code=502, content={"error": str(error)[:500]})
+
+    @app.exception_handler(InvestigationJobNotFound)
+    async def investigation_job_not_found(_: Request, __: InvestigationJobNotFound) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"error": "investigation_job_not_found"})
+
+    @app.exception_handler(InvestigationJobAlreadyRunning)
+    async def investigation_job_running(
+        _: Request, error: InvestigationJobAlreadyRunning
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"error": str(error)[:500]})
+
     @app.get("/health", include_in_schema=False)
     def health() -> dict[str, object]:
         return {
@@ -172,32 +200,87 @@ def create_app(
         )
 
     if workspace is not None:
+        scan_jobs = InvestigationJobManager(deadline_seconds=150)
+
+        def collect_and_investigate(
+            *,
+            seed_url: str,
+            investigation_name: str,
+            guided: bool,
+            report: ProgressCallback,
+        ) -> dict[str, object]:
+            case_id = make_case_id()
+            report("validating_seed", {"seed_url": seed_url})
+            active_safety_policy.validate_crawl_url(seed_url)
+            report("launching_browser", {"case_id": case_id})
+            result = run_isolated_live_capture(
+                seed_url,
+                output=cases_path,
+                case_id=case_id,
+                safety_policy=active_safety_policy,
+                progress_callback=report,
+            )
+            report("verifying_evidence", {"case_id": result.case.case_id})
+            loaded = loader.load(result.case.case_id)
+            report(
+                "running_agent",
+                {
+                    "mode": "guided" if guided else "capture_only",
+                    "observation_count": len(result.observations),
+                },
+            )
+            investigation = workspace.create_live_run(
+                result,
+                known_cases=_known_case_match_context(loader, exclude_case_id=result.case.case_id),
+                investigation_name=investigation_name,
+                guided=guided,
+            )
+            report(
+                "classifying_indicators",
+                {"observation_count": len(result.observations)},
+            )
+            details = case_details(loaded, comparisons=[])
+            report("building_graph", {"workspace_id": investigation["workspace_id"]})
+            return {**details, **investigation}
 
         @app.post("/api/cases", include_in_schema=False)
         def create_case(payload: _CollectSeedRequest, request: Request) -> dict[str, object]:
             """Collect a bounded same-site case and launch its auditable investigation run."""
 
             _require_same_origin(request)
-            result = investigate(
-                payload.seed_url,
-                output=cases_path,
-                timeout_seconds=30,
-                case_timeout_seconds=100,
-                max_pages=3,
-                max_depth=1,
-                case_id=make_case_id(),
-                safety_policy=active_safety_policy,
-                enable_ocr=True,
-            )
-            loaded = loader.load(result.case.case_id)
-            details = case_details(loaded, comparisons=[])
-            investigation = workspace.create_live_run(
-                result,
-                known_cases=_known_case_match_context(loader, exclude_case_id=result.case.case_id),
+            return collect_and_investigate(
+                seed_url=payload.seed_url,
                 investigation_name=payload.investigation_name,
                 guided=payload.investigation_mode == "guided",
+                report=lambda _stage, _detail: None,
             )
-            return {**details, **investigation}
+
+        @app.post("/api/investigation-jobs", include_in_schema=False, status_code=202)
+        def create_investigation_job(
+            payload: _CollectSeedRequest, request: Request
+        ) -> dict[str, object]:
+            _require_same_origin(request)
+            seed_url = payload.seed_url
+            investigation_name = payload.investigation_name
+            guided = payload.investigation_mode == "guided"
+
+            def run(report: ProgressCallback) -> dict[str, object]:
+                return collect_and_investigate(
+                    seed_url=seed_url,
+                    investigation_name=investigation_name,
+                    guided=guided,
+                    report=report,
+                )
+
+            return scan_jobs.start(run)
+
+        @app.get("/api/investigation-jobs/active", include_in_schema=False)
+        def active_investigation_job() -> dict[str, object]:
+            return {"job": scan_jobs.active()}
+
+        @app.get("/api/investigation-jobs/{job_id}", include_in_schema=False)
+        def investigation_job_status(job_id: str) -> dict[str, object]:
+            return scan_jobs.status(job_id)
 
         @app.get("/api/mvp/scenarios", include_in_schema=False)
         def mvp_scenarios() -> dict[str, object]:

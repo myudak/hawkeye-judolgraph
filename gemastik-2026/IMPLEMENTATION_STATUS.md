@@ -10,6 +10,7 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | HTML 2 MB extraction / 5 MB persistence policy | implemented | `hawkeye/pipeline.py`, `hawkeye/collector/playwright_collector.py` | oversize capture tests | Inspect oversize fixture artifacts | Above 5 MB HTML is intentionally omitted |
 | Initial/final/bounded full-page artifacts | implemented | `hawkeye/storage/filesystem.py` | capture adequacy tests | Open evidence inventory | Full page capped at 12,000 px |
 | Fifteen semantic observation types | implemented | `hawkeye/semantic_evidence.py` | `tests/test_semantic_evidence.py` | Evidence inspector | DOM remains primary |
+| Explainable count-based judol indicators | implemented | `hawkeye/indicators.py`, review loader/UI | `tests/test_indicators.py` | Recent case → evidence → summary | Integer evidence count only; not percentage, probability, legality, or ownership |
 | Bounded optional screenshot OCR | implemented | `hawkeye/ocr.py`, case pipeline/storage | `tests/test_ocr.py`, UI capture test | OCR metadata artifact | Tesseract is not installed on the verification machine; derived evidence is provisional |
 | Evidence crops | implemented | `hawkeye/pipeline.py` | semantic evidence test | Open crop in collected case | Best-effort only for stable viewport boxes |
 | Exactly ten interaction scenarios | implemented | `evaluation/fixtures/controlled-interactions-v1.json` | `tests/test_controlled_interaction.py` | Seed selector | Fixture scope only |
@@ -29,6 +30,8 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Idempotent progressive graph | implemented | `hawkeye/investigation/reducer.py` | replay test | Canvas replay/refresh | Persistent truth remains independent of canvas state |
 | Three-view start/workspace/summary console | implemented | review app static assets and export API | Node syntax, UI/API/export tests, browser QA | Recent case → graph → summary | Localhost-only, dependency-free vanilla JS |
 | Screenshot carousel/timeline/search/review | implemented | review app static assets/workspace API | `tests/test_mvp_workspace_ui.py`, browser QA | Local UI | Initial/canonical/full-page views depend on capture availability |
+| Recoverable progressive scan jobs and browser hard stop | implemented | `hawkeye/review_app/jobs.py`, `hawkeye/review_app/live_capture.py` | `tests/test_investigation_jobs.py`, progressive UI API test | Start guided scan and observe named stages | One active localhost job; browser capture hard-stops at 115 seconds |
+| Animated truthful scan instrumentation | implemented | review app static assets | Node syntax, reduced-motion, browser QA | Observe orbit/stage/history/elapsed states | No fabricated percentage; motion follows backend stage snapshots |
 | Reduced-motion mode | implemented | review app static assets | frontend syntax/UI API gate | OS reduced-motion setting | Motion is removed; graph information remains |
 | Three-mode benchmark | implemented | `hawkeye/benchmark.py`, checked-in results | `tests/test_benchmark.py` | Benchmark table | Runtime rounds to milliseconds; fast runs can show 0 ms |
 | Optional live robustness observations | implemented | ignored `evaluation/live-cases/` output | 12-target matrix plus final QQ run | Local QQ default only | QQ produced provisional evidence; live output is never official test truth |
@@ -38,16 +41,20 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 
 ## Current exact verification
 
-Verified on 2026-08-03 (Asia/Jakarta): Ruff format checked 122 files; Ruff lint passed; strict mypy
-passed for 60 source files; JavaScript syntax passed; pytest passed all 176 tests in 470.26 seconds
+Verified on 2026-08-08 (Asia/Jakarta): Ruff format checked 132 files; Ruff lint passed; strict mypy
+passed for 65 source files; JavaScript syntax passed; pytest passed all 190 tests in 470.26 seconds
 with one upstream FastAPI/Starlette deprecation warning; and `git diff --check` passed. A fresh
 ten-fixture/three-mode benchmark completed with 30 deterministic-fallback
 agent attempts and a 1.0 unsafe-action block rate. A fresh sanitized legacy CLI demo completed.
 
-Browser QA opened the latest QQ run as the local default with two captured same-site pages, three
-seed screenshot views, 11 provisional seed/crawl semantic observations, a completed real
-Codex-selected `/Contact` action, three contact-channel observations backed by the interaction
-screenshot/HTML/text/JSON, a direct candidate waiting for approval, and an 11-node/10-link graph.
+Browser QA opened a verified QQ Codex run with two captured same-site pages, full-page screenshot
+as the default evidence view, 20 semantic observations, six counted judol indicators, one safe
+stored agent action, and an 11-node/12-link event graph. The verified 888 run displayed 25 indicators
+and a 26-node/25-link graph with public links to `888casino.com`, `888poker.com`, and `888sport.com`.
+The start/workspace/summary views had no horizontal overflow or browser console errors. A fresh
+owner-authorized QQ guided validation remained in page capture under the current network; the new
+hard boundary terminated its browser process at 115 seconds and the UI changed from live stage
+instrumentation to an explicit stopped reason instead of hanging.
 Official figures use only
 sanitized fixtures: scenario 6 collapses equal URL identities, recollects Page B, displays a dashed
 two-observation assertion, and changes only that assertion to `solid_emphasized` after append-only

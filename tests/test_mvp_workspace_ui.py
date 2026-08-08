@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -145,3 +146,46 @@ def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_u
             "agent.objective.created",
         }
         assert client.get("/api/cases").json()["cases"][0]["case_id"] == payload["case_id"]
+
+
+def test_progressive_ui_job_reports_real_capture_stages(
+    tmp_path: Path,
+    fixture_server_url: str,
+) -> None:
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    app = create_app(
+        cases,
+        workspace_root=tmp_path / "workspace",
+        collection_safety_policy=SafetyPolicy(allow_loopback_for_testing=True),
+    )
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        created = client.post(
+            "/api/investigation-jobs",
+            json={
+                "seed_url": f"{fixture_server_url}normal-content.html",
+                "investigation_name": "Progress fixture",
+                "investigation_mode": "capture_only",
+            },
+        )
+        assert created.status_code == 202
+        job_id = created.json()["job_id"]
+        deadline = time.monotonic() + 45
+        status = created.json()
+        while status["status"] in {"queued", "running"} and time.monotonic() < deadline:
+            time.sleep(0.1)
+            status = client.get(f"/api/investigation-jobs/{job_id}").json()
+
+        assert status["status"] == "completed", status
+        stages = {item["stage"] for item in status["history"]}
+        assert {
+            "launching_browser",
+            "capturing_page",
+            "preserving_artifacts",
+            "extracting_evidence",
+            "classifying_indicators",
+            "building_graph",
+            "completed",
+        } <= stages
+        assert status["result"]["gambling_indicators"]["indicator_count"] >= 0
+        assert client.get("/api/investigation-jobs/active").json() == {"job": None}

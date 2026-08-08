@@ -33,6 +33,12 @@ const refs = {
   workspaceUrl: document.getElementById("workspace-url"),
   recentCases: document.getElementById("recent-cases"),
   investigationName: document.getElementById("investigation-name"),
+  captureProgress: document.getElementById("capture-progress"),
+  progressKicker: document.getElementById("progress-kicker"),
+  progressTitle: document.getElementById("progress-title"),
+  progressDetail: document.getElementById("progress-detail"),
+  progressElapsed: document.getElementById("progress-elapsed"),
+  progressStages: document.getElementById("progress-stages"),
   brandHome: document.getElementById("brand-home"),
   newInvestigation: document.getElementById("new-investigation"),
   openSummary: document.getElementById("open-summary"),
@@ -47,6 +53,45 @@ const evidenceSemantics = {
   comparison: "Evidence-similarity score",
   accessibility: "accessible relationship table",
   current: "aria-current",
+};
+
+const investigationStages = [
+  ["queued", "Queue"],
+  ["validating_seed", "Validate"],
+  ["launching_browser", "Browser"],
+  ["initializing_case", "Case"],
+  ["capturing_page", "Capture"],
+  ["preserving_artifacts", "Preserve"],
+  ["running_ocr", "OCR"],
+  ["extracting_evidence", "Extract"],
+  ["page_completed", "Commit page"],
+  ["generating_candidates", "Leads"],
+  ["finalizing_case", "Finalize"],
+  ["verifying_evidence", "Verify"],
+  ["running_agent", "Explore"],
+  ["classifying_indicators", "Classify"],
+  ["building_graph", "Graph"],
+  ["completed", "Ready"],
+];
+
+const investigationStageCopy = {
+  queued: ["Preparing isolated workspace", "A single local investigation slot has been reserved."],
+  validating_seed: ["Validating public destination", "Checking scheme, destination, and read-only collection policy."],
+  launching_browser: ["Launching isolated browser", "Starting a killable browser worker with a hard wall-clock boundary."],
+  initializing_case: ["Creating immutable case record", "Recording scope, page budget, depth, and the normalized seed."],
+  capturing_page: ["Capturing rendered page", "Waiting for visible render stability and collecting same-site public navigation."],
+  preserving_artifacts: ["Preserving source artifacts", "Saving initial, canonical, and full-page screenshots with rendered HTML and response facts."],
+  running_ocr: ["Checking screenshot text", "Running bounded local OCR as supplemental evidence; OCR never replaces source artifacts."],
+  extracting_evidence: ["Extracting public OSINT evidence", "Linking public contacts, offers, payments, destinations, and claims to page evidence."],
+  page_completed: ["Page evidence committed", "The current page record and evidence references are now persisted."],
+  generating_candidates: ["Generating reviewable leads", "Comparing verified evidence without treating similarity as ownership probability."],
+  finalizing_case: ["Finalizing case package", "Writing the manifest and truthful capture limitations."],
+  verifying_evidence: ["Re-verifying saved artifacts", "Checking the completed case package before the agent can inspect it."],
+  running_agent: ["Running policy-gated exploration", "Planning safe public interactions with deterministic fallback and recorded tool events."],
+  classifying_indicators: ["Classifying judol indicators", "Counting evidence-backed text/entity indicators without percentages or verdicts."],
+  building_graph: ["Building event-sourced graph", "Reducing persisted pages, observations, leads, and actions into the investigation view."],
+  completed: ["Investigation ready", "The saved case, graph, screenshots, evidence, and timeline are ready for review."],
+  failed: ["Investigation stopped safely", "The failure boundary was recorded; no result is presented as a completed capture."],
 };
 
 const ctx = refs.graphCanvas.getContext("2d", { alpha: true });
@@ -96,6 +141,9 @@ const view = {
   pointer: null,
   dragNode: null,
   frameTime: performance.now(),
+  activeJobId: null,
+  jobPolling: false,
+  progressClock: null,
 };
 
 function el(tag, className, text) {
@@ -190,6 +238,121 @@ function postJson(path, payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function formatElapsed(startedAt) {
+  const started = new Date(startedAt).getTime();
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
+  const seconds = String(elapsedSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function progressDetail(stage, detail = {}) {
+  if (stage === "capturing_page" && detail.page_id) {
+    return `${detail.page_id} · depth ${detail.depth || 0} · ${detail.queued_pages || 0} page(s) queued`;
+  }
+  if (stage === "preserving_artifacts" && detail.page_id) return `${detail.page_id} · screenshot, text, response, readiness, and HTML evidence`;
+  if (stage === "running_ocr" && detail.page_id) return `${detail.page_id} · bounded supplemental OCR check`;
+  if (stage === "extracting_evidence" && detail.page_id) return `${detail.page_id} · evidence-linked public entities and observations`;
+  if (stage === "page_completed" && detail.page_id) return `${detail.page_id} · ${detail.observations || 0} observation(s) persisted · ${titleCase(detail.adequacy)}`;
+  if (stage === "generating_candidates") return `${detail.page_count || 0} captured page(s) · ${detail.observation_count || 0} public observation(s)`;
+  if (stage === "finalizing_case") return `${detail.page_count || 0} page(s) · ${detail.candidate_count || 0} candidate lead(s)`;
+  if (stage === "classifying_indicators") return `${detail.observation_count || 0} public observation(s) under evidence-count policy`;
+  return investigationStageCopy[stage]?.[1] || "Recording the current bounded operation.";
+}
+
+function renderInvestigationProgress(job) {
+  refs.captureProgress.hidden = false;
+  const [title] = investigationStageCopy[job.stage] || [titleCase(job.stage)];
+  refs.progressKicker.textContent = job.status === "failed" ? "CAPTURE STOPPED" : job.status === "completed" ? "EVIDENCE SAVED" : "INVESTIGATION ACTIVE";
+  refs.progressTitle.textContent = title;
+  refs.progressDetail.textContent = job.error || progressDetail(job.stage, job.detail);
+  refs.progressElapsed.textContent = formatElapsed(job.started_at);
+  const reached = new Set((job.history || []).map((item) => item.stage));
+  const visibleStages = job.stage === "failed"
+    ? [...investigationStages, ["failed", "Stopped"]]
+    : investigationStages;
+  refs.progressStages.replaceChildren(...visibleStages.map(([stage, label]) => {
+    const item = el("li", "progress-stage", label);
+    item.dataset.stage = stage;
+    if (reached.has(stage)) item.classList.add("reached");
+    if (stage === job.stage) {
+      item.classList.add("active");
+      item.setAttribute("aria-current", "step");
+    }
+    return item;
+  }));
+  if (view.progressClock) window.clearInterval(view.progressClock);
+  if (["queued", "running"].includes(job.status)) {
+    view.progressClock = window.setInterval(() => {
+      refs.progressElapsed.textContent = formatElapsed(job.started_at);
+    }, 1000);
+  }
+}
+
+function setScanActive(active) {
+  document.body.dataset.scanning = active ? "true" : "false";
+  refs.scanButton.disabled = active;
+  refs.seedInput.disabled = active;
+  refs.investigationName.disabled = active;
+  document.querySelectorAll('input[name="investigation_mode"]').forEach((input) => { input.disabled = active; });
+  refs.scanButton.replaceChildren(
+    document.createTextNode(active ? "Investigation active " : "Start investigation "),
+    el("span", "", active ? "•••" : "→"),
+  );
+  if (!active && view.progressClock) {
+    window.clearInterval(view.progressClock);
+    view.progressClock = null;
+  }
+}
+
+async function monitorInvestigationJob(jobId) {
+  if (view.jobPolling && view.activeJobId === jobId) return;
+  view.activeJobId = jobId;
+  view.jobPolling = true;
+  setScanActive(true);
+  showScreen("landing");
+  const clientDeadline = Date.now() + 165000;
+  let latestJob = null;
+  try {
+    while (Date.now() < clientDeadline) {
+      const job = await requestJson(`/api/investigation-jobs/${encodeURIComponent(jobId)}`);
+      latestJob = job;
+      renderInvestigationProgress(job);
+      setStatus(`${investigationStageCopy[job.stage]?.[0] || titleCase(job.stage)} · ${formatElapsed(job.started_at)} elapsed`);
+      if (job.status === "completed") {
+        await refreshIndexes();
+        await wait(reduceMotion ? 0 : 420);
+        await loadRun(job.result.workspace_id);
+        toast("Public capture, OSINT indicators, graph, and timeline saved.", "success");
+        return;
+      }
+      if (job.status === "failed") throw new Error(job.error || "Investigation stopped safely");
+      await wait(650);
+    }
+    throw new Error("The UI stopped waiting after 165 seconds; reload to recover the server-side job state.");
+  } catch (error) {
+    const failedJob = {
+      status: "failed",
+      stage: "failed",
+      started_at: latestJob?.started_at || new Date().toISOString(),
+      history: latestJob?.history || [],
+      detail: {},
+      error: error.message,
+    };
+    renderInvestigationProgress(failedJob);
+    toast(error.message, "error");
+    setStatus(`Capture stopped safely · ${error.message}`);
+  } finally {
+    view.jobPolling = false;
+    view.activeJobId = null;
+    setScanActive(false);
+  }
 }
 
 function caseArtifactUrl(caseId, evidenceId) {
@@ -1139,6 +1302,33 @@ function intelSection(title, content) {
   return section;
 }
 
+function indicatorSummaryFor(details) {
+  return details?.gambling_indicators || details?.source_case?.gambling_indicators || {
+    status: "insufficient_evidence",
+    indicator_count: 0,
+    reviewed_observation_count: 0,
+    category_counts: {},
+    osint_counts: {},
+    classifications: [],
+    limitations: [],
+  };
+}
+
+function indicatorBoundary(summary) {
+  const block = el("div", "indicator-boundary");
+  block.append(
+    el("strong", "", `${summary.indicator_count || 0} evidence item${summary.indicator_count === 1 ? "" : "s"}`),
+    el("p", "", "Rule-classified public text/entity evidence. This count is not a percentage, probability, legal conclusion, or operator attribution."),
+  );
+  const categories = Object.entries(summary.category_counts || {});
+  if (categories.length) {
+    const tags = el("div", "indicator-tags");
+    categories.forEach(([category, count]) => tags.append(el("span", "", `${titleCase(category)} · ${count}`)));
+    block.append(tags);
+  }
+  return block;
+}
+
 function renderCaseIntel(details) {
   const host = hostnameFrom(details.final_url_display || details.seed_url_display);
   const hero = el("section", "intel-hero");
@@ -1156,11 +1346,13 @@ function renderCaseIntel(details) {
   hero.append(statuses);
 
   const stats = el("div", "stat-grid");
+  const indicators = indicatorSummaryFor(details);
   stats.append(
     metricCard(details.pages?.length || 0, "Captured pages"),
     metricCard(details.evidence?.length || 0, "Verified artifacts"),
     metricCard(details.observations?.length || 0, "Semantic observations"),
     metricCard(details.candidates?.length || 0, "Pending leads"),
+    metricCard(indicators.indicator_count || 0, "Judol indicators"),
   );
 
   const limitations = el("ul", "limitation-list");
@@ -1173,6 +1365,7 @@ function renderCaseIntel(details) {
   refs.intelContent.replaceChildren(
     hero,
     intelSection("Capture facts", stats),
+    intelSection("OSINT indicator boundary", indicatorBoundary(indicators)),
     intelSection("Known limits", limitations),
     intelSection("Interpretation boundary", policy),
   );
@@ -1180,6 +1373,7 @@ function renderCaseIntel(details) {
 
 function renderRunIntel(details) {
   const source = details.source_case;
+  const indicators = indicatorSummaryFor(details);
   const runNodes = details.graph?.nodes || [];
   const events = details.events || [];
   const capturedPages = source?.pages?.length
@@ -1213,9 +1407,15 @@ function renderRunIntel(details) {
     metricCard(semanticEvidence, "Semantic evidence"),
     metricCard(details.pending_leads?.length || 0, "Approval leads"),
     metricCard(completedActions, "Safe agent actions"),
+    metricCard(indicators.indicator_count || 0, "Judol indicators"),
   );
   const policy = el("p", "policy-copy", "Replay animation is a projection of persisted events. Reloading reconstructs the same graph truth; animation never creates evidence.");
-  refs.intelContent.replaceChildren(hero, intelSection("Run facts", stats), intelSection("Evidence rule", policy));
+  refs.intelContent.replaceChildren(
+    hero,
+    intelSection("Run facts", stats),
+    intelSection("OSINT indicator boundary", indicatorBoundary(indicators)),
+    intelSection("Evidence rule", policy),
+  );
 }
 
 function factList(entries) {
@@ -1340,7 +1540,7 @@ function renderCaseInspector(details, selected) {
       card.append(
         el("b", "", titleCase(observation.type)),
         el("strong", "", observation.display_value),
-        el("span", "", `${Math.round(observation.confidence * 100)}% confidence · ${titleCase(observation.evidence_strength)}`),
+        el("span", "", `${titleCase(observation.evidence_strength)} evidence · ${valueOr(observation.extraction_method, "recorded extractor")}`),
       );
       observations.append(card);
     });
@@ -1348,6 +1548,25 @@ function renderCaseInspector(details, selected) {
     observations.append(el("p", "policy-copy", "Extraction withheld or no semantic observation recorded. This is not an absence claim."));
   }
   children.push(evidenceBlock("Semantic evidence", observations));
+
+  const indicatorSummary = indicatorSummaryFor(details);
+  const indicatorEvidence = el("div");
+  const counted = (indicatorSummary.classifications || []).filter((item) => item.label === "indicator");
+  counted.forEach((item) => {
+    const card = el("article", "observation-card indicator-card");
+    card.append(
+      el("b", "", titleCase(item.category)),
+      el("strong", "", item.display_value || item.observation_id),
+      el("span", "", `${item.observation_id} · ${item.matched_terms?.join(", ") || "page context"}`),
+      el("span", "", `Source ${item.source_artifact_id} · screenshot ${item.screenshot_evidence_id}`),
+    );
+    indicatorEvidence.append(card);
+  });
+  if (!counted.length) indicatorEvidence.append(el("p", "policy-copy", "No controlled judol indicator matched this captured evidence. This is not an absence claim."));
+  children.push(evidenceBlock(
+    `Judol indicators · ${indicatorSummary.indicator_count || 0}`,
+    indicatorEvidence,
+  ));
 
   if (details.candidates?.length) {
     const candidates = el("div");
@@ -1440,6 +1659,16 @@ function renderRunInspector(details, selected) {
     if (gallery) children.push(gallery);
   }
   children.push(evidenceBlock("Persisted state", facts));
+  const indicators = indicatorSummaryFor(details);
+  children.push(evidenceBlock(
+    `Judol indicators · ${indicators.indicator_count || 0}`,
+    summaryRows(
+      (indicators.classifications || [])
+        .filter((item) => item.label === "indicator")
+        .map((item) => [item.display_value || item.observation_id, titleCase(item.category)]),
+      "No controlled judol indicator matched the captured source evidence.",
+    ),
+  ));
   if (Object.keys(attributes).length) children.push(evidenceBlock("Node evidence", factList(Object.entries(attributes).slice(0, 8))));
   children.push(evidenceBlock("Run artifacts", artifactGrid));
 
@@ -1569,6 +1798,7 @@ function renderRecentCases() {
       subtitle: item.case_id,
       state: titleCase(item.lead_status || item.agent_stop_reason || "captured"),
       updated: item.updated_at,
+      indicators: item.gambling_indicator_count,
     })),
     ...view.cases.filter((item) => item.integrity === "verified").map((item) => ({
       kind: "case",
@@ -1577,6 +1807,7 @@ function renderRecentCases() {
       subtitle: item.case_id,
       state: titleCase(item.capture_adequacy || "verified"),
       updated: item.completed_at,
+      indicators: item.gambling_indicator_count,
     })),
   ].slice(0, 6);
   if (!recent.length) {
@@ -1587,7 +1818,10 @@ function renderRecentCases() {
     const button = el("button", "recent-case");
     button.type = "button";
     const identity = el("span");
-    identity.append(el("strong", "", item.title), el("small", "", item.subtitle));
+    identity.append(
+      el("strong", "", item.title),
+      el("small", "", `${item.subtitle}${Number.isInteger(item.indicators) ? ` · ${item.indicators} judol indicator${item.indicators === 1 ? "" : "s"}` : ""}`),
+    );
     button.append(
       identity,
       el("span", "case-state", item.state),
@@ -1636,6 +1870,7 @@ function renderSummary() {
   const pendingLeads = details.pending_leads || [];
   const pending = Number(details.pending_review_count || 0) + pendingLeads.length;
   const candidateCount = assertions.length + pendingLeads.length;
+  const indicators = indicatorSummaryFor(details);
   const host = hostnameFrom(details.seed_url || sourceCase.final_url_display || sourceCase.seed_url_display || details.case_id);
   refs.summarySubtitle.textContent = `${host} · replay is reconstructed from persisted evidence and events.`;
 
@@ -1645,6 +1880,7 @@ function renderSummary() {
     [observations.length || events.filter((item) => item.kind === "observation.created").length, "Public observations"],
     [candidateCount, "Candidate relations"],
     [pending, "Pending review"],
+    [indicators.indicator_count || 0, "Judol indicators"],
   ].forEach(([value, label]) => {
     const stat = el("div", "summary-stat");
     stat.append(el("strong", "", value), el("span", "", label));
@@ -1665,6 +1901,27 @@ function renderSummary() {
     "Collected pages",
     `${pages.length} saved page records`,
     summaryRows(pages.map((page) => [page.final_url_display || page.final_url || page.normalized_url || page.url || page.id, titleCase(page.capture_adequacy || page.state || "captured")]), "No collected page list is attached to this run."),
+  ));
+  left.append(summaryCard(
+    "Public OSINT evidence profile",
+    `${indicators.reviewed_observation_count || 0} observation-level classifications`,
+    summaryRows(
+      Object.entries(indicators.osint_counts || {}).map(([category, count]) => [titleCase(category), `${count} evidence item${count === 1 ? "" : "s"}`]),
+      "No semantic OSINT observations were available for classification.",
+    ),
+  ));
+  left.append(summaryCard(
+    "Judol indicator evidence",
+    `${indicators.indicator_count || 0} counted · no percentage or probability`,
+    summaryRows(
+      (indicators.classifications || [])
+        .filter((item) => item.label === "indicator")
+        .map((item) => [
+          `${item.display_value || item.observation_id} · ${item.observation_id}`,
+          `${titleCase(item.category)} · ${item.matched_terms?.join(", ") || "context"}`,
+        ]),
+      "No controlled judol indicator matched the captured public evidence.",
+    ),
   ));
   left.append(summaryCard(
     "Candidate relationships",
@@ -1723,6 +1980,7 @@ function renderInspectorTab(tab) {
     return;
   }
   if (tab === "overview") {
+    const indicators = indicatorSummaryFor(details);
     refs.inspectorContent.replaceChildren(
       inspectorHeader("Investigation overview", hostnameFrom(details.seed_url || details.final_url_display || details.case_id), "A concise view of scope, state, and review posture."),
       evidenceBlock("Status", factList([
@@ -1730,7 +1988,10 @@ function renderInspectorTab(tab) {
         ["Lead state", details.lead_status || "Not applicable"],
         ["Agent stop", details.agent_stop_reason || "Not applicable"],
         ["Events", details.events?.length || 0],
+        ["Judol indicators", indicators.indicator_count || 0],
+        ["Indicator policy", indicators.policy_version || "evidence-count-v1"],
       ])),
+      evidenceBlock("Interpretation", indicatorBoundary(indicators)),
     );
     return;
   }
@@ -1798,7 +2059,13 @@ async function refreshIndexes() {
     requestJson("/api/mvp/runs"),
   ]);
   view.cases = casesResult.status === "fulfilled" ? casesResult.value.cases || [] : [];
-  view.runs = runsResult.status === "fulfilled" ? runsResult.value.runs || [] : [];
+  const caseIndicators = new Map(view.cases.map((item) => [item.case_id, item.gambling_indicator_count]));
+  view.runs = runsResult.status === "fulfilled"
+    ? (runsResult.value.runs || []).map((item) => ({
+      ...item,
+      gambling_indicator_count: caseIndicators.get(item.source_case_id),
+    }))
+    : [];
   renderSelector();
   renderRecentCases();
 }
@@ -1825,35 +2092,41 @@ async function boot() {
   void loadCapability();
   showScreen("landing");
   setStatus(`${view.runs.length} investigations · ${view.cases.length} saved captures · ready`);
+  try {
+    const active = await requestJson("/api/investigation-jobs/active");
+    if (active.job) void monitorInvestigationJob(active.job.job_id);
+  } catch {
+    // Read-only deployments do not expose investigation jobs.
+  }
 }
 
 refs.scanForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const seedUrl = refs.seedInput.value.trim();
-  refs.scanButton.disabled = true;
-  refs.scanButton.textContent = "Scanning…";
-  setStatus("Capturing up to 3 same-site pages · waiting for render stability · one safe agent action…");
+  setScanActive(true);
+  setStatus("Creating an isolated, recoverable investigation job…");
   try {
     const mode = document.querySelector('input[name="investigation_mode"]:checked')?.value || "guided";
-    const details = await postJson("/api/cases", {
+    const job = await postJson("/api/investigation-jobs", {
       seed_url: seedUrl,
       investigation_name: refs.investigationName.value.trim(),
       investigation_mode: mode,
     });
-    await refreshIndexes();
-    await loadRun(details.workspace_id);
-    toast("Public capture and investigation timeline saved.", "success");
+    renderInvestigationProgress(job);
+    setScanActive(false);
+    await monitorInvestigationJob(job.job_id);
   } catch (error) {
     toast(error.message, "error");
     setStatus(`Capture stopped safely · ${error.message}`);
-  } finally {
-    refs.scanButton.disabled = false;
-    refs.scanButton.replaceChildren(el("span", "", "→"), document.createTextNode(" Scan"));
+    setScanActive(false);
   }
 });
 
 refs.brandHome.addEventListener("click", () => showScreen("landing"));
-refs.newInvestigation.addEventListener("click", () => showScreen("landing"));
+refs.newInvestigation.addEventListener("click", () => {
+  if (!view.jobPolling) refs.captureProgress.hidden = true;
+  showScreen("landing");
+});
 refs.openSummary.addEventListener("click", () => {
   if (!view.currentDetails) return;
   renderSummary();

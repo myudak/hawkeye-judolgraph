@@ -199,6 +199,17 @@ block rate, mean actions/runtime, candidate relation support, and replay consist
 measured locally and rounded to milliseconds. Synthetic results must never be described as live
 accuracy, ownership probability, operator identification, criminality, or legal status.
 
+The post-G9 indicator checks are observation-level and deterministic. Fixtures assert direct-term
+counting, same-page context for typed transaction/offer evidence, and non-counting of generic
+contacts/payments/links. Acceptance requires every counted classification to resolve its page,
+source artifact, and screenshot reference. The output is an integer evidence count; percentage,
+probability, and site-level legality labels are prohibited.
+
+The progressive-scan test uses only the loopback fixture server. It must observe real capture,
+artifact-preservation, extraction, indicator, graph, and completed stages through the job API. A
+separate forced short wall-clock test must terminate the spawned browser worker without leaving the
+test process waiting indefinitely. Live URLs remain qualitative and are not used for these tests.
+
 External candidate mode stops at an approval event. A user may explicitly approve one directly
 observed candidate, after which the product performs one page/depth-zero collection and proposes
 only a `publicly_links_to` assertion for review. The official benchmark and demo still use reserved

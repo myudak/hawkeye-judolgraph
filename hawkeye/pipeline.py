@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
@@ -57,6 +57,7 @@ from hawkeye.semantic_evidence import extract_semantic_observations
 from hawkeye.storage import CaseStorage, make_case_id
 
 MAX_DISCOVERED_LINKS_PER_PAGE = 200
+ProgressCallback = Callable[[str, dict[str, object]], None]
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,7 @@ def investigate(
     corpus_root: Path | str | None = None,
     enable_ocr: bool = False,
     ocr_executable: str | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> InvestigationResult:
     """Collect a seed plus a deterministic, same-host, depth-one BFS frontier.
 
@@ -107,6 +109,7 @@ def investigate(
         max_redirects=max_redirects,
     )
     safety = safety_policy or SafetyPolicy()
+    _emit_progress(progress_callback, "validating_seed", seed_url=seed_url)
     validated_seed = safety.validate_crawl_url(seed_url)
     normalized_seed = validated_seed.normalized_url
     chosen_case_id = case_id or make_case_id()
@@ -166,6 +169,13 @@ def investigate(
 
     storage.write_json("case.json", case.model_dump(mode="json"))
     storage.log(f"case_started seed_url={normalized_seed}")
+    _emit_progress(
+        progress_callback,
+        "initializing_case",
+        case_id=chosen_case_id,
+        max_pages=max_pages,
+        max_depth=max_depth,
+    )
 
     while queue:
         target = queue.popleft()
@@ -208,6 +218,13 @@ def investigate(
 
         _replace_page(pages, target.page_id, state="visiting")
         _replace_frontier(frontier, target.frontier_id, state="visiting")
+        _emit_progress(
+            progress_callback,
+            "capturing_page",
+            page_id=current.id,
+            depth=current.depth,
+            queued_pages=len(queue),
+        )
         page_timeout = min(timeout_seconds, remaining)
         try:
             collector = BrowserCollector(
@@ -249,6 +266,13 @@ def investigate(
             if current.depth == 0:
                 break
             continue
+
+        _emit_progress(
+            progress_callback,
+            "preserving_artifacts",
+            page_id=current.id,
+            final_url=collected.final_url,
+        )
 
         if current.depth == 0:
             final_hostname = crawl_hostname(collected.final_url)
@@ -364,6 +388,7 @@ def investigate(
         ocr_result = None
         ocr_metadata_evidence = None
         if enable_ocr:
+            _emit_progress(progress_callback, "running_ocr", page_id=current.id)
             ocr_source = collected.full_page_screenshot or collected.screenshot
             ocr_result = run_bounded_ocr(ocr_source, executable=ocr_executable)
             ocr_metadata_evidence = storage.save_ocr_metadata(
@@ -439,6 +464,7 @@ def investigate(
         )
         page_entities: list[ExtractedEntity] = []
         if extraction_eligible and html_evidence is not None:
+            _emit_progress(progress_callback, "extracting_evidence", page_id=current.id)
             page_entities = extract_entities(
                 collected.html,
                 seed_url=normalized_seed,
@@ -615,6 +641,13 @@ def investigate(
             f"adequacy={readiness.capture_adequacy.value} "
             f"eligible={extraction_eligible} tier={extraction_tier} entities={len(page_entities)}"
         )
+        _emit_progress(
+            progress_callback,
+            "page_completed",
+            page_id=current.id,
+            adequacy=readiness.capture_adequacy.value,
+            observations=len(observations),
+        )
 
         completed_page = _page_by_id(pages, target.page_id)
         if (
@@ -692,6 +725,12 @@ def investigate(
     selected_corpus_root = (
         Path(corpus_root).expanduser().resolve() if corpus_root is not None else storage.root.parent
     )
+    _emit_progress(
+        progress_callback,
+        "generating_candidates",
+        page_count=completed_case.page_count,
+        observation_count=len(observations),
+    )
     candidate_generation = generate_candidates(
         case=completed_case,
         pages=pages,
@@ -714,6 +753,13 @@ def investigate(
         observations=observations,
         candidate_generation=candidate_generation,
     )
+    _emit_progress(
+        progress_callback,
+        "finalizing_case",
+        status=completed_case.status,
+        page_count=completed_case.page_count,
+        candidate_count=len(candidate_generation.document.candidates),
+    )
     storage.log(
         "case_completed "
         f"status={completed_case.status} pages={completed_case.page_count} "
@@ -727,6 +773,15 @@ def investigate(
         candidates=candidate_generation.document.candidates,
         observations=observations,
     )
+
+
+def _emit_progress(
+    callback: ProgressCallback | None,
+    stage: str,
+    **detail: object,
+) -> None:
+    if callback is not None:
+        callback(stage, detail)
 
 
 def _validate_crawl_limits(

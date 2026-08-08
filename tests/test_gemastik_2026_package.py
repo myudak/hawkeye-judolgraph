@@ -24,7 +24,8 @@ def test_required_markdown_package_and_asset_directories_exist() -> None:
         "FIGURE_INDEX.md",
         "BENCHMARK_RESULTS.md",
     }
-    assert {path.name for path in PACKAGE.glob("*.md")} == required
+    # Supplemental proposal chapters may be added without weakening the required submission set.
+    assert required <= {path.name for path in PACKAGE.glob("*.md")}
     for name in ("proposal", "technical", "video"):
         assert (PACKAGE / "assets" / name / "README.md").is_file()
     assert not list(PACKAGE.rglob("*.pdf"))

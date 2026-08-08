@@ -264,3 +264,37 @@ control around the canvas. Canvas animation remains a projection of event truth.
 skips model-guided interaction and persists that stop reason. Markdown, JSON, and ZIP exports are
 generated from the same verified run/event/review state and never upgrade a candidate into a
 conclusion.
+
+## ADR-027 — Judol indication is an evidence count, not a score
+
+**Status:** accepted.
+
+The preliminary product classifies verified semantic observations with a versioned deterministic
+term policy. Direct controlled gambling language may count one observation; typed offer, payment,
+referral, or tracking evidence counts only when the same captured page also has direct gambling
+language. Public contacts and outgoing destinations remain OSINT evidence but never count merely
+because they are co-located. Each counted item retains the observation, page, source artifact, and
+screenshot reference.
+
+The UI displays an integer count and category breakdown only. It does not display a judol
+percentage, probability, risk score, legal finding, criminality claim, operator identity, or
+ownership attribution. `0` means no controlled term matched the available classified evidence; it
+does not claim the site is free of gambling content. The projection is computed when a verified case
+is loaded, preserving existing immutable packages and append-only review data.
+
+## ADR-028 — Live UI scans run as recoverable isolated jobs
+
+**Status:** accepted.
+
+A localhost-triggered live scan starts one in-memory job and delegates Playwright collection to a
+spawned process. Collector callbacks expose bounded stage/detail snapshots; the UI polls those
+snapshots and can resume the one active job after reload. The browser process has a 115-second hard
+wall-clock boundary beneath the collector's existing page/case budgets. On timeout its process tree
+is terminated and any initialized case record is changed from `running` to an explicit failed,
+timed-out state. It is never returned through the verified completed-case loader.
+
+Progress has no fabricated percentage. The displayed stages correspond to validation, browser
+launch, case initialization, page capture, artifact preservation, optional OCR, extraction,
+candidate generation, manifest verification, policy-gated agent work, indicator classification,
+and graph reduction. A single-active-job rule prevents overlapping local browser captures from
+competing for the same workspace.

@@ -12,7 +12,10 @@ competition demonstration or an investigator workflow.
 Develop JudolGraph / HAWK-EYE into a competition-ready, evidence-driven investigator workspace.
 It must demonstrate a clear workflow from a public seed URL to bounded evidence capture,
 deterministic extraction, an auditable graph, relationship-neutral leads, and explainable offline
-comparison. The result must be reproducible locally and explicit about uncertainty.
+comparison. The investigator may also count controlled gambling-language indicators in captured
+text/entity evidence, but every count must resolve to an observation and artifact and must never be
+presented as a probability, legality assessment, or ownership conclusion. The result must be
+reproducible locally and explicit about uncertainty.
 
 ## Intended user
 
@@ -27,6 +30,8 @@ domain.
 - State uncertainty clearly: candidates are `pending`; comparison results are `needs_review`.
 - Make every displayed fact traceable to an artifact, a verified manifest, or a documented
   deterministic rule.
+- Keep gambling-related indicators as explainable evidence-item counts; generic contacts, links,
+  or payment terms alone do not establish an indicator or a conclusion.
 - Prefer secure local defaults over a broader but unsafe deployment surface.
 
 ## Non-goals

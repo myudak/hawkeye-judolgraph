@@ -17,6 +17,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
 from hawkeye.diagnostics.models import RenderDiagnosticsDocument
+from hawkeye.indicators import GamblingIndicatorSummary, classify_gambling_indicators
 from hawkeye.models import (
     CandidateDocument,
     CandidateObservation,
@@ -313,6 +314,7 @@ class CaseLoader:
 def case_summary(loaded: LoadedCase) -> dict[str, Any]:
     """Return only safe, display-ready case facts; raw stored URLs never become application HTML."""
 
+    indicator_summary = classify_gambling_indicators(loaded.observations)
     return {
         "case_id": loaded.case.case_id,
         "integrity": "verified",
@@ -346,6 +348,8 @@ def case_summary(loaded: LoadedCase) -> dict[str, Any]:
         "extraction_skip_reason": loaded.case.extraction_skip_reason,
         "page_count": loaded.case.page_count,
         "candidate_count": loaded.case.candidate_count,
+        "gambling_indicator_count": indicator_summary.indicator_count,
+        "gambling_indicator_status": indicator_summary.status,
         "case_manifest_sha256": loaded.manifest_sha256,
     }
 
@@ -361,6 +365,7 @@ def case_details(
     evidence_ids = set(loaded.evidence_by_id)
     graph_nodes = {node.id: node for node in loaded.graph.nodes} if loaded.graph else {}
     summary = case_summary(loaded)
+    indicator_summary = classify_gambling_indicators(loaded.observations)
     summary.update(
         {
             "seed_url_display": safe_display_url(loaded.case.seed_url),
@@ -466,6 +471,10 @@ def case_details(
                 }
                 for observation in loaded.observations
             ],
+            "gambling_indicators": _display_gambling_indicators(
+                indicator_summary,
+                loaded.observations,
+            ),
             "candidate_policy_version": (
                 loaded.candidates.scoring_policy_version if loaded.candidates is not None else None
             ),
@@ -511,6 +520,29 @@ def case_details(
         }
     )
     return summary
+
+
+def _display_gambling_indicators(
+    summary: GamblingIndicatorSummary,
+    observations: list[SemanticObservation],
+) -> dict[str, Any]:
+    """Return a bounded, display-safe count and its observation evidence chain."""
+
+    observations_by_id = {item.id: item for item in observations}
+    payload = summary.model_dump(mode="json")
+    display_classifications: list[dict[str, Any]] = []
+    for classification in summary.classifications:
+        observation = observations_by_id[classification.observation_id]
+        item = classification.model_dump(mode="json")
+        item["display_value"] = safe_display_entity(
+            observation.observation_type,
+            observation.normalized_value,
+        )
+        item["source_url_display"] = safe_display_url(observation.source_url)
+        item["rationale"] = _safe_text(classification.rationale, 300)
+        display_classifications.append(item)
+    payload["classifications"] = display_classifications
+    return payload
 
 
 def safe_display_url(raw_url: str | None) -> str | None:

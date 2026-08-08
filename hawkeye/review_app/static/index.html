@@ -50,6 +50,21 @@
           <span id="capability-state" class="agent-state"><i></i>Checking capability</span>
           <button id="scan-button" class="primary-action launch-action" type="submit">Start investigation <span>→</span></button>
         </div>
+        <section id="capture-progress" class="capture-progress" aria-live="polite" hidden>
+          <div class="scan-orbit" aria-hidden="true">
+            <span class="orbit-ring orbit-ring-one"></span>
+            <span class="orbit-ring orbit-ring-two"></span>
+            <span class="scan-sweep"></span>
+            <i></i>
+          </div>
+          <div class="progress-copy">
+            <span id="progress-kicker">INVESTIGATION ACTIVE</span>
+            <strong id="progress-title">Preparing isolated workspace</strong>
+            <p id="progress-detail">The browser worker has not started yet.</p>
+          </div>
+          <span id="progress-elapsed" class="progress-elapsed">00:00</span>
+          <ol id="progress-stages" class="progress-stages" aria-label="Investigation stages"></ol>
+        </section>
       </form>
 
       <aside class="safety-notice"><span aria-hidden="true">◇</span><p><strong>Public, read-only scope.</strong> No sign-in, form submission, purchase, message, or access-control bypass. Candidate relationships always require human review.</p></aside>
