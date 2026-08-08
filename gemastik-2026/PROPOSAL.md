@@ -120,6 +120,8 @@ dan tidak boleh menjadi unit-test truth.
 
 ## 5. Metodologi Pengembangan Perangkat Lunak
 
+> **Source bab diperluas:** [`BAB_5_METODOLOGI_PENGEMBANGAN.md`](BAB_5_METODOLOGI_PENGEMBANGAN.md)
+
 Pengembangan menggunakan milestone berbatas dengan bukti uji pada setiap lapisan:
 
 1. **G4A — Capture Adequacy.** Checkpoint wajib 0/500/1500/3000 ms dapat diperpanjang secara
@@ -142,6 +144,8 @@ diulang, dan benchmark JSON. Riwayat chat bukan sumber memori proyek. Formatter,
 checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim final.
 
 ## 6. Analisis Kebutuhan dan Desain Solusi Perangkat Lunak
+
+> **Source bab diperluas:** [`BAB_6_ANALISIS_KEBUTUHAN_DAN_DESAIN_SOLUSI.md`](BAB_6_ANALISIS_KEBUTUHAN_DAN_DESAIN_SOLUSI.md)
 
 ### Kebutuhan fungsional
 
@@ -250,6 +254,8 @@ animation queue.
 | Problem urgency | 10% | Masalah provenance dan unsafe automation dijelaskan | Angka urgensi membutuhkan sumber eksternal |
 
 ## 7. Implementasi Perangkat Lunak
+
+> **Source bab diperluas:** [`BAB_7_IMPLEMENTASI_PERANGKAT_LUNAK.md`](BAB_7_IMPLEMENTASI_PERANGKAT_LUNAK.md)
 
 Kolektor menunggu checkpoint wajib dan hanya menambah dua settle checkpoint berbatas tanpa
 berinteraksi. DOM tersembunyi tidak dapat berpura-pura
