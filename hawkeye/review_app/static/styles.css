@@ -254,7 +254,11 @@ body::after { inset: 0; background: radial-gradient(circle at 50% 28%, rgba(18, 
 .local-state small { color: var(--muted); font-size: 0.53rem; }
 
 .screen { min-height: calc(100vh - 32px); padding: 104px 2.1% 52px; }
-.landing-screen { max-width: 1000px; margin: 0 auto; overflow: auto; }
+.landing-screen {
+  width: min(1000px, 100%); height: calc(100vh - 32px); min-height: 0; margin: 0 auto;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 47, 120, 0.45) transparent;
+}
 .landing-hero { padding: 12px 0 24px; text-align: center; }
 .landing-hero { animation: instrument-enter 480ms 60ms ease-out both; }
 .eyebrow { color: #768494; font: 700 0.61rem var(--mono); letter-spacing: 0.1em; }
@@ -271,15 +275,7 @@ body::after { inset: 0; background: radial-gradient(circle at 50% 28%, rgba(18, 
 .url-field span { color: #758394; text-align: center; }
 .url-field input { min-width: 0; height: 42px; padding: 0 12px 0 0; border: 0; outline: 0; color: var(--text); background: transparent; }
 .field-group input::placeholder, .url-field input::placeholder { color: #515c69; }
-.mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 0 20px; margin: 0; border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.mode-picker legend { padding-top: 15px; margin-bottom: 5px; }
-.mode-picker label { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 11px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; }
-.mode-picker label:has(input:checked) { border-color: rgba(255, 47, 120, 0.3); background: rgba(255, 47, 120, 0.06); }
-.mode-picker input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--pink); }
-.mode-picker label span { display: grid; gap: 4px; }
-.mode-picker strong { font-size: 0.8rem; }
-.mode-picker small { color: var(--muted); font-size: 0.65rem; line-height: 1.4; }
-.form-footer { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 16px; }
+.form-footer { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .capture-progress {
   position: relative; display: grid; grid-template-columns: 74px minmax(0, 1fr) auto;
   align-items: center; gap: 15px; padding: 18px 2px 7px; overflow: hidden;
@@ -354,7 +350,11 @@ body[data-scanning="true"] .landing-hero em { text-shadow: 0 0 26px rgba(255, 47
 .inspector-tabs button.active { color: var(--text); }
 .inspector-tabs button.active::after { position: absolute; right: 14%; bottom: -1px; left: 14%; height: 2px; background: var(--pink); content: ""; }
 
-.summary-screen { max-width: 1700px; margin: 0 auto; overflow: auto; }
+.summary-screen {
+  width: min(1700px, 100%); height: calc(100vh - 32px); min-height: 0; margin: 0 auto;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 47, 120, 0.45) transparent;
+}
 .summary-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 10px 4px 18px; }
 .summary-heading h1 { margin-top: 7px; font: 700 2rem Georgia, "Times New Roman", serif; }
 .summary-heading p { margin-top: 6px; color: var(--muted); font-size: 0.7rem; }
@@ -396,7 +396,6 @@ body[data-scanning="true"] .landing-hero em { text-shadow: 0 0 26px rgba(255, 47
   .local-state small { display: none; }
   .screen { padding: 140px 10px 48px; }
   .investigation-form { padding: 18px; }
-  .mode-picker { grid-template-columns: 1fr; }
   .form-footer { align-items: stretch; flex-direction: column; padding-top: 12px; }
   .capture-progress { grid-template-columns: 58px minmax(0, 1fr); }
   .scan-orbit { width: 50px; height: 50px; }
@@ -412,4 +411,5 @@ body[data-scanning="true"] .landing-hero em { text-shadow: 0 0 26px rgba(255, 47
   .workspace-screen .evidence-inspector { grid-column: auto; }
   .summary-heading { align-items: stretch; flex-direction: column; }
   .summary-stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .landing-screen, .summary-screen { width: 100%; height: auto; min-height: calc(100vh - 32px); overflow: visible; }
 }

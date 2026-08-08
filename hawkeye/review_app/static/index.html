@@ -41,11 +41,6 @@
           <label for="investigation-name">INVESTIGATION NAME <span>(OPTIONAL)</span></label>
           <input id="investigation-name" name="investigation_name" maxlength="120" placeholder="e.g. Public contact and related-site review" autocomplete="off">
         </div>
-        <fieldset class="mode-picker">
-          <legend>INVESTIGATION MODE</legend>
-          <label><input type="radio" name="investigation_mode" value="guided" checked><span><strong>Guided investigation</strong><small>Bounded model planning with deterministic fallback and policy-gated tools.</small></span></label>
-          <label><input type="radio" name="investigation_mode" value="capture_only"><span><strong>Deterministic capture only</strong><small>Same-site capture and extraction without model-guided interaction.</small></span></label>
-        </fieldset>
         <div class="form-footer">
           <span id="capability-state" class="agent-state"><i></i>Checking capability</span>
           <button id="scan-button" class="primary-action launch-action" type="submit">Start investigation <span>→</span></button>

@@ -300,7 +300,6 @@ function setScanActive(active) {
   refs.scanButton.disabled = active;
   refs.seedInput.disabled = active;
   refs.investigationName.disabled = active;
-  document.querySelectorAll('input[name="investigation_mode"]').forEach((input) => { input.disabled = active; });
   refs.scanButton.replaceChildren(
     document.createTextNode(active ? "Investigation active " : "Start investigation "),
     el("span", "", active ? "•••" : "→"),
@@ -2106,11 +2105,10 @@ refs.scanForm.addEventListener("submit", async (event) => {
   setScanActive(true);
   setStatus("Creating an isolated, recoverable investigation job…");
   try {
-    const mode = document.querySelector('input[name="investigation_mode"]:checked')?.value || "guided";
     const job = await postJson("/api/investigation-jobs", {
       seed_url: seedUrl,
       investigation_name: refs.investigationName.value.trim(),
-      investigation_mode: mode,
+      investigation_mode: "guided",
     });
     renderInvestigationProgress(job);
     setScanActive(false);
