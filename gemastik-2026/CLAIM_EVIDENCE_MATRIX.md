@@ -18,7 +18,7 @@
 | Reviews are append-only | SQLite rows/triggers | review history/update rejection test | Review versions are immutable local events | Reviewer identity is authenticated |
 | Graph is event-derived and replayable | event log/reducer | duplicate replay consistency test | Duplicate event replay yields same graph state | Animation proves an event occurred |
 | Static recall is 0.2857 | raw benchmark JSON | 10 static attempts | Controlled observable recall | Real-world recall |
-| Rule/agent recall is 1.0000 | raw benchmark JSON | 10 rule + 30 deterministic-agent attempts | Controlled observable recall | Model accuracy or live accuracy |
+| Rule recall is 0.8571; agent-assisted recall is 1.0000 | raw benchmark JSON | 10 rule + 30 deterministic-agent attempts, including one two-step scenario | Controlled observable recall and feedback-loop advantage | Model accuracy or live accuracy |
 | Provenance completeness is 1.0000 | raw benchmark JSON | measured normalized fixture outputs | Controlled attempt provenance completeness | Every future artifact is complete |
 | Agent attempts are stable | nondeterminism table | three attempts per scenario | One signature per controlled scenario | Any stochastic model would be deterministic |
 

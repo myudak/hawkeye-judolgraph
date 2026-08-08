@@ -29,10 +29,13 @@ accuracy, organizational, or societal impact has not yet been measured.
 2. Eligible captures write `observations.json`; a readable dynamic capture may produce explicitly
    provisional observations with capped confidence, never strong hidden conclusions.
 3. The controlled fixture runtime exposes six narrow page tools over stable references.
-4. `CodexInvestigator` validates one structured decision or activates deterministic fallback.
+4. `CodexInvestigator` runs a bounded objective loop (maximum five decisions and three
+   interactions), feeding each observed delta into the next decision; deterministic fallback uses
+   the same contract.
 5. Live and fixture investigations persist pages, safe actions, leads, approval, assertions, review
    requirements, and all causally linked events in SQLite.
-6. The local workspace renders graph, evidence, timeline, causal path, and review state.
+6. The local workspace renders start/recent cases, graph/evidence/timeline, and a printable summary
+   with Markdown, JSON, and ZIP exports.
 7. `hawkeye benchmark` produces raw JSON and all required Markdown result tables.
 
 ## Feature details
@@ -62,7 +65,8 @@ closed. Controlled unsafe-action block rate is 1.0000 over four prohibited fixtu
 Only fixed localhost routes are probeable. The selected route is `/v1/responses`; model discovery
 selected `gpt-5.6-terra` and a strict structured-output probe succeeded. Every decision must retain
 an exact server-issued safe element reference. No native search is assumed. Deterministic fallback
-produces the same `AgentDecision`/`AgentStepResult` models if the service or validation fails.
+produces the same decision and loop-step models if the service or validation fails. Repeated stale
+references and no-op deltas stop explicitly instead of looping.
 
 ### Candidate and review
 

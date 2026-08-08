@@ -7,9 +7,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 from hawkeye.collector.safety import SafetyPolicy
-from hawkeye.crawl import normalize_crawl_url
-from hawkeye.models import InvestigationResult
-from hawkeye.pipeline import investigate
+from hawkeye.crawl import DiscoveredLink, crawl_frontier_priority, normalize_crawl_url
+from hawkeye.models import InvestigationResult, SemanticElementSnapshot
+from hawkeye.pipeline import _sorted_links, investigate
 
 
 def _loopback_policy(
@@ -72,6 +72,43 @@ def test_bfs_child_has_exact_parent_evidence_and_depth_limit(
     assert edge["attributes"]["original_href"] == "/crawl-cycle-child"
 
 
+def test_browser_semantic_frontier_includes_open_shadow_and_same_origin_frame_links() -> None:
+    snapshots = [
+        SemanticElementSnapshot(
+            selector="shadow:a#contact",
+            tag="a",
+            accessible_name="Contact",
+            visible_text="Contact",
+            href="https://example.test/contact",
+            source_context="open_shadow_root",
+            x=10,
+            y=10,
+            width=80,
+            height=20,
+        ),
+        SemanticElementSnapshot(
+            selector="iframe:a#help",
+            tag="a",
+            accessible_name="Help",
+            visible_text="Help",
+            href="https://example.test/help",
+            source_context="same_origin_iframe",
+            x=10,
+            y=40,
+            width=80,
+            height=20,
+        ),
+    ]
+
+    links = _sorted_links("<main>No light-DOM anchors</main>", "https://example.test", snapshots)
+
+    assert [item.normalized_url for item in links] == [
+        "https://example.test/contact",
+        "https://example.test/help",
+    ]
+    assert all(item.discovery_method == "browser_semantic" for item in links)
+
+
 def test_normalizes_fragments_tracking_parameters_and_query_order_deterministically(
     fixture_server_url: str, tmp_path: Path
 ) -> None:
@@ -116,6 +153,25 @@ def test_enforces_five_page_budget_in_sorted_bfs_order(
         "budget-4",
     ]
     assert sum(record.skip_reason == "page_budget" for record in result.frontier) == 3
+
+
+def test_frontier_ranking_prefers_public_contact_and_information_routes() -> None:
+    links = [
+        DiscoveredLink("/promo", "https://example.test/promo", "Bonus event"),
+        DiscoveredLink("/about", "https://example.test/about", "About company"),
+        DiscoveredLink("/contact", "https://example.test/contact", "Hubungi Kami"),
+        DiscoveredLink("/games", "https://example.test/games", "Games"),
+    ]
+
+    ranked = sorted(links, key=crawl_frontier_priority)
+
+    assert [item.anchor_text for item in ranked] == [
+        "Hubungi Kami",
+        "About company",
+        "Games",
+        "Bonus event",
+    ]
+    assert crawl_frontier_priority(ranked[0]) == (0, "contact")
 
 
 def test_external_redirect_is_recorded_as_failed_child_and_never_followed(

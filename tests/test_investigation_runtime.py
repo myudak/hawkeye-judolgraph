@@ -15,7 +15,13 @@ from hawkeye.investigation import (
     run_fixture_investigation,
     run_live_investigation,
 )
-from hawkeye.models import CaseRecord, CrawlFrontierRecord, CrawlPageRecord, InvestigationResult
+from hawkeye.models import (
+    CaseRecord,
+    CrawlFrontierRecord,
+    CrawlPageRecord,
+    InvestigationResult,
+    SemanticObservation,
+)
 
 
 def test_synthetic_page_a_to_page_b_flow_requires_recollection_and_review(tmp_path: Path) -> None:
@@ -462,3 +468,101 @@ def test_direct_frontier_anchor_auto_matches_an_already_collected_related_case(
     assert destination["status"] == "collected"
     assert any(edge["relation"] == "publicly_links_to" for edge in graph["edges"])
     assert summary["pending_leads"] == []
+
+
+def test_live_run_proposes_exact_cross_case_match_and_compares_prior_snapshot(
+    tmp_path: Path,
+) -> None:
+    now = datetime.now(UTC)
+    package = tmp_path / "source-package"
+    package.mkdir()
+    phone = SemanticObservation(
+        id="obs-current-phone",
+        observation_type="public_phone_number",
+        raw_value="+62 811 2222 3333",
+        normalized_value="+6281122223333",
+        source_page_id="page-001",
+        source_url="https://source.example/",
+        source_artifact_id="evidence-page-001",
+        screenshot_evidence_id="evidence-screenshot-001",
+        confidence=0.95,
+        extraction_method="fixture",
+        evidence_strength="strong",
+    )
+    result = InvestigationResult(
+        case_directory=str(package),
+        case=CaseRecord(
+            case_id="case-source-current",
+            seed_url="https://source.example/",
+            final_url="https://source.example/",
+            status="completed",
+            started_at=now,
+            completed_at=now,
+            page_count=1,
+        ),
+        pages=[
+            CrawlPageRecord(
+                id="page-001",
+                url="https://source.example/",
+                normalized_url="https://source.example/",
+                final_url="https://source.example/",
+                depth=0,
+                state="completed",
+                html_evidence_id="evidence-page-001",
+                screenshot_evidence_id="evidence-screenshot-001",
+            )
+        ],
+        observations=[phone],
+    )
+    known_cases = [
+        {
+            "case_id": "case-source-previous",
+            "final_url_display": "https://source.example/",
+            "completed_at": "2026-08-01T00:00:00+00:00",
+            "observations": [
+                {
+                    "id": "obs-old-email",
+                    "observation_type": "public_email_address",
+                    "normalized_value": "old@example.test",
+                    "source_artifact_id": "evidence-old",
+                    "screenshot_evidence_id": "screenshot-old",
+                }
+            ],
+        },
+        {
+            "case_id": "case-related",
+            "final_url_display": "https://related.example/",
+            "completed_at": "2026-08-02T00:00:00+00:00",
+            "observations": [
+                {
+                    "id": "obs-related-phone",
+                    "observation_type": "public_phone_number",
+                    "normalized_value": "+6281122223333",
+                    "source_artifact_id": "evidence-related",
+                    "screenshot_evidence_id": "screenshot-related",
+                }
+            ],
+        },
+    ]
+
+    summary = run_live_investigation(
+        result,
+        tmp_path / "run-with-matches",
+        investigator=None,
+        known_cases=known_cases,
+        safety_policy=SafetyPolicy(),
+    )
+    store = InvestigationStore(tmp_path / "run-with-matches/investigation.sqlite3")
+    assertions = store.assertions(str(summary["run_id"]))
+
+    assert len(assertions) == 1
+    assert assertions[0].assertion_type == "shares_public_contact_with"
+    assert assertions[0].object == "https://related.example/"
+    assert summary["assertion_ids"] == [assertions[0].assertion_id]
+    temporal = summary["temporal_comparison"]
+    assert isinstance(temporal, dict)
+    assert temporal["added_count"] == 1
+    assert temporal["removed_count"] == 1
+    kinds = [item.kind for item in store.events(str(summary["run_id"]))]
+    assert "temporal.snapshot.compared" in kinds
+    assert "entity.matched" in kinds

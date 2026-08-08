@@ -175,6 +175,50 @@ class CaseStorage:
             page_id=page_id,
         )
 
+    def save_ocr_text(
+        self,
+        content: str,
+        *,
+        source_url: str,
+        collected_at: datetime,
+        page_id: str,
+    ) -> EvidenceRecord:
+        """Persist bounded OCR output separately from browser-visible text."""
+
+        self._validate_page_id(page_id)
+        destination = self.write_text(f"ocr/{page_id}.txt", content)
+        return EvidenceRecord(
+            id=f"evidence-ocr-text-{page_id.removeprefix('page-')}",
+            type="ocr_text",
+            source_url=source_url,
+            path=self.relative_path(destination),
+            collected_at=collected_at,
+            sha256=self.sha256_file(destination),
+            page_id=page_id,
+        )
+
+    def save_ocr_metadata(
+        self,
+        payload: Any,
+        *,
+        source_url: str,
+        collected_at: datetime,
+        page_id: str,
+    ) -> EvidenceRecord:
+        """Persist the OCR engine result even when OCR is unavailable or fails."""
+
+        self._validate_page_id(page_id)
+        destination = self.write_json(f"ocr/{page_id}.json", payload)
+        return EvidenceRecord(
+            id=f"evidence-ocr-metadata-{page_id.removeprefix('page-')}",
+            type="ocr_metadata",
+            source_url=source_url,
+            path=self.relative_path(destination),
+            collected_at=collected_at,
+            sha256=self.sha256_file(destination),
+            page_id=page_id,
+        )
+
     def save_evidence_crop(
         self,
         content: bytes,

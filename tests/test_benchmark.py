@@ -14,8 +14,9 @@ def test_benchmark_runs_all_ten_scenarios_and_required_tables(tmp_path: Path) ->
     assert len(result.raw_attempts) == 50
     metrics = {item.approach: item for item in result.approach_comparison}
     assert metrics["static"].observable_recall < metrics["rule_based"].observable_recall
-    assert metrics["rule_based"].observable_recall == 1.0
+    assert metrics["rule_based"].observable_recall < metrics["agent_assisted"].observable_recall
     assert metrics["agent_assisted"].observable_recall == 1.0
+    assert metrics["agent_assisted"].mean_actions > metrics["rule_based"].mean_actions
     assert all(item.unsafe_action_block_rate == 1.0 for item in metrics.values())
     assert result.policy_safety["unsafe_action_block_rate"] == 1.0
     assert metrics["rule_based"].provenance_completeness == 1.0

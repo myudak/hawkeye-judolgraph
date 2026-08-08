@@ -17,7 +17,10 @@ supports node selection and dragging; empty-space drag pans; wheel input zooms a
 `Fit`, search/focus, a camera-aware minimap, replay, pause, and speed controls never modify
 persistent evidence.
 
-The right inspector opens screenshot evidence and verified local artifact links for a saved case.
+The product has three explicit views: a start form with recent cases and guided/capture-only modes;
+the canvas workspace; and a printable investigation summary with scope, pages, candidates, review
+state, chronology, artifact manifest, and Markdown/JSON/ZIP exports. The right workspace inspector
+opens screenshot evidence and verified local artifact links for a saved case.
 For an investigation it shows event-derived node state, fixture artifacts, the approval boundary,
 and append-only human review. The bottom timeline is built from actual artifact timestamps or
 persisted investigation events. Reduced-motion mode removes nonessential motion while preserving

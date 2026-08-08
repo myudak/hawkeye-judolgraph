@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <title>Project HAWK-EYE — internal codename</title>
+    <title>Project HAWK-EYE — public evidence investigator</title>
     <link rel="stylesheet" href="/assets/styles.css">
     <script src="/assets/app.js" defer></script>
   </head>
@@ -12,43 +12,72 @@
     <a class="skip-link" href="#graph-stage">Skip to evidence graph</a>
     <a class="skip-link" href="#case-view">Skip to evidence inspector</a>
 
-    <div class="app-shell">
-      <header class="command-bar">
-        <a class="brand" href="#graph-stage" aria-label="Project HAWK-EYE home">
-          <span class="brand-orbit" aria-hidden="true"><i></i></span>
-          <span><strong>HAWK-EYE</strong><small>INTERNAL CODENAME · EVIDENCE GRAPH</small></span>
-        </a>
+    <header class="global-header">
+      <button id="brand-home" class="brand brand-button" type="button" aria-label="Project HAWK-EYE home">
+        <span class="hawk-mark" aria-hidden="true">H</span>
+        <span><strong>Project HAWK-EYE</strong><small>PUBLIC EVIDENCE INSTRUMENT</small></span>
+      </button>
+      <div id="workspace-command" class="workspace-command" hidden>
+        <label class="visually-hidden" for="workspace-selector">Open saved evidence</label>
+        <select id="workspace-selector" aria-label="Open saved evidence"></select>
+        <button id="new-investigation" class="primary-action" type="button">New investigation <span>→</span></button>
+      </div>
+      <div class="local-state"><i></i><span>localhost<small>read-only public collection</small></span></div>
+    </header>
 
-        <form id="scan-form" class="scan-form">
-          <span class="link-icon" aria-hidden="true">⌁</span>
-          <label class="visually-hidden" for="seed-url">Public HTTP(S) URL</label>
-          <input id="seed-url" name="seed_url" type="url" maxlength="2048" placeholder="Enter a public domain" required autocomplete="off" spellcheck="false">
-          <button id="scan-button" type="submit"><span>→</span> Scan</button>
-        </form>
+    <main id="landing-view" class="screen landing-screen">
+      <section class="landing-hero">
+        <p class="eyebrow">PUBLIC-WEB INVESTIGATION · LOCAL EVIDENCE</p>
+        <h1>Investigate a <em>public website</em></h1>
+        <p>Bounded browser capture, evidence-grounded exploration, and append-only human review.</p>
+      </section>
 
-        <div class="command-actions">
-          <label class="visually-hidden" for="workspace-selector">Open saved evidence</label>
-          <select id="workspace-selector" aria-label="Open saved evidence"></select>
-          <span id="capability-state" class="agent-state"><i></i>Fallback</span>
+      <form id="scan-form" class="investigation-form">
+        <div class="field-group">
+          <label for="seed-url">PUBLIC SEED URL</label>
+          <div class="url-field"><span aria-hidden="true">◎</span><input id="seed-url" name="seed_url" type="url" maxlength="2048" placeholder="Enter a public web address" required autocomplete="off" spellcheck="false"></div>
         </div>
-      </header>
+        <div class="field-group">
+          <label for="investigation-name">INVESTIGATION NAME <span>(OPTIONAL)</span></label>
+          <input id="investigation-name" name="investigation_name" maxlength="120" placeholder="e.g. Public contact and related-site review" autocomplete="off">
+        </div>
+        <fieldset class="mode-picker">
+          <legend>INVESTIGATION MODE</legend>
+          <label><input type="radio" name="investigation_mode" value="guided" checked><span><strong>Guided investigation</strong><small>Bounded model planning with deterministic fallback and policy-gated tools.</small></span></label>
+          <label><input type="radio" name="investigation_mode" value="capture_only"><span><strong>Deterministic capture only</strong><small>Same-site capture and extraction without model-guided interaction.</small></span></label>
+        </fieldset>
+        <div class="form-footer">
+          <span id="capability-state" class="agent-state"><i></i>Checking capability</span>
+          <button id="scan-button" class="primary-action launch-action" type="submit">Start investigation <span>→</span></button>
+        </div>
+      </form>
 
-      <main class="evidence-layout">
-        <aside id="site-intel" class="glass-panel site-intel" aria-label="Site intelligence">
-          <div class="panel-label">Site intel</div>
+      <aside class="safety-notice"><span aria-hidden="true">◇</span><p><strong>Public, read-only scope.</strong> No sign-in, form submission, purchase, message, or access-control bypass. Candidate relationships always require human review.</p></aside>
+
+      <section class="recent-section">
+        <header><div><span class="section-icon" aria-hidden="true">◷</span><h2>Recent cases</h2></div><small>Verified local evidence only</small></header>
+        <div id="recent-cases" class="recent-cases"><p class="quiet-copy">Loading saved evidence…</p></div>
+      </section>
+    </main>
+
+    <main id="workspace-view" class="screen workspace-screen" hidden>
+      <section class="workspace-strip">
+        <div><span class="eyebrow">ACTIVE INVESTIGATION</span><strong id="workspace-title">Saved evidence</strong></div>
+        <div class="workspace-url"><span aria-hidden="true">◎</span><span id="workspace-url">No URL loaded</span></div>
+        <button id="open-summary" class="secondary-action" type="button">Investigation summary <span>→</span></button>
+      </section>
+
+      <div class="evidence-layout">
+        <aside id="site-intel" class="instrument-panel site-intel" aria-label="Case summary">
+          <div class="panel-label">CASE SUMMARY</div>
           <div id="intel-content" class="intel-content">
-            <div class="skeleton title"></div>
-            <div class="skeleton line"></div>
-            <div class="skeleton line short"></div>
+            <div class="skeleton title"></div><div class="skeleton line"></div><div class="skeleton line short"></div>
           </div>
         </aside>
 
         <section id="graph-stage" class="graph-stage" aria-label="Evidence graph">
           <header class="graph-toolbar">
-            <div>
-              <span id="graph-mode-label" class="mode-label">Evidence relations</span>
-              <strong id="graph-count">0 nodes · 0 links</strong>
-            </div>
+            <div><span id="graph-mode-label" class="mode-label">Evidence relations</span><strong id="graph-count">0 nodes · 0 links</strong></div>
             <div class="graph-tools">
               <button id="zoom-out" type="button" aria-label="Zoom graph out">−</button>
               <button id="zoom-in" type="button" aria-label="Zoom graph in">+</button>
@@ -58,47 +87,44 @@
           <div class="graph-canvas-wrap">
             <canvas id="graph-canvas" class="graph-canvas" role="img" aria-label="Interactive public evidence relationship graph"></canvas>
             <canvas id="graph-minimap" class="graph-minimap" aria-label="Evidence graph minimap"></canvas>
-            <div id="graph-empty" class="graph-empty">
-              <span class="empty-orbit" aria-hidden="true"><i></i></span>
-              <strong>No saved evidence selected</strong>
-              <p>Scan one public URL or open a saved capture.</p>
-            </div>
+            <div id="graph-empty" class="graph-empty"><span class="empty-orbit" aria-hidden="true"><i></i></span><strong>No evidence selected</strong><p>Open a saved capture or begin an investigation.</p></div>
             <div id="graph-tooltip" class="graph-tooltip" role="status"></div>
             <div id="graph-a11y" class="visually-hidden" aria-live="polite"></div>
           </div>
-
           <section id="timeline-dock" class="timeline-dock" aria-label="Capture and event timeline">
             <div class="timeline-controls">
               <button id="replay-button" type="button"><span>↶</span> Replay</button>
               <button id="pause-button" type="button" aria-label="Pause timeline">Ⅱ</button>
-              <label for="timeline-speed">Speed</label>
-              <input id="timeline-speed" type="range" min="250" max="1200" step="50" value="650">
+              <label for="timeline-speed">Speed</label><input id="timeline-speed" type="range" min="250" max="1200" step="50" value="650">
             </div>
             <div id="timeline-track" class="timeline-track"></div>
           </section>
         </section>
 
-        <aside id="case-view" class="glass-panel evidence-inspector" aria-label="Evidence inspector" tabindex="-1">
-          <div class="inspector-search">
-            <label class="visually-hidden" for="graph-search">Search evidence graph</label>
-            <span aria-hidden="true">⌕</span>
-            <input id="graph-search" type="search" placeholder="Find evidence, entity, relation…">
-          </div>
+        <aside id="case-view" class="instrument-panel evidence-inspector" aria-label="Evidence inspector" tabindex="-1">
+          <nav class="inspector-tabs" aria-label="Inspector sections">
+            <button type="button" data-inspector-tab="overview">Overview</button>
+            <button type="button" data-inspector-tab="evidence" class="active" aria-current="page">Evidence</button>
+            <button type="button" data-inspector-tab="artifacts">Artifacts</button>
+            <button type="button" data-inspector-tab="technical">Technical</button>
+          </nav>
+          <div class="inspector-search"><span aria-hidden="true">⌕</span><label class="visually-hidden" for="graph-search">Search evidence graph</label><input id="graph-search" type="search" placeholder="Find evidence, entity, relation…"></div>
           <div id="inspector-content" class="inspector-content">
-            <div class="inspector-empty">
-              <span class="empty-node" aria-hidden="true"><i></i></span>
-              <strong>Select evidence</strong>
-              <p>Click a graph node to inspect its saved screenshot, artifacts, observations, and limitations.</p>
-            </div>
+            <div class="inspector-empty"><span class="empty-node" aria-hidden="true"><i></i></span><strong>Select evidence</strong><p>Choose a graph node to inspect its screenshots, provenance, limitations, and related events.</p></div>
           </div>
         </aside>
-      </main>
-    </div>
+      </div>
+    </main>
 
-    <div id="status-bar" class="status-bar">
-      <span><i></i>LOCALHOST · READ-ONLY PUBLIC COLLECTION</span>
-      <span id="status-line" aria-live="polite">Loading saved evidence…</span>
-    </div>
+    <main id="summary-view" class="screen summary-screen" hidden>
+      <header class="summary-heading">
+        <div><span class="eyebrow">CASE SUMMARY</span><h1>Investigation summary</h1><p id="summary-subtitle">No investigation selected.</p></div>
+        <button id="back-to-graph" class="primary-action" type="button">Back to graph <span>→</span></button>
+      </header>
+      <section id="summary-content" class="summary-layout" aria-live="polite"></section>
+    </main>
+
+    <div id="status-bar" class="status-bar"><span><i></i>LOCALHOST · READ-ONLY PUBLIC COLLECTION</span><span id="status-line" aria-live="polite">Loading saved evidence…</span></div>
     <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

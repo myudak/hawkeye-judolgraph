@@ -398,6 +398,8 @@ def case_details(
                     "screenshot_evidence_id": page.screenshot_evidence_id,
                     "initial_screenshot_evidence_id": page.initial_screenshot_evidence_id,
                     "full_page_screenshot_evidence_id": page.full_page_screenshot_evidence_id,
+                    "ocr_text_evidence_id": page.ocr_text_evidence_id,
+                    "ocr_metadata_evidence_id": page.ocr_metadata_evidence_id,
                     "visible_text_evidence_id": page.visible_text_evidence_id,
                     "readiness_evidence_id": page.readiness_evidence_id,
                     "classification_reasons": [
@@ -822,10 +824,20 @@ def _validate_page_and_entity_references(
         _require_evidence_type(
             evidence_by_id, page.redirect_evidence_id, "network_event", page.id, required=False
         )
+        _require_evidence_type(
+            evidence_by_id, page.ocr_text_evidence_id, "ocr_text", page.id, required=False
+        )
+        _require_evidence_type(
+            evidence_by_id,
+            page.ocr_metadata_evidence_id,
+            "ocr_metadata",
+            page.id,
+            required=False,
+        )
     for entity in entities:
         evidence = evidence_by_id.get(entity.source_evidence_id)
-        if evidence is None or evidence.type != "html_page":
-            raise CaseIntegrityError("Entity references missing or non-HTML evidence")
+        if evidence is None or evidence.type not in {"html_page", "ocr_text"}:
+            raise CaseIntegrityError("Entity references missing or unsupported source evidence")
 
 
 def _validate_semantic_observation_references(
@@ -864,6 +876,8 @@ def _require_evidence_type(
         "response_metadata",
         "capture_readiness",
         "network_event",
+        "ocr_text",
+        "ocr_metadata",
     ],
     page_id: str,
     *,
@@ -903,12 +917,17 @@ def _read_verified_artifact(directory: Path, record: EvidenceRecord) -> bytes:
         "evidence_crop",
     }:
         _validate_screenshot(content, record)
-    elif record.type in {"html_page", "visible_text"}:
+    elif record.type in {"html_page", "visible_text", "ocr_text"}:
         try:
             content.decode("utf-8")
         except UnicodeDecodeError as error:
             raise CaseIntegrityError("Text evidence is not UTF-8") from error
-    elif record.type in {"network_event", "response_metadata", "capture_readiness"}:
+    elif record.type in {
+        "network_event",
+        "response_metadata",
+        "capture_readiness",
+        "ocr_metadata",
+    }:
         try:
             json.loads(content)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -926,9 +945,14 @@ def _artifact_byte_limit(record: EvidenceRecord) -> int:
         "evidence_crop",
     }:
         return _MAX_SCREENSHOT_BYTES
-    if record.type == "visible_text":
+    if record.type in {"visible_text", "ocr_text"}:
         return _MAX_TEXT_BYTES
-    if record.type in {"network_event", "response_metadata", "capture_readiness"}:
+    if record.type in {
+        "network_event",
+        "response_metadata",
+        "capture_readiness",
+        "ocr_metadata",
+    }:
         return _MAX_NETWORK_BYTES
     raise CaseIntegrityError("Evidence artifact type is not supported by the review console")
 
@@ -967,9 +991,14 @@ def _artifact_response_policy(record: EvidenceRecord) -> tuple[str, str]:
         return "image/png", 'inline; filename="evidence-screenshot.png"'
     if record.type == "html_page":
         return "text/plain; charset=utf-8", 'attachment; filename="evidence-page.html"'
-    if record.type == "visible_text":
+    if record.type in {"visible_text", "ocr_text"}:
         return "text/plain; charset=utf-8", 'attachment; filename="evidence-visible.txt"'
-    if record.type in {"network_event", "response_metadata", "capture_readiness"}:
+    if record.type in {
+        "network_event",
+        "response_metadata",
+        "capture_readiness",
+        "ocr_metadata",
+    }:
         return "application/json; charset=utf-8", 'attachment; filename="evidence-network.json"'
     raise CaseIntegrityError("Evidence artifact type is not supported by the review console")
 
