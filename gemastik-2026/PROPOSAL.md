@@ -120,7 +120,7 @@ dan tidak boleh menjadi unit-test truth.
 
 ## 5. Metodologi Pengembangan Perangkat Lunak
 
-> **Source bab diperluas:** [`BAB_5_METODOLOGI_PENGEMBANGAN.md`](BAB_5_METODOLOGI_PENGEMBANGAN.md)
+> **Source gabungan BAB 5-7:** [`BAB_5_6_7_PENGEMBANGAN_SOLUSI.md`](BAB_5_6_7_PENGEMBANGAN_SOLUSI.md)
 
 Pengembangan menggunakan milestone berbatas dengan bukti uji pada setiap lapisan:
 
@@ -145,7 +145,6 @@ checker, tests, frontend syntax check, dan demo lokal dijalankan sebelum klaim f
 
 ## 6. Analisis Kebutuhan dan Desain Solusi Perangkat Lunak
 
-> **Source bab diperluas:** [`BAB_6_ANALISIS_KEBUTUHAN_DAN_DESAIN_SOLUSI.md`](BAB_6_ANALISIS_KEBUTUHAN_DAN_DESAIN_SOLUSI.md)
 
 ### Kebutuhan fungsional
 
@@ -255,7 +254,6 @@ animation queue.
 
 ## 7. Implementasi Perangkat Lunak
 
-> **Source bab diperluas:** [`BAB_7_IMPLEMENTASI_PERANGKAT_LUNAK.md`](BAB_7_IMPLEMENTASI_PERANGKAT_LUNAK.md)
 
 Kolektor menunggu checkpoint wajib dan hanya menambah dua settle checkpoint berbatas tanpa
 berinteraksi. DOM tersembunyi tidak dapat berpura-pura

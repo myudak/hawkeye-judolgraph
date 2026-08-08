@@ -21,12 +21,8 @@ are included and hash-indexed.
 - `../docs/PRODUCT_AND_SUBMISSION_REQUIREMENTS.md` — official 2026 requirements, product
   specification, WebGraph reference audit, real-domain validation loop, and definition of done.
 - `PROPOSAL.md` — official nine-section proposal order and scoring coverage.
-- `BAB_5_METODOLOGI_PENGEMBANGAN.md` — expanded BAB 5 source: methodology, milestones,
-  verification loop, risks, and definition of done.
-- `BAB_6_ANALISIS_KEBUTUHAN_DAN_DESAIN_SOLUSI.md` — expanded BAB 6 source: requirements,
-  architecture, trust boundaries, data model, UI/UX, and traceability.
-- `BAB_7_IMPLEMENTASI_PERANGKAT_LUNAK.md` — expanded BAB 7 source: actual modules, runtime,
-  capture, interaction, agent, review, graph, API, demo, and verification.
+- `BAB_5_6_7_PENGEMBANGAN_SOLUSI.md` — single expanded source combining BAB 5 methodology,
+  BAB 6 requirements/design, and BAB 7 actual implementation.
 - `TECHNICAL_DOCUMENT.md` — architecture, installation, use, security, and troubleshooting.
 - `VIDEO_SCRIPT_3_MINUTES.md` — timestamped actual-software storyboard.
 - `SUBMISSION_CHECKLIST.md` — technical and human-owned final checks.
