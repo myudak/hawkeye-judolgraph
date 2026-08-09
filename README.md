@@ -331,13 +331,25 @@ create target-content entities or graph relationships.
 ## Tests and checks
 
 ```powershell
+Push-Location frontend
+npm ci
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+Pop-Location
+
 python -m pytest -q
 python -m ruff format --check .
 python -m ruff check .
 python -m mypy hawkeye
-node --check hawkeye/review_app/static/app.js
 git diff --check
 ```
+
+The React presentation architecture and backend-truth boundary are documented in
+`docs/FRONTEND.md`. The checked-in production bundle is served by the same loopback-only FastAPI
+application; frontend development does not introduce a second runtime service.
 
 The end-to-end fixture test uses an explicit loopback-only test policy. The normal CLI rejects
 loopback targets; `--allow-loopback-for-testing` exists only so a local fixture server can exercise

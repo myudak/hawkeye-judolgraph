@@ -46,6 +46,24 @@ Run on 2026-08-08 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d
   validation stayed in browser capture under the current network and was truthfully terminated at
   the 115-second hard boundary; the animated UI displayed the final stop reason instead of hanging.
 
+React presentation refresh verified on 2026-08-10 (Asia/Jakarta):
+
+- The shadcn/Vite frontend builds into the existing loopback FastAPI static directory with a
+  224.78 kB entry (69.30 kB gzip) and lazy landing, scan, workspace, and summary route chunks.
+- `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` —
+  passed; three graph projection tests passed.
+- `python -m ruff format --check .` — passed, 134 files already formatted.
+- `python -m ruff check .` and `python -m mypy hawkeye` — passed.
+- `python -m pytest -q --durations=10` — 190 passed in 512.95 seconds; one upstream
+  FastAPI/Starlette deprecation warning.
+- Browser QA at 1440×900 — passed: 15 saved entries loaded; landing and report remained vertically
+  scrollable with zero horizontal overflow; the saved QQ workspace displayed one interactive
+  canvas, 11 nodes/12 links, 23 evidence cards, real persisted timeline events, and the full-page
+  screenshot by default. Graph filtering, evidence expansion, and the ten-section summary worked
+  without console warnings/errors. Duplicate local browser tabs were closed.
+- Lazy chunks are served through a bounded local JavaScript filename route. Missing/traversal-like
+  chunk paths remain 404 and are regression-tested.
+
 ## Implemented product boundary
 
 - Canonical collection always uses 0/500/1500/3000 ms checkpoints, may extend observation to

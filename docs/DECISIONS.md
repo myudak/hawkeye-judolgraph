@@ -298,3 +298,20 @@ launch, case initialization, page capture, artifact preservation, optional OCR, 
 candidate generation, manifest verification, policy-gated agent work, indicator classification,
 and graph reduction. A single-active-job rule prevents overlapping local browser captures from
 competing for the same workspace.
+
+## ADR-029 — React is a replaceable projection over existing evidence truth
+
+**Status:** accepted; clarifies ADR-026.
+
+The localhost console uses a React/TypeScript/Vite presentation layer built from the checked-in
+shadcn/ui preset. This does not change any FastAPI contract, SQLite table, case package, event
+schema, graph reducer, review history, or network policy. Routes are lazy-loaded hash routes so the
+FastAPI server needs no browser-route fallback and the initial page does not download the graph
+workspace.
+
+The presentation resolver maps persisted node/observation categories into Page, Contact, Brand,
+Transaction, Offer, Destination, Candidate, or Other visual kinds with a deterministic fallback.
+Filters, layout, animation, minimap, search, selection, and replay cannot create or upgrade
+evidence. Artifacts and screenshots stay in the provenance inspector; they are not graph nodes.
+No UI state may imply ownership, identity, criminality, legality, or a verified relationship unless
+the persisted evidence/review state explicitly supports that wording.

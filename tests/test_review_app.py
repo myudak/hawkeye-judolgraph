@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -322,6 +323,12 @@ def test_read_only_api_uses_verified_ids_redacts_display_values_and_sets_csp(
     assert "default-src 'self'" in index.headers["content-security-policy"]
     assert "https://" not in index.text
     assert "access-control-allow-origin" not in index.headers
+    chunk_match = re.search(r'href="/assets/(chunks/[^"]+\.js)"', index.text)
+    assert chunk_match is not None
+    chunk = client.get(f"/assets/{chunk_match.group(1)}")
+    assert chunk.status_code == 200
+    assert chunk.headers["content-type"].startswith("text/javascript")
+    assert client.get("/assets/chunks/%2e%2e%2fapp.js").status_code == 404
     assert listing.json()["cases"][0]["integrity"] == "verified"
     assert detail.status_code == 200
     payload = detail.json()
@@ -596,30 +603,39 @@ def test_hostile_display_values_are_bounded_inert_text_inputs(tmp_path: Path) ->
     assert payload["entities"][0]["display_value"].startswith("'=SUM")
 
 
-def test_ui_assets_do_not_use_html_injection_or_external_navigation() -> None:
+def test_react_ui_build_preserves_local_evidence_safety_and_accessibility() -> None:
     static_root = Path(__file__).parents[1] / "hawkeye" / "review_app" / "static"
+    frontend_root = Path(__file__).parents[1] / "frontend" / "src"
     script = (static_root / "app.js").read_text(encoding="utf-8")
     html = (static_root / "index.html").read_text(encoding="utf-8")
     styles = (static_root / "styles.css").read_text(encoding="utf-8")
+    chunks = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted((static_root / "chunks").glob("*.js"))
+    )
+    source = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(frontend_root.rglob("*.tsx"))
+    )
 
-    assert "innerHTML" not in script
-    assert "window.open" not in script
-    assert "http://" not in script + html + styles
-    assert "https://" not in script + html + styles
-    assert "textContent" in script
-    assert "Relationship: not determined" in script
-    assert "Evidence-similarity score" in script
-    assert "accessible relationship table" in script
-    assert "aria-current" in script
-    assert 'screenshots.find((item) => item.label === "Full page")' in script
-    assert 'href="#case-view"' in html
-    assert 'id="scan-view"' in html
-    assert 'aria-label="Timeline position"' in html
-    assert "function renderEvidenceCatalog" in script
-    assert "function appendGraphFilters" in script
+    # React may use innerHTML internally; application code must not opt into raw HTML injection.
+    assert "dangerouslySetInnerHTML" not in source
+    assert "window.open" not in source
+    assert 'target="_blank"' not in source
+    assert "<iframe" not in source
+    assert 'id="root"' in html
+    assert 'src="/assets/app.js"' in html
+    assert 'href="/assets/styles.css"' in html
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "/api/investigation-jobs" in script + chunks
+    assert "Relationship: not determined" in chunks
+    assert "aria-current" in chunks
+    assert 'screenshots.find((item) => item.label === "Full page")' in source
+    assert 'aria-label="Timeline position"' in source
     assert ".scan-radar" in styles
-    assert ".evidence-card-detail > img" in styles
-    assert "@media (max-width: 1120px)" in styles
+    assert ".workspace-grid" in styles
+    assert ".graph-canvas" in styles
+    assert ".evidence-card-detail>img" in styles
+    assert "width<=1120px" in styles
     assert "prefers-reduced-motion" in styles
     assert ":focus-visible" in styles
 

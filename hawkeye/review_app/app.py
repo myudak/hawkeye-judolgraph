@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -175,6 +176,15 @@ def create_app(
     @app.get("/assets/app.js", include_in_schema=False)
     def script() -> Response:
         return _static_response("app.js", "text/javascript; charset=utf-8")
+
+    @app.get("/assets/chunks/{filename}", include_in_schema=False)
+    def script_chunk(filename: str) -> Response:
+        if (
+            ".." in filename
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,199}\.js", filename) is None
+        ):
+            raise HTTPException(status_code=404, detail="Not Found")
+        return _static_response(f"chunks/{filename}", "text/javascript; charset=utf-8")
 
     @app.get("/api/cases", include_in_schema=False)
     def list_cases() -> dict[str, object]:
@@ -368,7 +378,7 @@ def create_app(
 
 
 def _static_response(filename: str, media_type: str) -> Response:
-    """Serve one trusted application asset by a fixed name; never expose static path traversal."""
+    """Serve one trusted application asset selected by a fixed or validated local name."""
 
     path = _STATIC_ROOT / filename
     try:
