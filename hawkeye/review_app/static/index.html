@@ -14,85 +14,121 @@
 
     <header class="global-header">
       <button id="brand-home" class="brand brand-button" type="button" aria-label="Project HAWK-EYE home">
-        <span class="hawk-mark" aria-hidden="true">H</span>
-        <span><strong>Project HAWK-EYE</strong><small>PUBLIC EVIDENCE INSTRUMENT</small></span>
+        <span class="hawk-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="presentation">
+            <path d="M8 10c14 1 26 6 35 15l13-3-8 10c3 6 4 12 3 19-8-8-17-12-29-12l-9 10 2-15-9-8 12 1C13 21 10 16 8 10Z"></path>
+            <path class="hawk-cut" d="m27 23 16 4-10 8-13-5 7-7Z"></path>
+            <circle class="hawk-eye" cx="35" cy="28" r="2.8"></circle>
+          </svg>
+        </span>
+        <span><strong>HAWK-EYE</strong><small>JUDOLGRAPH · INTERNAL CODENAME</small></span>
       </button>
+      <div class="header-context" aria-hidden="true"><span></span><b>PUBLIC EVIDENCE INSTRUMENT</b></div>
+      <button id="landing-new-investigation" class="primary-action header-action" type="button">New investigation <span>＋</span></button>
       <div id="workspace-command" class="workspace-command" hidden>
         <label class="visually-hidden" for="workspace-selector">Open saved evidence</label>
         <select id="workspace-selector" aria-label="Open saved evidence"></select>
-        <button id="new-investigation" class="primary-action" type="button">New investigation <span>→</span></button>
+        <button id="new-investigation" class="secondary-action" type="button">New investigation <span>＋</span></button>
       </div>
-      <div class="local-state"><i></i><span>localhost<small>read-only public collection</small></span></div>
     </header>
 
     <main id="landing-view" class="screen landing-screen">
-      <section class="landing-hero">
-        <p class="eyebrow">PUBLIC-WEB INVESTIGATION · LOCAL EVIDENCE</p>
-        <h1>Investigate a <em>public website</em></h1>
-        <p>Bounded browser capture, evidence-grounded exploration, and append-only human review.</p>
+      <section id="investigation-start" class="investigation-start">
+        <header class="section-heading">
+          <span class="section-glyph" aria-hidden="true">⌾</span>
+          <div><p class="eyebrow">START NEW INVESTIGATION</p><h1>Capture a public evidence trail</h1></div>
+        </header>
+        <form id="scan-form" class="investigation-form">
+          <div class="field-group field-span">
+            <label for="seed-url">PUBLIC SEED URL</label>
+            <div class="url-field"><span aria-hidden="true">↗</span><input id="seed-url" name="seed_url" type="url" maxlength="2048" placeholder="Enter a public web address" required autocomplete="off" spellcheck="false"><i aria-hidden="true">✓</i></div>
+          </div>
+          <div class="field-group field-span">
+            <label for="investigation-name">INVESTIGATION NAME <span>(OPTIONAL)</span></label>
+            <input id="investigation-name" name="investigation_name" maxlength="120" placeholder="e.g. Public contact and related-site review" autocomplete="off">
+          </div>
+          <div class="form-footer field-span">
+            <div class="safety-inline"><span aria-hidden="true">◇</span><p><strong>Public, read-only scope.</strong> No sign-in, form submission, purchase, message, download, or access-control bypass.</p></div>
+            <span id="capability-state" class="agent-state"><i></i>Checking capability</span>
+            <button id="scan-button" class="primary-action launch-action" type="submit">Start investigation <span>→</span></button>
+          </div>
+        </form>
       </section>
 
-      <form id="scan-form" class="investigation-form">
-        <div class="field-group">
-          <label for="seed-url">PUBLIC SEED URL</label>
-          <div class="url-field"><span aria-hidden="true">◎</span><input id="seed-url" name="seed_url" type="url" maxlength="2048" placeholder="Enter a public web address" required autocomplete="off" spellcheck="false"></div>
-        </div>
-        <div class="field-group">
-          <label for="investigation-name">INVESTIGATION NAME <span>(OPTIONAL)</span></label>
-          <input id="investigation-name" name="investigation_name" maxlength="120" placeholder="e.g. Public contact and related-site review" autocomplete="off">
-        </div>
-        <div class="form-footer">
-          <span id="capability-state" class="agent-state"><i></i>Checking capability</span>
-          <button id="scan-button" class="primary-action launch-action" type="submit">Start investigation <span>→</span></button>
-        </div>
-        <section id="capture-progress" class="capture-progress" aria-live="polite" hidden>
-          <div class="scan-orbit" aria-hidden="true">
-            <span class="orbit-ring orbit-ring-one"></span>
-            <span class="orbit-ring orbit-ring-two"></span>
-            <span class="scan-sweep"></span>
-            <i></i>
+      <section class="cases-section">
+        <header class="cases-heading">
+          <div><span class="section-glyph" aria-hidden="true">▱</span><div><h2>Cases</h2><p>Your saved investigations and verified evidence collections.</p></div></div>
+          <div class="case-controls">
+            <label class="case-search"><span aria-hidden="true">⌕</span><input id="case-search" type="search" placeholder="Search cases…"></label>
+            <label class="visually-hidden" for="case-sort">Sort cases</label>
+            <select id="case-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Domain name</option></select>
+            <div id="case-filters" class="case-filters" aria-label="Filter cases">
+              <button type="button" data-case-filter="all" class="active" aria-pressed="true">All</button>
+              <button type="button" data-case-filter="active" aria-pressed="false">Active</button>
+              <button type="button" data-case-filter="complete" aria-pressed="false">Complete</button>
+              <button type="button" data-case-filter="review" aria-pressed="false">Needs review</button>
+              <button type="button" data-case-filter="error" aria-pressed="false">Integrity errors</button>
+            </div>
+            <div class="view-toggle" aria-label="Case layout">
+              <button id="case-grid-view" type="button" class="active" aria-label="Grid view" aria-pressed="true">⊞</button>
+              <button id="case-list-view" type="button" aria-label="List view" aria-pressed="false">☷</button>
+            </div>
           </div>
-          <div class="progress-copy">
-            <span id="progress-kicker">INVESTIGATION ACTIVE</span>
-            <strong id="progress-title">Preparing isolated workspace</strong>
-            <p id="progress-detail">The browser worker has not started yet.</p>
-          </div>
-          <span id="progress-elapsed" class="progress-elapsed">00:00</span>
-          <ol id="progress-stages" class="progress-stages" aria-label="Investigation stages"></ol>
-        </section>
-      </form>
-
-      <aside class="safety-notice"><span aria-hidden="true">◇</span><p><strong>Public, read-only scope.</strong> No sign-in, form submission, purchase, message, or access-control bypass. Candidate relationships always require human review.</p></aside>
-
-      <section class="recent-section">
-        <header><div><span class="section-icon" aria-hidden="true">◷</span><h2>Recent cases</h2></div><small>Verified local evidence only</small></header>
+        </header>
         <div id="recent-cases" class="recent-cases"><p class="quiet-copy">Loading saved evidence…</p></div>
       </section>
+    </main>
+
+    <main id="scan-view" class="screen scan-screen" hidden>
+      <section id="capture-progress" class="scan-console" aria-live="polite">
+        <div class="scanner-hero">
+          <div class="scan-radar" aria-hidden="true">
+            <span class="radar-ring ring-one"></span><span class="radar-ring ring-two"></span><span class="radar-ring ring-three"></span><span class="radar-sweep"></span>
+            <span class="scanner-hawk"><svg viewBox="0 0 64 64"><path d="M8 10c14 1 26 6 35 15l13-3-8 10c3 6 4 12 3 19-8-8-17-12-29-12l-9 10 2-15-9-8 12 1C13 21 10 16 8 10Z"></path><path class="hawk-cut" d="m27 23 16 4-10 8-13-5 7-7Z"></path><circle class="hawk-eye" cx="35" cy="28" r="2.8"></circle></svg></span>
+          </div>
+          <div class="scanner-state"><span><i></i><b id="progress-kicker">INVESTIGATION ACTIVE</b></span><p>Bounded capture and analysis in progress</p></div>
+        </div>
+
+        <div class="scan-main">
+          <header class="scan-phase">
+            <div><span class="eyebrow">CURRENT PHASE</span><h1 id="progress-title">Preparing isolated workspace</h1><p id="progress-detail">The browser worker has not started yet.</p></div>
+            <time id="progress-elapsed">00:00</time>
+          </header>
+          <div class="scan-metrics">
+            <article><span class="metric-icon page-icon" aria-hidden="true">▤</span><strong id="scan-pages">0</strong><p>Pages preserved</p></article>
+            <article><span class="metric-icon evidence-icon" aria-hidden="true">◉</span><strong id="scan-evidence">—</strong><p>Evidence observations</p></article>
+            <article><span class="metric-icon time-icon" aria-hidden="true">◷</span><strong id="scan-budget">115s</strong><p>Hard browser boundary</p></article>
+            <article><span class="metric-icon queue-icon" aria-hidden="true">▱</span><strong id="scan-queue">—</strong><p>Pages queued</p></article>
+          </div>
+          <ol id="progress-stages" class="progress-stages" aria-label="Investigation stages"></ol>
+        </div>
+      </section>
+
+      <section class="activity-panel">
+        <header><div><span class="eyebrow">LIVE ACTIVITY STREAM</span><span class="live-chip"><i></i>Live</span></div><button id="scan-workspace-button" type="button" class="secondary-action" disabled>Workspace unavailable</button></header>
+        <div id="scan-activity" class="activity-stream"></div>
+      </section>
+
+      <section class="technical-strip"><span>TECHNICAL PROGRESS</span><div id="scan-technical" class="technical-events"></div></section>
     </main>
 
     <main id="workspace-view" class="screen workspace-screen" hidden>
       <section class="workspace-strip">
         <div><span class="eyebrow">ACTIVE INVESTIGATION</span><strong id="workspace-title">Saved evidence</strong></div>
-        <div class="workspace-url"><span aria-hidden="true">◎</span><span id="workspace-url">No URL loaded</span></div>
-        <button id="open-summary" class="secondary-action" type="button">Investigation summary <span>→</span></button>
+        <div class="workspace-url"><span aria-hidden="true">↗</span><span id="workspace-url">No URL loaded</span></div>
+        <button id="open-summary" class="primary-action" type="button">View summary <span>→</span></button>
       </section>
 
       <div class="evidence-layout">
         <aside id="site-intel" class="instrument-panel site-intel" aria-label="Case summary">
           <div class="panel-label">CASE SUMMARY</div>
-          <div id="intel-content" class="intel-content">
-            <div class="skeleton title"></div><div class="skeleton line"></div><div class="skeleton line short"></div>
-          </div>
+          <div id="intel-content" class="intel-content"><div class="skeleton title"></div><div class="skeleton line"></div><div class="skeleton line short"></div></div>
         </aside>
 
         <section id="graph-stage" class="graph-stage" aria-label="Evidence graph">
           <header class="graph-toolbar">
             <div><span id="graph-mode-label" class="mode-label">Evidence relations</span><strong id="graph-count">0 nodes · 0 links</strong></div>
-            <div class="graph-tools">
-              <button id="zoom-out" type="button" aria-label="Zoom graph out">−</button>
-              <button id="zoom-in" type="button" aria-label="Zoom graph in">+</button>
-              <button id="fit-graph" type="button">Fit</button>
-            </div>
+            <div class="graph-tools"><button id="zoom-out" type="button" aria-label="Zoom graph out">−</button><button id="zoom-in" type="button" aria-label="Zoom graph in">＋</button><button id="fit-graph" type="button">Fit</button></div>
           </header>
           <div class="graph-canvas-wrap">
             <canvas id="graph-canvas" class="graph-canvas" role="img" aria-label="Interactive public evidence relationship graph"></canvas>
@@ -103,38 +139,28 @@
           </div>
           <section id="timeline-dock" class="timeline-dock" aria-label="Capture and event timeline">
             <div class="timeline-controls">
-              <button id="replay-button" type="button"><span>↶</span> Replay</button>
-              <button id="pause-button" type="button" aria-label="Pause timeline">Ⅱ</button>
+              <button id="replay-button" type="button"><span>↶</span> Replay</button><button id="pause-button" type="button" aria-label="Pause timeline">Ⅱ</button>
               <label for="timeline-speed">Speed</label><input id="timeline-speed" type="range" min="250" max="1200" step="50" value="650">
+              <span id="timeline-mode" class="timeline-mode">REPLAY</span>
             </div>
-            <div id="timeline-track" class="timeline-track"></div>
+            <div class="timeline-navigation"><div id="timeline-track" class="timeline-track"></div><div class="timeline-scrubber-row"><input id="timeline-scrubber" type="range" min="0" max="0" value="0" aria-label="Timeline position"><time id="timeline-current-time">Time not recorded</time></div></div>
           </section>
         </section>
 
         <aside id="case-view" class="instrument-panel evidence-inspector" aria-label="Evidence inspector" tabindex="-1">
-          <nav class="inspector-tabs" aria-label="Inspector sections">
-            <button type="button" data-inspector-tab="overview">Overview</button>
-            <button type="button" data-inspector-tab="evidence" class="active" aria-current="page">Evidence</button>
-            <button type="button" data-inspector-tab="artifacts">Artifacts</button>
-            <button type="button" data-inspector-tab="technical">Technical</button>
-          </nav>
+          <nav class="inspector-tabs" aria-label="Inspector sections"><button type="button" data-inspector-tab="overview">Overview</button><button type="button" data-inspector-tab="evidence" class="active" aria-current="page">Evidence</button><button type="button" data-inspector-tab="artifacts">Artifacts</button><button type="button" data-inspector-tab="technical">Technical</button></nav>
           <div class="inspector-search"><span aria-hidden="true">⌕</span><label class="visually-hidden" for="graph-search">Search evidence graph</label><input id="graph-search" type="search" placeholder="Find evidence, entity, relation…"></div>
-          <div id="inspector-content" class="inspector-content">
-            <div class="inspector-empty"><span class="empty-node" aria-hidden="true"><i></i></span><strong>Select evidence</strong><p>Choose a graph node to inspect its screenshots, provenance, limitations, and related events.</p></div>
-          </div>
+          <div id="inspector-content" class="inspector-content"><div class="inspector-empty"><span class="empty-node" aria-hidden="true"><i></i></span><strong>Select evidence</strong><p>Choose a graph node to inspect screenshots, provenance, limitations, and related events.</p></div></div>
         </aside>
       </div>
     </main>
 
     <main id="summary-view" class="screen summary-screen" hidden>
-      <header class="summary-heading">
-        <div><span class="eyebrow">CASE SUMMARY</span><h1>Investigation summary</h1><p id="summary-subtitle">No investigation selected.</p></div>
-        <button id="back-to-graph" class="primary-action" type="button">Back to graph <span>→</span></button>
-      </header>
+      <header class="summary-heading"><div><span class="eyebrow">CASE SUMMARY</span><h1>Investigation summary</h1><p id="summary-subtitle">No investigation selected.</p></div><button id="back-to-graph" class="primary-action" type="button">Back to graph <span>→</span></button></header>
       <section id="summary-content" class="summary-layout" aria-live="polite"></section>
     </main>
 
-    <div id="status-bar" class="status-bar"><span><i></i>LOCALHOST · READ-ONLY PUBLIC COLLECTION</span><span id="status-line" aria-live="polite">Loading saved evidence…</span></div>
+    <p id="status-line" class="visually-hidden" aria-live="polite">Loading saved evidence…</p>
     <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

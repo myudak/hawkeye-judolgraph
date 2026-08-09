@@ -613,6 +613,13 @@ def test_ui_assets_do_not_use_html_injection_or_external_navigation() -> None:
     assert "aria-current" in script
     assert 'screenshots.find((item) => item.label === "Full page")' in script
     assert 'href="#case-view"' in html
+    assert 'id="scan-view"' in html
+    assert 'aria-label="Timeline position"' in html
+    assert "function renderEvidenceCatalog" in script
+    assert "function appendGraphFilters" in script
+    assert ".scan-radar" in styles
+    assert ".evidence-card-detail > img" in styles
+    assert "@media (max-width: 1120px)" in styles
     assert "prefers-reduced-motion" in styles
     assert ":focus-visible" in styles
 

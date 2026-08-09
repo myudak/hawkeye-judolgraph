@@ -26,12 +26,18 @@ const refs = {
   statusLine: document.getElementById("status-line"),
   toastRegion: document.getElementById("toast-region"),
   landingView: document.getElementById("landing-view"),
+  scanView: document.getElementById("scan-view"),
   workspaceView: document.getElementById("workspace-view"),
   summaryView: document.getElementById("summary-view"),
   workspaceCommand: document.getElementById("workspace-command"),
   workspaceTitle: document.getElementById("workspace-title"),
   workspaceUrl: document.getElementById("workspace-url"),
   recentCases: document.getElementById("recent-cases"),
+  caseSearch: document.getElementById("case-search"),
+  caseSort: document.getElementById("case-sort"),
+  caseFilters: Array.from(document.querySelectorAll("[data-case-filter]")),
+  caseGridView: document.getElementById("case-grid-view"),
+  caseListView: document.getElementById("case-list-view"),
   investigationName: document.getElementById("investigation-name"),
   captureProgress: document.getElementById("capture-progress"),
   progressKicker: document.getElementById("progress-kicker"),
@@ -39,12 +45,23 @@ const refs = {
   progressDetail: document.getElementById("progress-detail"),
   progressElapsed: document.getElementById("progress-elapsed"),
   progressStages: document.getElementById("progress-stages"),
+  scanPages: document.getElementById("scan-pages"),
+  scanEvidence: document.getElementById("scan-evidence"),
+  scanBudget: document.getElementById("scan-budget"),
+  scanQueue: document.getElementById("scan-queue"),
+  scanActivity: document.getElementById("scan-activity"),
+  scanTechnical: document.getElementById("scan-technical"),
+  scanWorkspaceButton: document.getElementById("scan-workspace-button"),
   brandHome: document.getElementById("brand-home"),
+  landingNewInvestigation: document.getElementById("landing-new-investigation"),
   newInvestigation: document.getElementById("new-investigation"),
   openSummary: document.getElementById("open-summary"),
   backToGraph: document.getElementById("back-to-graph"),
   summaryContent: document.getElementById("summary-content"),
   summarySubtitle: document.getElementById("summary-subtitle"),
+  timelineScrubber: document.getElementById("timeline-scrubber"),
+  timelineCurrentTime: document.getElementById("timeline-current-time"),
+  timelineMode: document.getElementById("timeline-mode"),
   inspectorTabs: Array.from(document.querySelectorAll("[data-inspector-tab]")),
 };
 
@@ -56,22 +73,12 @@ const evidenceSemantics = {
 };
 
 const investigationStages = [
-  ["queued", "Queue"],
-  ["validating_seed", "Validate"],
-  ["launching_browser", "Browser"],
-  ["initializing_case", "Case"],
-  ["capturing_page", "Capture"],
-  ["preserving_artifacts", "Preserve"],
-  ["running_ocr", "OCR"],
-  ["extracting_evidence", "Extract"],
-  ["page_completed", "Commit page"],
-  ["generating_candidates", "Leads"],
-  ["finalizing_case", "Finalize"],
-  ["verifying_evidence", "Verify"],
-  ["running_agent", "Explore"],
-  ["classifying_indicators", "Classify"],
-  ["building_graph", "Graph"],
-  ["completed", "Ready"],
+  { label: "Validate target", stages: ["queued", "validating_seed", "launching_browser"] },
+  { label: "Capture pages", stages: ["initializing_case", "capturing_page"] },
+  { label: "Preserve & extract", stages: ["preserving_artifacts", "running_ocr", "extracting_evidence", "page_completed", "generating_candidates", "finalizing_case"] },
+  { label: "Bounded investigation", stages: ["verifying_evidence", "running_agent"] },
+  { label: "Classify & graph", stages: ["classifying_indicators", "building_graph"] },
+  { label: "Finalize case", stages: ["completed"] },
 ];
 
 const investigationStageCopy = {
@@ -98,23 +105,23 @@ const ctx = refs.graphCanvas.getContext("2d", { alpha: true });
 const miniCtx = refs.graphMinimap.getContext("2d", { alpha: true });
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const colors = {
-  case: "#70b7ff",
-  domain: "#58e9b0",
-  page: "#68b4ff",
-  seed_page: "#68b4ff",
-  collected_page: "#5cecad",
+  case: "#ed1764",
+  domain: "#ed1764",
+  page: "#ed1764",
+  seed_page: "#ed1764",
+  collected_page: "#ed1764",
   screenshot: "#ef80c2",
-  document: "#aa91ff",
-  readiness: "#63dce9",
-  observation: "#ffbd68",
-  public_contact: "#ffbd68",
-  public_claim: "#69d2e7",
-  external_destination: "#f09a63",
-  redirect_target: "#f09a63",
-  candidate: "#ffb75a",
-  candidate_domain: "#ffb75a",
-  claimed_brand: "#d894ff",
-  default: "#aab5c1",
+  document: "#8b95a7",
+  readiness: "#32b9e8",
+  observation: "#8b95a7",
+  public_contact: "#00b4a6",
+  public_claim: "#f2c94c",
+  external_destination: "#32b9e8",
+  redirect_target: "#32b9e8",
+  candidate: "#8a5cf6",
+  candidate_domain: "#8a5cf6",
+  claimed_brand: "#ff8a00",
+  default: "#8b95a7",
 };
 
 const view = {
@@ -144,6 +151,12 @@ const view = {
   activeJobId: null,
   jobPolling: false,
   progressClock: null,
+  caseFilter: "all",
+  caseQuery: "",
+  caseLayout: "grid",
+  nodeFilters: new Set(["page", "contact", "brand", "transaction", "offer", "destination", "candidate", "other"]),
+  selectedEvidenceId: null,
+  scanWorkspaceId: null,
 };
 
 function el(tag, className, text) {
@@ -167,7 +180,7 @@ function shortText(value, length = 34) {
 }
 
 function formatTime(value) {
-  if (!value) return "time not recorded";
+  if (!value) return "Time not recorded";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return String(value);
   return new Intl.DateTimeFormat("en-GB", {
@@ -177,7 +190,14 @@ function formatTime(value) {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    timeZone: "Asia/Jakarta",
   }).format(parsed);
+}
+
+function exactTime(value) {
+  if (!value) return "Time not recorded";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : `${parsed.toISOString()} · source ${String(value)}`;
 }
 
 function hostnameFrom(value) {
@@ -200,9 +220,11 @@ function toast(message, kind = "") {
 
 function showScreen(name) {
   refs.landingView.hidden = name !== "landing";
+  refs.scanView.hidden = name !== "scan";
   refs.workspaceView.hidden = name !== "workspace";
   refs.summaryView.hidden = name !== "summary";
-  refs.workspaceCommand.hidden = name === "landing";
+  refs.workspaceCommand.hidden = !["workspace", "summary"].includes(name);
+  refs.landingNewInvestigation.hidden = name !== "landing";
   document.body.dataset.screen = name;
   if (name === "workspace") {
     resizeCanvas();
@@ -266,27 +288,79 @@ function progressDetail(stage, detail = {}) {
   return investigationStageCopy[stage]?.[1] || "Recording the current bounded operation.";
 }
 
+function investigationGroupIndex(stage) {
+  return investigationStages.findIndex((group) => group.stages.includes(stage));
+}
+
+function stageGlyph(stage) {
+  if (["validating_seed", "verifying_evidence"].includes(stage)) return "✓";
+  if (["capturing_page", "preserving_artifacts", "initializing_case"].includes(stage)) return "▤";
+  if (["running_ocr", "extracting_evidence", "classifying_indicators"].includes(stage)) return "◉";
+  if (["running_agent", "generating_candidates"].includes(stage)) return "◇";
+  if (stage === "building_graph") return "⌘";
+  if (stage === "failed") return "!";
+  if (stage === "completed") return "✓";
+  return "·";
+}
+
 function renderInvestigationProgress(job) {
-  refs.captureProgress.hidden = false;
+  showScreen("scan");
   const [title] = investigationStageCopy[job.stage] || [titleCase(job.stage)];
   refs.progressKicker.textContent = job.status === "failed" ? "CAPTURE STOPPED" : job.status === "completed" ? "EVIDENCE SAVED" : "INVESTIGATION ACTIVE";
   refs.progressTitle.textContent = title;
   refs.progressDetail.textContent = job.error || progressDetail(job.stage, job.detail);
   refs.progressElapsed.textContent = formatElapsed(job.started_at);
-  const reached = new Set((job.history || []).map((item) => item.stage));
-  const visibleStages = job.stage === "failed"
-    ? [...investigationStages, ["failed", "Stopped"]]
-    : investigationStages;
-  refs.progressStages.replaceChildren(...visibleStages.map(([stage, label]) => {
-    const item = el("li", "progress-stage", label);
-    item.dataset.stage = stage;
-    if (reached.has(stage)) item.classList.add("reached");
-    if (stage === job.stage) {
+  const history = job.history || [];
+  const currentGroup = job.stage === "failed"
+    ? Math.max(0, ...history.map((item) => investigationGroupIndex(item.stage)))
+    : investigationGroupIndex(job.stage);
+  refs.progressStages.replaceChildren(...investigationStages.map((group, index) => {
+    const item = el("li", "progress-stage", group.label);
+    item.dataset.step = String(index + 1);
+    if (index < currentGroup || job.status === "completed") item.classList.add("reached");
+    if (index === currentGroup && job.status !== "completed") {
       item.classList.add("active");
+      if (job.status === "failed") item.classList.add("failed");
       item.setAttribute("aria-current", "step");
     }
     return item;
   }));
+
+  const resultPages = job.result?.source_case?.pages || job.result?.pages || [];
+  const preservedPages = history.filter((item) => item.stage === "preserving_artifacts").length;
+  const resultObservations = job.result?.source_case?.observations || job.result?.observations;
+  const observedCount = Array.isArray(resultObservations)
+    ? resultObservations.length
+    : Number.isInteger(job.detail?.observation_count) ? job.detail.observation_count : null;
+  refs.scanPages.textContent = String(resultPages.length || preservedPages);
+  refs.scanEvidence.textContent = observedCount === null ? "—" : String(observedCount);
+  refs.scanQueue.textContent = job.status === "completed" ? "0" : Number.isInteger(job.detail?.queued_pages) ? String(job.detail.queued_pages) : "—";
+  refs.scanBudget.textContent = "115s";
+
+  const activity = history.slice(-24).map((entry, index) => {
+    const row = el("article", "activity-item");
+    const icon = el("span", "activity-item-icon", stageGlyph(entry.stage));
+    const label = investigationStageCopy[entry.stage]?.[0] || titleCase(entry.stage);
+    const detail = entry.stage === job.stage
+      ? progressDetail(entry.stage, job.detail)
+      : investigationStageCopy[entry.stage]?.[1] || "Persisted bounded stage transition.";
+    const time = el("time", "", formatTime(entry.at));
+    time.dateTime = entry.at || "";
+    time.title = exactTime(entry.at);
+    row.append(icon, el("strong", "", label), el("p", "", detail), time);
+    row.style.animationDelay = `${Math.min(index * 20, 180)}ms`;
+    return row;
+  });
+  refs.scanActivity.replaceChildren(...activity);
+  refs.scanTechnical.replaceChildren(...history.slice(-12).map((entry) => {
+    const item = el("span", "technical-event", `${titleCase(entry.stage)} · ${formatTime(entry.at)}`);
+    item.title = exactTime(entry.at);
+    return item;
+  }));
+
+  view.scanWorkspaceId = job.result?.workspace_id || null;
+  refs.scanWorkspaceButton.disabled = !view.scanWorkspaceId;
+  refs.scanWorkspaceButton.textContent = view.scanWorkspaceId ? "Open evidence workspace →" : "Workspace unavailable";
   if (view.progressClock) window.clearInterval(view.progressClock);
   if (["queued", "running"].includes(job.status)) {
     view.progressClock = window.setInterval(() => {
@@ -315,7 +389,7 @@ async function monitorInvestigationJob(jobId) {
   view.activeJobId = jobId;
   view.jobPolling = true;
   setScanActive(true);
-  showScreen("landing");
+  showScreen("scan");
   const clientDeadline = Date.now() + 165000;
   let latestJob = null;
   try {
@@ -387,31 +461,45 @@ function nodeKind(rawType) {
 function clusterFor(kind) {
   if (["case", "domain", "page", "seed_page", "collected_page"].includes(kind)) return "Captured pages";
   if (["screenshot", "document", "readiness"].includes(kind)) return "Evidence artifacts";
-  if (["observation", "public_contact", "public_claim", "claimed_brand"].includes(kind)) return "Observed signals";
+  if (["observation", "public_contact", "public_claim", "claimed_brand"].includes(kind)) return "Public observations";
   if (["candidate", "candidate_domain", "external_destination", "redirect_target"].includes(kind)) return "Pending leads";
   return "Evidence graph";
 }
 
-function nodeCode(kind) {
-  const codes = {
-    case: "CASE",
-    domain: "DOM",
-    page: "PG",
-    seed_page: "A",
-    collected_page: "B",
-    screenshot: "IMG",
-    document: "DOC",
-    readiness: "RDY",
-    observation: "OBS",
-    public_contact: "TEL",
-    public_claim: "CLM",
-    external_destination: "EXT",
-    redirect_target: "301",
-    candidate: "LEAD",
-    candidate_domain: "LEAD",
-    claimed_brand: "BR",
-  };
-  return codes[kind] || "EV";
+function presentationFor(item) {
+  const kind = typeof item === "string" ? item : item.kind;
+  const attributes = typeof item === "string" ? {} : item.attributes || {};
+  const observation = attributes.observation || {};
+  const observationType = String(attributes.observation_type || observation.type || observation.observation_type || "");
+  const category = String(attributes.claim_category || "").toLowerCase();
+  if (["case", "domain", "page", "seed_page", "collected_page"].includes(kind)) {
+    return { visualKind: "page", label: "Page", color: "#ed1764", icon: "▤", shape: "roundSquare" };
+  }
+  if (kind === "public_contact") {
+    if (observationType.includes("whatsapp")) return { visualKind: "contact", label: "WhatsApp", color: "#00b4a6", icon: "WA", shape: "circle" };
+    if (observationType.includes("telegram")) return { visualKind: "contact", label: "Telegram", color: "#00b4a6", icon: "TG", shape: "circle" };
+    if (observationType.includes("email")) return { visualKind: "contact", label: "Email", color: "#00b4a6", icon: "@", shape: "circle" };
+    if (observationType.includes("phone")) return { visualKind: "contact", label: "Phone", color: "#00b4a6", icon: "TEL", shape: "circle" };
+    return { visualKind: "contact", label: "Contact", color: "#00b4a6", icon: "ID", shape: "circle" };
+  }
+  if (kind === "claimed_brand") return { visualKind: "brand", label: "Claimed brand", color: "#ff8a00", icon: "◇", shape: "hex" };
+  if (kind === "public_claim" && (category.includes("payment") || category.includes("transaction"))) {
+    return { visualKind: "transaction", label: "Transaction", color: "#ff8a00", icon: "$", shape: "hex" };
+  }
+  if (kind === "public_claim" && category.includes("offer")) {
+    return { visualKind: "offer", label: "Offer", color: "#f2c94c", icon: "%", shape: "hex" };
+  }
+  if (["external_destination", "redirect_target"].includes(kind)) {
+    return { visualKind: "destination", label: kind === "redirect_target" ? "Redirect" : "Destination", color: "#32b9e8", icon: kind === "redirect_target" ? "↪" : "↗", shape: "diamond" };
+  }
+  if (["candidate", "candidate_domain"].includes(kind)) {
+    return { visualKind: "candidate", label: "Candidate", color: "#8a5cf6", icon: "☆", shape: "diamond" };
+  }
+  return { visualKind: "other", label: "Other evidence", color: "#8b95a7", icon: "···", shape: "circle" };
+}
+
+function nodeCode(item) {
+  return presentationFor(item).icon;
 }
 
 function radiusFor(kind, primary) {
@@ -422,7 +510,7 @@ function radiusFor(kind, primary) {
 
 function normalizeNode(raw, index, extras = {}) {
   const kind = nodeKind(raw.kind || raw.type);
-  return {
+  const node = {
     id: String(raw.id),
     kind,
     label: valueOr(raw.label, raw.id),
@@ -441,6 +529,8 @@ function normalizeNode(raw, index, extras = {}) {
     birth: performance.now() + index * 38,
     radius: radiusFor(kind, Boolean(extras.primary)),
   };
+  node.presentation = presentationFor(node);
+  return node;
 }
 
 function normalizeEdge(raw, index, extras = {}) {
@@ -624,7 +714,7 @@ function buildCaseProjection(details) {
       status: "observed",
     }, nodes.length, {
       sequence,
-      cluster: "Observed signals",
+      cluster: "Public observations",
       attributes: { observation },
     }));
     const sourceId = pageIds.get(observation.source_page_id) || rootId;
@@ -663,7 +753,7 @@ function buildCaseProjection(details) {
       status: "observed",
     }, nodes.length, {
       sequence,
-      cluster: "Observed signals",
+      cluster: "Public observations",
       attributes: { claim_category: group.category, values: group.values, observations: group.observations },
     }));
     addUniqueEdge(edges, normalizeEdge({
@@ -795,7 +885,7 @@ function applyLayoutTargets() {
   const centers = {
     "Captured pages": { x: -70, y: 0 },
     "Evidence artifacts": { x: -250, y: 80 },
-    "Observed signals": { x: 210, y: -100 },
+    "Public observations": { x: 210, y: -100 },
     "Pending leads": { x: 285, y: 115 },
     "Linked destinations": { x: 270, y: 70 },
     "Evidence graph": { x: 0, y: 0 },
@@ -835,6 +925,7 @@ function setGraph(projection) {
   refs.graphCount.textContent = `${view.nodes.length} nodes · ${view.edges.length} links`;
   refs.graphEmpty.hidden = view.nodes.length > 0;
   renderTimeline();
+  appendGraphFilters();
   renderAccessibleGraph();
   window.setTimeout(fitGraph, 80);
   window.setTimeout(fitGraph, 1100);
@@ -882,7 +973,58 @@ function screenToWorld(x, y) {
 }
 
 function isVisible(item) {
-  return item.sequence <= view.playbackCutoff;
+  return item.sequence <= view.playbackCutoff && view.nodeFilters.has(item.presentation.visualKind);
+}
+
+function isEdgeVisible(edge) {
+  const source = view.nodeById.get(edge.source);
+  const target = view.nodeById.get(edge.target);
+  return edge.sequence <= view.playbackCutoff && source && target && isVisible(source) && isVisible(target);
+}
+
+function appendGraphFilters() {
+  document.querySelector("[data-graph-filter-section]")?.remove();
+  const defaults = {
+    page: { label: "Pages", color: "#ed1764", icon: "▤" },
+    contact: { label: "Contacts", color: "#00b4a6", icon: "@" },
+    brand: { label: "Brands", color: "#ff8a00", icon: "◇" },
+    transaction: { label: "Transactions", color: "#ff8a00", icon: "$" },
+    offer: { label: "Offers", color: "#f2c94c", icon: "%" },
+    destination: { label: "Destinations", color: "#32b9e8", icon: "↗" },
+    candidate: { label: "Candidates", color: "#8a5cf6", icon: "☆" },
+    other: { label: "Other", color: "#8b95a7", icon: "···" },
+  };
+  const filterOrder = Object.keys(defaults);
+  const counts = new Map(filterOrder.map((kind) => [kind, 0]));
+  view.nodes.forEach((item) => counts.set(item.presentation.visualKind, (counts.get(item.presentation.visualKind) || 0) + 1));
+  const list = el("div", "graph-filter-list");
+  filterOrder.forEach((kind) => {
+    const presentation = view.nodes.find((item) => item.presentation.visualKind === kind)?.presentation || defaults[kind];
+    const label = el("label", "graph-filter");
+    label.style.setProperty("--filter-color", presentation.color);
+    const checkbox = el("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = view.nodeFilters.has(kind);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) view.nodeFilters.add(kind);
+      else view.nodeFilters.delete(kind);
+      const visibleNodes = view.nodes.filter(isVisible);
+      const visibleIds = new Set(visibleNodes.map((item) => item.id));
+      const visibleEdges = view.edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+      refs.graphCount.textContent = `${visibleNodes.length} visible · ${view.nodes.length} total · ${visibleEdges.length} links`;
+      refs.graphEmpty.hidden = visibleNodes.length > 0;
+    });
+    label.append(
+      checkbox,
+      el("span", "graph-filter-icon", presentation.icon),
+      el("span", "", presentation.label),
+      el("span", "graph-filter-count", counts.get(kind) || 0),
+    );
+    list.append(label);
+  });
+  const section = intelSection("Graph filters", list);
+  section.dataset.graphFilterSection = "true";
+  refs.intelContent.append(section);
 }
 
 function physicsStep(delta) {
@@ -996,7 +1138,7 @@ function quadraticPoint(points, progress) {
 }
 
 function drawEdges(time) {
-  view.edges.filter(isVisible).forEach((edge) => {
+  view.edges.filter(isEdgeVisible).forEach((edge) => {
     const points = curvePoints(edge, time);
     if (!points) return;
     const age = reduceMotion ? 1 : Math.min(1, Math.max(0, (time - edge.birth) / 650));
@@ -1004,7 +1146,8 @@ function drawEdges(time) {
     const searchDimmed = view.query && !view.searchIds.has(edge.source) && !view.searchIds.has(edge.target);
     ctx.save();
     ctx.globalAlpha = (searchDimmed ? 0.08 : selected ? 0.96 : 0.48) * age;
-    ctx.strokeStyle = edge.appearance === "solid_emphasized" ? "#57edae" : edge.appearance === "dashed" ? "#ffb75a" : "#6ab9f4";
+    const targetColor = view.nodeById.get(edge.target)?.presentation.color || "#32b9e8";
+    ctx.strokeStyle = edge.appearance === "solid_emphasized" ? "#34d399" : edge.appearance === "dashed" ? "#8a5cf6" : targetColor;
     ctx.lineWidth = edge.appearance === "solid_emphasized" ? 2.6 : selected ? 1.8 : 1.15;
     if (edge.appearance === "dashed") ctx.setLineDash([7, 6]);
     ctx.shadowColor = ctx.strokeStyle;
@@ -1028,6 +1171,34 @@ function drawEdges(time) {
   });
 }
 
+function traceNodeShape(shape, radius) {
+  ctx.beginPath();
+  if (shape === "roundSquare") {
+    ctx.roundRect(-radius, -radius, radius * 2, radius * 2, Math.max(5, radius * 0.32));
+    return;
+  }
+  if (shape === "diamond") {
+    ctx.moveTo(0, -radius * 1.12);
+    ctx.lineTo(radius * 1.12, 0);
+    ctx.lineTo(0, radius * 1.12);
+    ctx.lineTo(-radius * 1.12, 0);
+    ctx.closePath();
+    return;
+  }
+  if (shape === "hex") {
+    for (let index = 0; index < 6; index += 1) {
+      const angle = Math.PI / 3 * index - Math.PI / 6;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    return;
+  }
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+}
+
 function drawNodes(time) {
   view.nodes.filter(isVisible).forEach((item) => {
     const point = worldToScreen(item, time);
@@ -1035,7 +1206,7 @@ function drawNodes(time) {
     const selected = item.id === view.selectedId;
     const hovered = item.id === view.hoverId;
     const searchDimmed = view.query && !view.searchIds.has(item.id);
-    const color = colors[item.kind] || colors.default;
+    const color = item.presentation.color;
     const radius = item.radius * view.camera.zoom + 3;
     const pulse = reduceMotion ? 0 : Math.sin(time * 0.003 + seededUnit(item.id) * 6) * 2;
     ctx.save();
@@ -1048,16 +1219,14 @@ function drawNodes(time) {
     ctx.strokeStyle = selected ? "#ffffff" : color;
     ctx.lineWidth = selected ? 2.1 : item.status === "lead" ? 1.5 : 1.1;
     if (item.status === "lead") ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius + 6 + pulse * 0.25, 0, Math.PI * 2);
+    traceNodeShape(item.presentation.shape, radius + 6 + pulse * 0.25);
     ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#0b141c";
     ctx.strokeStyle = `${color}aa`;
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    traceNodeShape(item.presentation.shape, radius);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 10;
@@ -1070,7 +1239,7 @@ function drawNodes(time) {
     ctx.font = `700 ${Math.max(7, Math.min(10, radius * 0.58))}px 'Cascadia Mono', Consolas, monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(nodeCode(item.kind), 0, 0);
+    ctx.fillText(nodeCode(item), 0, 0);
     ctx.restore();
     if (!searchDimmed && (selected || hovered || item.primary || view.camera.zoom > 1.05)) roundedLabel(item.label, point.x, point.y + radius + 10, selected);
   });
@@ -1094,7 +1263,7 @@ function drawMinimap() {
   });
   miniCtx.save();
   miniCtx.globalAlpha = 0.42;
-  view.edges.filter(isVisible).forEach((edge) => {
+  view.edges.filter(isEdgeVisible).forEach((edge) => {
     const source = view.nodeById.get(edge.source);
     const target = view.nodeById.get(edge.target);
     if (!source || !target) return;
@@ -1110,7 +1279,7 @@ function drawMinimap() {
   miniCtx.globalAlpha = 0.86;
   visible.forEach((item) => {
     const point = toMini(item);
-    miniCtx.fillStyle = colors[item.kind] || colors.default;
+    miniCtx.fillStyle = item.presentation.color;
     miniCtx.beginPath();
     miniCtx.arc(point.x, point.y, item.primary ? 3.2 : 2.1, 0, Math.PI * 2);
     miniCtx.fill();
@@ -1141,7 +1310,7 @@ function paintFrame(time) {
 }
 
 function drawFrame(time) {
-  paintFrame(time);
+  if (!document.hidden && !refs.workspaceView.hidden) paintFrame(time);
   window.requestAnimationFrame(drawFrame);
 }
 
@@ -1196,6 +1365,7 @@ function canvasPoint(event) {
 function selectNode(item, shouldFocus = false) {
   if (!item) return;
   view.selectedId = item.id;
+  view.selectedEvidenceId = null;
   if (shouldFocus) focusNode(item);
   if (view.currentKind === "case") renderCaseInspector(view.currentDetails, item);
   else if (view.currentKind === "run") renderRunInspector(view.currentDetails, item);
@@ -1215,15 +1385,34 @@ function updateHover(point) {
   }
 }
 
+function timelinePresentation(item) {
+  const kind = String(item.event?.kind || item.label || "").toLowerCase();
+  if (kind.includes("blocked") || kind.includes("failed")) return { icon: "!", color: "#ff6577" };
+  if (kind.includes("review") || kind.includes("assertion")) return { icon: "✓", color: "#34d399" };
+  if (kind.includes("candidate") || kind.includes("lead")) return { icon: "☆", color: "#8a5cf6" };
+  if (kind.includes("agent") || kind.includes("tool") || kind.includes("objective")) return { icon: "◇", color: "#32b9e8" };
+  if (kind.includes("observation") || kind.includes("semantic") || kind.includes("extract")) return { icon: "◉", color: "#00b4a6" };
+  if (kind.includes("capture") || kind.includes("page") || kind.includes("artifact") || kind.includes("crawl")) return { icon: "▤", color: "#ed1764" };
+  if (kind.includes("completed") || kind.includes("adequate")) return { icon: "✓", color: "#34d399" };
+  return { icon: "·", color: "#8b95a7" };
+}
+
 function renderTimeline() {
   refs.timelineTrack.replaceChildren();
   view.timeline.forEach((item, index) => {
     const card = el("button", "timeline-card");
+    const presentation = timelinePresentation(item);
     card.type = "button";
     card.dataset.sequence = String(item.sequence);
-    card.append(el("b", "", item.label), el("span", "", item.detail));
+    card.dataset.icon = presentation.icon;
+    card.style.setProperty("--event-color", presentation.color);
+    const timestamp = el("time", "", formatTime(item.occurredAt));
+    timestamp.dateTime = item.occurredAt || "";
+    timestamp.title = exactTime(item.occurredAt);
+    card.append(el("b", "", item.label), el("span", "", item.detail), timestamp);
     card.addEventListener("click", () => {
       stopReplay();
+      view.playbackCutoff = item.sequence;
       setActiveTimeline(index);
       const target = view.nodeById.get(item.targetId);
       if (target) selectNode(target, true);
@@ -1233,6 +1422,10 @@ function renderTimeline() {
     });
     refs.timelineTrack.append(card);
   });
+  refs.timelineScrubber.min = "0";
+  refs.timelineScrubber.max = String(Math.max(0, view.timeline.length - 1));
+  refs.timelineScrubber.value = String(Math.max(0, view.timeline.length - 1));
+  refs.timelineScrubber.disabled = !view.timeline.length;
   setActiveTimeline(view.timeline.length ? view.timeline.length - 1 : -1);
 }
 
@@ -1246,6 +1439,15 @@ function setActiveTimeline(index) {
       card.removeAttribute("aria-current");
     }
   });
+  if (index >= 0 && view.timeline[index]) {
+    refs.timelineScrubber.value = String(index);
+    refs.timelineCurrentTime.textContent = formatTime(view.timeline[index].occurredAt);
+    refs.timelineCurrentTime.title = exactTime(view.timeline[index].occurredAt);
+    refs.timelineMode.textContent = index === view.timeline.length - 1 ? "REPLAY" : "CAPTURED";
+  } else {
+    refs.timelineCurrentTime.textContent = "Time not recorded";
+    refs.timelineMode.textContent = "REPLAY";
+  }
 }
 
 function stopReplay() {
@@ -1506,7 +1708,238 @@ function renderScreenshotGallery(details, selected) {
   return gallery;
 }
 
-function renderCaseInspector(details, selected) {
+function observationPresentation(observation) {
+  const type = String(observation?.type || observation?.observation_type || "");
+  if (type.includes("whatsapp")) return { label: "WhatsApp identifier", icon: "WA", color: "#00b4a6" };
+  if (type.includes("telegram")) return { label: "Telegram identifier", icon: "TG", color: "#00b4a6" };
+  if (type.includes("email")) return { label: "Email address", icon: "@", color: "#00b4a6" };
+  if (type.includes("phone")) return { label: "Phone number", icon: "TEL", color: "#00b4a6" };
+  if (type === "claimed_brand_identity") return { label: "Claimed brand", icon: "◇", color: "#ff8a00" };
+  if (type.includes("payment")) return { label: "Public payment observation", icon: "$", color: "#ff8a00" };
+  if (type.includes("offer")) return { label: "Public offer claim", icon: "%", color: "#f2c94c" };
+  if (type.includes("outgoing") || type.includes("redirect") || type.includes("download")) return { label: "Public destination", icon: "↗", color: "#32b9e8" };
+  return { label: titleCase(type), icon: "···", color: "#8b95a7" };
+}
+
+function artifactPresentation(record) {
+  const type = String(record?.type || record?.media_type || record?.name || "artifact").toLowerCase();
+  if (type.includes("screenshot") || type.includes("png") || type.includes("image")) return { label: titleCase(record.type || "Screenshot"), icon: "IMG", color: "#ed1764" };
+  if (type.includes("readiness") || type.includes("response") || type.includes("network")) return { label: titleCase(record.type || "Capture metadata"), icon: "META", color: "#32b9e8" };
+  if (type.includes("html")) return { label: "Rendered HTML", icon: "HTML", color: "#8b95a7" };
+  if (type.includes("text")) return { label: "Visible text", icon: "TXT", color: "#8b95a7" };
+  return { label: titleCase(record.type || record.name || "Artifact"), icon: "DOC", color: "#8b95a7" };
+}
+
+function relatedNodeIdForObservation(observationId, sourcePageId) {
+  const direct = view.nodes.find((node) => (
+    node.attributes?.observation_id === observationId
+    || node.attributes?.observation?.id === observationId
+    || (node.attributes?.observations || []).some((item) => item.id === observationId)
+  ));
+  if (direct) return direct.id;
+  return view.nodes.find((node) => node.id === `page:${sourcePageId}` || node.attributes?.page?.id === sourcePageId)?.id || null;
+}
+
+function buildCaseEvidenceCards(details) {
+  const cards = [];
+  const evidenceById = new Map((details.evidence || []).map((item) => [item.id, item]));
+  const indicatorsByObservation = new Map((details.gambling_indicators?.classifications || []).map((item) => [item.observation_id, item]));
+  (details.evidence || []).forEach((record) => {
+    const presentation = artifactPresentation(record);
+    const pageNode = view.nodes.find((node) => node.id === `page:${record.page_id}` || node.attributes?.page?.id === record.page_id);
+    cards.push({
+      id: `artifact:${record.id}`,
+      title: presentation.label,
+      value: record.id,
+      icon: presentation.icon,
+      color: presentation.color,
+      occurredAt: record.collected_at,
+      nodeId: pageNode?.id || null,
+      previewUrl: String(record.type).includes("screenshot") ? caseArtifactUrl(details.case_id, record.id) : null,
+      facts: [
+        ["Artifact ID", record.id],
+        ["Source page", record.page_id],
+        ["Collected", exactTime(record.collected_at)],
+        ["SHA-256", record.sha256],
+        ["Dimensions", record.image_dimensions ? `${record.image_dimensions.width} × ${record.image_dimensions.height}` : null],
+        ["Integrity", record.artifact_available ? "Verified and available" : "Unavailable"],
+      ],
+    });
+  });
+  (details.observations || []).forEach((observation) => {
+    const presentation = observationPresentation(observation);
+    const indicator = indicatorsByObservation.get(observation.id);
+    const sourceArtifact = evidenceById.get(observation.source_artifact_id);
+    const screenshotId = observation.crop_evidence_id || observation.screenshot_evidence_id;
+    cards.push({
+      id: `observation:${observation.id}`,
+      title: presentation.label,
+      value: observation.display_value,
+      icon: presentation.icon,
+      color: presentation.color,
+      occurredAt: sourceArtifact?.collected_at,
+      nodeId: relatedNodeIdForObservation(observation.id, observation.source_page_id),
+      previewUrl: screenshotId ? caseArtifactUrl(details.case_id, screenshotId) : null,
+      facts: [
+        ["Observation ID", observation.id],
+        ["Raw / displayed", observation.display_value],
+        ["Source page", observation.source_page_id],
+        ["Source artifact", observation.source_artifact_id],
+        ["Screenshot / crop", screenshotId],
+        ["Extraction", observation.extraction_method],
+        ["Context", observation.surrounding_text],
+        ["Indicator", indicator?.label === "indicator" ? `${titleCase(indicator.category)} · ${(indicator.matched_terms || []).join(", ")}` : "Not counted by the controlled indicator policy"],
+        ["Limitations", (observation.limitations || []).join(" · ") || "None recorded"],
+      ],
+    });
+  });
+  (details.candidates || []).forEach((candidate, index) => {
+    const candidateNode = view.nodes.find((node) => node.label === candidate.hostname || node.attributes?.url === candidate.url);
+    cards.push({
+      id: `candidate:${candidate.id || candidate.hostname || index}`,
+      title: "Pending candidate lead",
+      value: candidate.hostname || candidate.url,
+      icon: "☆",
+      color: "#8a5cf6",
+      occurredAt: null,
+      nodeId: candidateNode?.id || null,
+      facts: [
+        ["Status", "Relationship not determined"],
+        ["Candidate", candidate.hostname || candidate.url],
+        ["Policy", details.candidate_policy_version],
+        ["Reasons", (candidate.reasons || []).map((reason) => reason.code || reason.type || reason.reason).filter(Boolean).join(" · ") || "Evidence-backed candidate rule"],
+        ["Limitation", "A candidate is not a confirmed mirror, operator, or ownership conclusion."],
+      ],
+    });
+  });
+  return cards;
+}
+
+function buildRunEvidenceCards(details) {
+  const cards = details.source_case ? buildCaseEvidenceCards(details.source_case) : [];
+  (details.artifacts || []).forEach((artifact) => {
+    const presentation = artifactPresentation(artifact);
+    cards.push({
+      id: `run-artifact:${artifact.name}`,
+      title: presentation.label,
+      value: artifact.name,
+      icon: presentation.icon,
+      color: presentation.color,
+      occurredAt: null,
+      nodeId: null,
+      previewUrl: String(artifact.media_type).includes("image") ? runArtifactUrl(details.workspace_id, artifact.name) : null,
+      facts: [["Artifact", artifact.name], ["Media type", artifact.media_type], ["Bytes", artifact.bytes], ["Scope", "Persisted run artifact"]],
+    });
+  });
+  (details.pending_leads || []).forEach((lead) => {
+    const node = view.nodes.find((item) => item.attributes?.lead_id === lead.lead_id || item.label === lead.url || item.label === hostnameFrom(lead.url));
+    cards.push({
+      id: `lead:${lead.lead_id}`,
+      title: "Candidate lead",
+      value: lead.url,
+      icon: "☆",
+      color: "#8a5cf6",
+      occurredAt: lead.created_at,
+      nodeId: node?.id || null,
+      facts: [["Lead ID", lead.lead_id], ["Discovery", titleCase(lead.discovery_method)], ["Collection", titleCase(lead.initial_status)], ["Source observations", (lead.source_observation_ids || []).join(", ")], ["Limitation", "Candidate relationship requires collection and human review."]],
+    });
+  });
+  const assertions = new Map((details.assertions || []).map((item) => [item.assertion_id, item]));
+  if (details.assertion) assertions.set(details.assertion.assertion_id, details.assertion);
+  assertions.forEach((assertion) => {
+    const edge = view.edges.find((item) => item.id === `assertion:${assertion.assertion_id}`);
+    cards.push({
+      id: `assertion:${assertion.assertion_id}`,
+      title: "Candidate assertion",
+      value: `${assertion.subject} → ${assertion.object}`,
+      icon: "◇",
+      color: "#8a5cf6",
+      occurredAt: assertion.created_at,
+      nodeId: edge?.target || null,
+      facts: [["Assertion ID", assertion.assertion_id], ["Relation", titleCase(assertion.assertion_type)], ["Review", titleCase(details.assertion_statuses?.[assertion.assertion_id] || details.current_assertion_status || "needs review")], ["Observations", (assertion.supporting_observation_ids || []).join(", ")], ["Artifacts", (assertion.source_artifact_ids || []).join(", ")], ["Limitations", (assertion.limitations || []).join(" · ")]],
+    });
+  });
+  (details.all_reviews || details.reviews || []).forEach((review) => {
+    cards.push({
+      id: `review:${review.review_id}`,
+      title: "Human review decision",
+      value: titleCase(review.outcome),
+      icon: "✓",
+      color: review.outcome === "verified" ? "#34d399" : review.outcome === "rejected" ? "#ff6577" : "#f2c94c",
+      occurredAt: review.occurred_at,
+      nodeId: view.edges.find((item) => item.id === `assertion:${review.assertion_id}`)?.target || null,
+      facts: [["Review ID", review.review_id], ["Assertion", review.assertion_id], ["Reviewer label", review.reviewer_label], ["Outcome", titleCase(review.outcome)], ["Reason", review.reason], ["Version", `${review.previous_version} → ${review.new_version}`]],
+    });
+  });
+  return cards;
+}
+
+function renderEvidenceCatalog(cards, selected) {
+  const catalog = el("div", "evidence-catalog");
+  const matchedCard = cards.find((card) => card.nodeId && card.nodeId === selected?.id);
+  const activeId = view.selectedEvidenceId || matchedCard?.id || null;
+  cards.forEach((card) => {
+    const button = el("button", `evidence-card${card.id === activeId ? " selected" : ""}`);
+    button.type = "button";
+    button.style.setProperty("--card-color", card.color);
+    button.setAttribute("aria-expanded", card.id === activeId ? "true" : "false");
+    const copy = el("span", "evidence-card-copy");
+    copy.append(el("b", "", card.title), el("strong", "", card.value), el("small", "", card.facts.find((fact) => fact[1])?.[1] || "Evidence-backed record"));
+    const timestamp = el("time", "", formatTime(card.occurredAt));
+    timestamp.title = exactTime(card.occurredAt);
+    const detail = el("span", "evidence-card-detail");
+    if (card.previewUrl) {
+      const image = el("img");
+      image.src = card.previewUrl;
+      image.alt = `${card.title} supporting screenshot`;
+      image.loading = "lazy";
+      detail.append(image);
+    }
+    detail.append(factList(card.facts));
+    button.append(el("span", "evidence-card-icon", card.icon), copy, timestamp, detail);
+    button.addEventListener("click", () => {
+      view.selectedEvidenceId = card.id === view.selectedEvidenceId ? null : card.id;
+      const node = card.nodeId ? view.nodeById.get(card.nodeId) : null;
+      if (node) {
+        view.selectedId = node.id;
+        focusNode(node);
+      }
+      if (view.currentKind === "case") renderCaseInspector(view.currentDetails, node || selected);
+      else renderRunInspector(view.currentDetails, node || selected);
+    });
+    catalog.append(button);
+  });
+  if (!cards.length) catalog.append(el("p", "policy-copy", "No evidence records are available for this verified package."));
+  return catalog;
+}
+
+function selectedNodeFacts(details, selected) {
+  const presentation = selected?.presentation || presentationFor(selected?.kind || "other");
+  const attributes = selected?.attributes || {};
+  const observation = attributes.observation || details?.source_case?.observations?.find((item) => item.id === attributes.observation_id);
+  const page = attributes.page || details?.pages?.find((item) => `page:${item.id}` === selected?.id) || details?.source_case?.pages?.find((item) => `page:${item.id}` === selected?.id);
+  if (presentation.visualKind === "page") return factList([
+    ["Type", presentation.label], ["URL", selected?.label], ["Node state", titleCase(selected?.status)],
+    ["Access", page?.access_outcome], ["Capture quality", page?.capture_adequacy], ["Extraction", page?.extraction_tier],
+    ["Limitations", (page?.limitation_reasons || []).join(" · ") || "None recorded"],
+  ]);
+  if (presentation.visualKind === "contact" || presentation.visualKind === "brand") return factList([
+    ["Type", presentation.label], ["Observed value", observation?.display_value || selected?.label], ["Raw value", observation?.raw_value],
+    ["Source page", observation?.source_page_id || attributes.source_node_id], ["Source artifact", observation?.source_artifact_id || attributes.source_artifact_id],
+    ["Extraction", observation?.extraction_method], ["Context", observation?.surrounding_text], ["Review", "Observation only · no ownership attribution"],
+  ]);
+  if (["transaction", "offer", "other"].includes(presentation.visualKind)) return factList([
+    ["Type", presentation.label], ["Category", attributes.claim_category], ["Values", (attributes.values || [selected?.label]).join(" · ")],
+    ["Observations", attributes.observation_count || attributes.observations?.length], ["State", titleCase(selected?.status)], ["Meaning", "Publicly displayed claim; not a legal or ownership conclusion"],
+  ]);
+  if (["destination", "candidate"].includes(presentation.visualKind)) return factList([
+    ["Type", presentation.label], ["Destination", attributes.url || selected?.label], ["State", titleCase(selected?.status)],
+    ["Relationship", attributes.relationship || "Candidate relationship not determined"], ["Matched case", attributes.matched_case_id], ["Review", "Human review required for candidate relation"],
+  ]);
+  return factList([["Type", presentation.label], ["State", titleCase(selected?.status)], ["Node ID", selected?.id], ["Label", selected?.label]]);
+}
+
+function renderLegacyCaseInspector(details, selected) {
   const screenshot = findScreenshot(details, selected);
   const selectedEvidence = selected?.attributes?.evidence;
   const header = inspectorHeader(
@@ -1579,6 +2012,22 @@ function renderCaseInspector(details, selected) {
   refs.inspectorContent.replaceChildren(...children);
 }
 
+function renderCaseInspector(details, selected) {
+  const presentation = selected?.presentation || presentationFor(selected?.kind || "other");
+  const header = inspectorHeader(
+    presentation.label,
+    selected?.label || hostnameFrom(details.final_url_display),
+    selected?.status === "lead" ? evidenceSemantics.candidate : "Every displayed fact below resolves to a verified local artifact or deterministic observation.",
+  );
+  const children = [header];
+  const gallery = renderScreenshotGallery(details, selected);
+  if (gallery) children.push(gallery);
+  children.push(evidenceBlock("Selected node", selectedNodeFacts(details, selected)));
+  const cards = buildCaseEvidenceCards(details);
+  children.push(evidenceBlock(`Evidence catalog · ${cards.length}`, renderEvidenceCatalog(cards, selected)));
+  refs.inspectorContent.replaceChildren(...children);
+}
+
 function renderReviewForm(details) {
   const form = el("form", "review-form");
   const reviewer = el("input");
@@ -1622,7 +2071,7 @@ function renderReviewForm(details) {
   return form;
 }
 
-function renderRunInspector(details, selected) {
+function renderLegacyRunInspector(details, selected) {
   const header = inspectorHeader(
     selected ? titleCase(selected.kind) : "Investigation node",
     selected?.label || details.case_id,
@@ -1675,6 +2124,52 @@ function renderRunInspector(details, selected) {
     const approve = el("button", "", "Approve candidate collection");
     approve.type = "button";
     approve.className = "artifact-link";
+    approve.addEventListener("click", async () => {
+      approve.disabled = true;
+      approve.textContent = "Collecting approved public page…";
+      try {
+        await postJson(`/api/mvp/runs/${encodeURIComponent(details.workspace_id)}/approve`, {});
+        await loadRun(details.workspace_id);
+        toast("Approval recorded before bounded candidate collection.", "success");
+      } catch (error) {
+        toast(error.message, "error");
+        approve.disabled = false;
+        approve.textContent = "Approve candidate collection";
+      }
+    });
+    children.push(evidenceBlock("Approval boundary", approve));
+  }
+  if (details.assertion) children.push(evidenceBlock("Append human review", renderReviewForm(details)));
+  refs.inspectorContent.replaceChildren(...children);
+}
+
+function renderRunInspector(details, selected) {
+  const presentation = selected?.presentation || presentationFor(selected?.kind || "other");
+  const header = inspectorHeader(
+    presentation.label,
+    selected?.label || details.case_id,
+    selected?.status === "lead" ? evidenceSemantics.candidate : "This view is reconstructed from persisted events, evidence, assertions, and append-only review history.",
+  );
+  const children = [header];
+  const interactionScreenshot = selected?.attributes?.screenshot_artifact;
+  if (interactionScreenshot) {
+    const figure = el("figure", "evidence-preview");
+    const image = el("img");
+    image.src = runArtifactUrl(details.workspace_id, interactionScreenshot);
+    image.alt = `Interaction screenshot evidence for ${selected.label}`;
+    image.loading = "eager";
+    figure.append(image, el("figcaption", "preview-label", "Post-action screenshot evidence"));
+    children.push(figure);
+  } else if (details.source_case) {
+    const gallery = renderScreenshotGallery(details.source_case, selected);
+    if (gallery) children.push(gallery);
+  }
+  children.push(evidenceBlock("Selected node", selectedNodeFacts(details, selected)));
+  const cards = buildRunEvidenceCards(details);
+  children.push(evidenceBlock(`Evidence and claims · ${cards.length}`, renderEvidenceCatalog(cards, selected)));
+  if (details.lead_status === "waiting_for_approval") {
+    const approve = el("button", "artifact-link", "Approve candidate collection");
+    approve.type = "button";
     approve.addEventListener("click", async () => {
       approve.disabled = true;
       approve.textContent = "Collecting approved public page…";
@@ -1787,7 +2282,7 @@ async function loadRun(workspaceId) {
   }
 }
 
-function renderRecentCases() {
+function renderLegacyRecentCases() {
   refs.recentCases.replaceChildren();
   const recent = [
     ...view.runs.map((item) => ({
@@ -1826,6 +2321,94 @@ function renderRecentCases() {
       el("span", "case-state", item.state),
       el("span", "open-label", item.updated ? formatTime(item.updated) : "Open →"),
     );
+    button.addEventListener("click", () => {
+      if (item.kind === "run") void loadRun(item.id);
+      else void loadCase(item.id);
+    });
+    refs.recentCases.append(button);
+  });
+}
+
+function caseCardState(item) {
+  if (item.integrity === "error") return { key: "error", label: "Integrity error", tone: "bad" };
+  const state = String(item.leadStatus || item.captureState || "complete");
+  if (["waiting_for_approval", "needs_review", "review_required"].includes(state)) return { key: "review", label: "Needs review", tone: "warn" };
+  if (["queued", "running"].includes(state)) return { key: "active", label: titleCase(state), tone: "" };
+  if (state === "recollected") return { key: "complete", label: "Recollected", tone: "" };
+  if (state === "limited") return { key: "complete", label: "Captured · limited", tone: "warn" };
+  return { key: "complete", label: "Complete", tone: "" };
+}
+
+function renderRecentCases() {
+  refs.recentCases.replaceChildren();
+  refs.recentCases.classList.toggle("list-view", view.caseLayout === "list");
+  const casesById = new Map(view.cases.map((item) => [item.case_id, item]));
+  const representedCases = new Set(view.runs.map((item) => item.source_case_id).filter(Boolean));
+  const entries = [
+    ...view.runs.map((run) => {
+      const source = casesById.get(run.source_case_id) || {};
+      return {
+        kind: "run",
+        id: run.workspace_id,
+        title: hostnameFrom(run.seed_url || source.final_url_display || run.case_id),
+        caseId: run.case_id,
+        updated: run.updated_at,
+        pages: source.page_count || 0,
+        indicators: source.gambling_indicator_count || 0,
+        candidates: source.candidate_count || 0,
+        leadStatus: run.lead_status,
+        integrity: source.integrity || "verified",
+      };
+    }),
+    ...view.cases.filter((item) => !representedCases.has(item.case_id)).map((item) => ({
+      kind: "case",
+      id: item.case_id,
+      title: item.integrity === "verified" ? hostnameFrom(item.final_url_display || item.seed_url_display) : "Unverified case package",
+      caseId: item.case_id,
+      updated: item.completed_at || item.started_at,
+      pages: item.page_count || 0,
+      indicators: item.gambling_indicator_count || 0,
+      candidates: item.candidate_count || 0,
+      captureState: item.capture_adequacy,
+      integrity: item.integrity,
+      error: item.error,
+    })),
+  ];
+  const query = view.caseQuery.toLowerCase();
+  const filtered = entries.filter((item) => {
+    const state = caseCardState(item);
+    const filterMatches = view.caseFilter === "all" || state.key === view.caseFilter;
+    const queryMatches = !query || `${item.title} ${item.caseId} ${state.label}`.toLowerCase().includes(query);
+    return filterMatches && queryMatches;
+  });
+  filtered.sort((left, right) => {
+    if (refs.caseSort.value === "name") return left.title.localeCompare(right.title);
+    const delta = new Date(left.updated || 0).getTime() - new Date(right.updated || 0).getTime();
+    return refs.caseSort.value === "oldest" ? delta : -delta;
+  });
+  if (!filtered.length) {
+    refs.recentCases.append(el("p", "quiet-copy", entries.length ? "No cases match this view." : "No saved investigations yet."));
+    return;
+  }
+  filtered.forEach((item) => {
+    const state = caseCardState(item);
+    const button = el("button", `recent-case${item.integrity === "error" ? " error" : ""}`);
+    button.type = "button";
+    button.disabled = item.integrity === "error";
+    const head = el("span", "case-card-head");
+    const identity = el("span");
+    identity.append(el("strong", "", item.title), el("small", "", item.caseId));
+    head.append(identity, el("span", `case-state ${state.tone}`.trim(), state.label));
+    const metrics = el("span", "case-card-metrics");
+    [[item.pages, "Pages"], [item.indicators, "Indicators"], [item.candidates, "Candidates"]].forEach(([value, label]) => {
+      const metric = el("span");
+      metric.append(el("b", "", value), document.createTextNode(label));
+      metrics.append(metric);
+    });
+    const date = el("span");
+    date.append(el("b", "", formatTime(item.updated)), document.createTextNode(item.error || "Updated WIB"));
+    metrics.append(date, el("span", "case-card-arrow", item.integrity === "error" ? "!" : "→"));
+    button.append(head, metrics);
     button.addEventListener("click", () => {
       if (item.kind === "run") void loadRun(item.id);
       else void loadCase(item.id);
@@ -2111,7 +2694,6 @@ refs.scanForm.addEventListener("submit", async (event) => {
       investigation_mode: "guided",
     });
     renderInvestigationProgress(job);
-    setScanActive(false);
     await monitorInvestigationJob(job.job_id);
   } catch (error) {
     toast(error.message, "error");
@@ -2122,8 +2704,15 @@ refs.scanForm.addEventListener("submit", async (event) => {
 
 refs.brandHome.addEventListener("click", () => showScreen("landing"));
 refs.newInvestigation.addEventListener("click", () => {
-  if (!view.jobPolling) refs.captureProgress.hidden = true;
   showScreen("landing");
+  refs.seedInput.focus();
+});
+refs.landingNewInvestigation.addEventListener("click", () => {
+  document.getElementById("investigation-start")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  refs.seedInput.focus();
+});
+refs.scanWorkspaceButton.addEventListener("click", () => {
+  if (view.scanWorkspaceId) void loadRun(view.scanWorkspaceId);
 });
 refs.openSummary.addEventListener("click", () => {
   if (!view.currentDetails) return;
@@ -2133,6 +2722,39 @@ refs.openSummary.addEventListener("click", () => {
 refs.backToGraph.addEventListener("click", () => showScreen("workspace"));
 refs.inspectorTabs.forEach((button) => {
   button.addEventListener("click", () => renderInspectorTab(button.dataset.inspectorTab || "evidence"));
+});
+
+refs.caseSearch.addEventListener("input", () => {
+  view.caseQuery = refs.caseSearch.value.trim();
+  renderRecentCases();
+});
+refs.caseSort.addEventListener("change", renderRecentCases);
+refs.caseFilters.forEach((button) => {
+  button.addEventListener("click", () => {
+    view.caseFilter = button.dataset.caseFilter || "all";
+    refs.caseFilters.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    renderRecentCases();
+  });
+});
+refs.caseGridView.addEventListener("click", () => {
+  view.caseLayout = "grid";
+  refs.caseGridView.classList.add("active");
+  refs.caseGridView.setAttribute("aria-pressed", "true");
+  refs.caseListView.classList.remove("active");
+  refs.caseListView.setAttribute("aria-pressed", "false");
+  renderRecentCases();
+});
+refs.caseListView.addEventListener("click", () => {
+  view.caseLayout = "list";
+  refs.caseListView.classList.add("active");
+  refs.caseListView.setAttribute("aria-pressed", "true");
+  refs.caseGridView.classList.remove("active");
+  refs.caseGridView.setAttribute("aria-pressed", "false");
+  renderRecentCases();
 });
 
 refs.workspaceSelector.addEventListener("change", () => {
@@ -2247,6 +2869,17 @@ refs.pauseButton.addEventListener("click", () => {
   view.replayPaused = !view.replayPaused;
   refs.pauseButton.textContent = view.replayPaused ? "▶" : "Ⅱ";
   if (!view.replayPaused) replayStep();
+});
+refs.timelineScrubber.addEventListener("input", () => {
+  stopReplay();
+  const index = Number(refs.timelineScrubber.value);
+  const item = view.timeline[index];
+  if (!item) return;
+  view.playbackCutoff = item.sequence;
+  setActiveTimeline(index);
+  const target = view.nodeById.get(item.targetId);
+  if (target) selectNode(target, true);
+  else if (view.currentKind === "run" && item.event) renderRunEventInspector(view.currentDetails, item.event);
 });
 
 const resizeObserver = new ResizeObserver(() => {
