@@ -335,6 +335,30 @@ class BrowserCollector:
             context.route("**/*", guard.handle)
             context.route_web_socket("**/*", guard.handle_websocket)
             page = context.new_page()
+            cdp_session = context.new_cdp_session(page)
+            cdp_session.send("Network.enable")
+            last_document_content_type: str | None = None
+
+            def record_document_response(payload: dict[str, object]) -> None:
+                """Retain the MIME type even when Chromium turns a document into a download.
+
+                Playwright does not consistently emit its high-level ``response`` event for a
+                top-level PDF/download before ``goto`` returns ``ERR_ABORTED``. Chromium's network
+                event is still emitted and lets the collector preserve the precise reason without
+                guessing from a URL suffix.
+                """
+
+                nonlocal last_document_content_type
+                if payload.get("type") != "Document":
+                    return
+                response = payload.get("response")
+                if not isinstance(response, dict):
+                    return
+                mime_type = response.get("mimeType")
+                if isinstance(mime_type, str) and mime_type:
+                    last_document_content_type = mime_type.split(";", maxsplit=1)[0].casefold()
+
+            cdp_session.on("Network.responseReceived", record_document_response)
             guard.stop_page = lambda: _stop_page(page)
             page.set_default_timeout(timeout_ms)
             page.set_default_navigation_timeout(timeout_ms)
@@ -441,7 +465,9 @@ class BrowserCollector:
                         ),
                         reason_code="unsupported_content_type",
                     )
-                    _stop_page(page)
+                    # Keep the page alive until ``goto`` observes the recorded failure. Closing it
+                    # inside the asynchronous response callback can win the race and replace the
+                    # precise content-type reason with a generic "Target closed" navigation error.
 
             page.on("response", inspect_navigation_response)
             try:
@@ -662,11 +688,18 @@ class BrowserCollector:
                         guard.navigation_failure, blocked_popup_count, blocked_download_count
                     ) from error
                 error_text = str(error).casefold()
+                download_started = (
+                    blocked_download_count > 0 or "download is starting" in error_text
+                )
+                unsupported_document = (
+                    last_document_content_type is not None
+                    and last_document_content_type not in ALLOWED_HTML_CONTENT_TYPES
+                )
                 reason_code = (
                     "timeout"
                     if "timeout" in error_text
                     else "unsupported_content_type"
-                    if "download is starting" in error_text
+                    if download_started or unsupported_document
                     else "navigation_error"
                 )
                 raise self._error(

@@ -81,14 +81,16 @@ def _validate_base_url(value: str) -> str:
         raise ValueError("HAWKEYE_LLM_BASE_URL must be an absolute HTTP(S) URL")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("HAWKEYE_LLM_BASE_URL cannot contain credentials, query, or fragment")
-    if parsed.scheme != "https" and not _is_loopback_host(parsed.hostname):
+    if parsed.scheme != "https" and not _is_local_development_host(parsed.hostname):
         raise ValueError("HAWKEYE_LLM_BASE_URL requires HTTPS except for loopback development")
     path = parsed.path.rstrip("/")
     return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
 
 
-def _is_loopback_host(hostname: str) -> bool:
+def _is_local_development_host(hostname: str) -> bool:
     normalized = hostname.casefold().rstrip(".")
+    if normalized == "host.docker.internal":
+        return os.environ.get("HAWKEYE_CONTAINER") == "1"
     if normalized == "localhost" or normalized.endswith(".localhost"):
         return True
     try:

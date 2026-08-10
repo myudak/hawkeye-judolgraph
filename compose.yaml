@@ -8,8 +8,11 @@ services:
     read_only: true
     cap_drop:
       - ALL
+    cap_add:
+      - SYS_CHROOT
     security_opt:
       - no-new-privileges:true
+      - seccomp=infra/docker/seccomp_profile.json
     ports:
       - "127.0.0.1:${HAWKEYE_PORT:-8760}:8760"
     environment:
@@ -24,5 +27,5 @@ services:
       - /tmp:rw,noexec,nosuid,size=1g
       - /home/pwuser:rw,nosuid,size=256m,uid=1001,gid=1001,mode=0700
     volumes:
-      - ./data:/data
+      - ${HAWKEYE_DATA_PATH:-./data}:/data
     restart: unless-stopped

@@ -373,10 +373,10 @@ from source history without producing a backend-only wheel.
 Compose runs one FastAPI service containing the React bundle and publishes
 `127.0.0.1:${HAWKEYE_PORT}:8760`. The normal CLI retains a fixed loopback host; only the internal
 container entry point binds all container interfaces. Runtime uses a matching pinned Playwright
-image, non-root user, Chromium sandbox flag, init, shared IPC, Docker's seccomp boundary, dropped
-capabilities, `no-new-privileges`, read-only root filesystem, bounded tmpfs, and explicit `/data`
-persistence. Authentication, LAN/public bind, TLS termination, and multi-user authorization remain
-out of scope.
+image, non-root user, Chromium sandbox flag, init, shared IPC, a pinned default-deny seccomp profile,
+all capabilities dropped with only `SYS_CHROOT` restored, `no-new-privileges`, a read-only root
+filesystem, bounded tmpfs, and explicit `/data` persistence. Authentication, LAN/public bind, TLS
+termination, and multi-user authorization remain out of scope.
 
 ## ADR-034 — Model transport is generic, optional, and never probed by page load
 

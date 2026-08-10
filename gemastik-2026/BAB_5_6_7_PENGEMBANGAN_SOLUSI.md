@@ -69,7 +69,7 @@ dan keputusan arsitektur yang relevan.
 | G4A | Capture adequacy | Checkpoint render, settle terbatas, screenshot, access/adequacy status | `tests/test_capture_adequacy.py` |
 | G4B | Semantic evidence | Observasi bertipe dengan raw/normalized value dan provenance | `tests/test_semantic_evidence.py` |
 | G5 | Controlled safe expansion | Sepuluh skenario interaksi, stable references, tool sempit, policy preflight | `tests/test_controlled_interaction.py` dan benchmark |
-| G6 | Bounded Codex runtime | Capability probe, strict output, reference validation, retry, fallback | `tests/test_agent_runtime.py` dan capability JSON |
+| G6 | Bounded model runtime | Generic provider, opt-in probe, strict output, reference validation, retry, fallback | `tests/test_agent_runtime.py`, `tests/test_llm_provider.py`, dan capability JSON |
 | G7 | Candidate recollection dan review | Lead, approval, Page B, assertion evidence-backed, SQLite append-only | Runtime/review tests dan walkthrough |
 | G8 | Event-driven graph dan evaluasi | Event monotonic, reducer idempoten, replay, tiga mode benchmark | Runtime/reducer tests dan benchmark JSON |
 | G9 | Paket GEMASTIK | Proposal, technical document, video script, matrix klaim, lisensi | Folder `gemastik-2026/` dan checklist |
@@ -96,7 +96,7 @@ candidate-domain crawl otomatis; serta keputusan bahwa animation queue bukan sum
 ### 5.4.3 Implementasi incremental
 
 Implementasi dimulai dari fungsi deterministik terkecil. Model data, storage, collector, policy,
-runtime, reducer, dan UI dihubungkan setelah kontrak masing-masing dapat diuji. Agen Codex hanya
+runtime, reducer, dan UI dihubungkan setelah kontrak masing-masing dapat diuji. Agen model hanya
 menerima context terstruktur dan mengembalikan `AgentDecision`; ia tidak menerima Playwright,
 shell, database, atau filesystem handle.
 
@@ -125,7 +125,7 @@ check, `git diff --check`, dan satu demonstrasi lokal yang dapat diulang.
 ## 5.6 Evaluasi, risiko, dan definition of done
 
 Evaluasi menjalankan fixture yang sama dalam mode **static**, **rule-based**, dan **agent-assisted**.
-Mode terakhir menggunakan capability gate dan fallback deterministik saat Codex tidak tersedia atau
+Mode terakhir menggunakan capability gate dan fallback deterministik saat provider model tidak tersedia atau
 output tidak lolos validasi. Perbedaan mode dibaca sebagai coverage/task behavior pada fixture,
 bukan sebagai ukuran kecerdasan model atau akurasi live-web.
 
@@ -205,7 +205,7 @@ flowchart TD
     R --> A["Simpan screenshot, HTML, text, metadata, hash"]
     A --> O["Ekstrak observasi publik dan provenance"]
     O --> G["Buat evidence gap eksplisit"]
-    G --> D["Codex strict decision atau fallback"]
+    G --> D["Strict model decision atau fallback"]
     D --> P["Server policy preflight"]
     P -->|"aman dan satu aksi"| I["Reveal atau buka public link"]
     P -->|"terlarang atau ambigu"| B["Persist blocked event, executed=false"]
@@ -236,7 +236,7 @@ flowchart LR
     Ready --> Artifacts["Filesystem artifacts + SHA-256"]
     Artifacts --> Semantic["Semantic evidence extractor"]
     Collector --> Elements["Stable element map"]
-    Elements --> Agent["Codex strict decision"]
+    Elements --> Agent["Strict model decision"]
     Elements --> Fallback["Deterministic fallback"]
     Agent --> Executor["Narrow interaction executor"]
     Fallback --> Executor
@@ -356,7 +356,7 @@ public_tracking_identifier
 Raw value tidak dibuang ketika normalized value dibuat. Selector/crop adalah best-effort jika
 snapshot viewport stabil. Implementasi ini tidak mengklaim OCR universal untuk image-only content.
 
-## 7.3 Controlled interaction dan bounded Codex
+## 7.3 Controlled interaction dan bounded model provider
 
 Sepuluh fixture interaksi didefinisikan pada `evaluation/fixtures/controlled-interactions-v1.json`
 dengan seed `.invalid`, initial observations, stable elements, expected result, dan unsafe control
@@ -370,21 +370,33 @@ payment/betting, download, unsafe scheme, external application, dan ambiguous ac
 sebelum eksekusi. Block dipersist dengan `executed=false`. Jalur aman hanya state inspection,
 public HTTP(S) link in-scope, redirect-chain, capture, atau fixture reveal.
 
-`CodexLbClient` hanya memakai endpoint loopback berikut:
+Runtime saat ini memakai adapter OpenAI-compatible yang dikonfigurasi operator melalui environment:
 
 ```text
-http://127.0.0.1:2455/backend-api/codex
-http://127.0.0.1:2455/v1/responses
+HAWKEYE_LLM_BASE_URL
+HAWKEYE_LLM_API_KEY
+HAWKEYE_LLM_MODEL
+HAWKEYE_LLM_API_STYLE=auto|responses|chat_completions
 ```
 
-Client mengirim context terstruktur dan strict JSON schema dengan timeout maksimal 30 detik, tanpa
-browser, shell, database, filesystem, atau cookie handle. `_validate_context_decision` mencocokkan
-reference model dengan reference server-issued pada snapshot yang sama.
+Base URL hanya dibaca dari environment operator. HTTPS wajib untuk provider remote; HTTP dibatasi
+pada loopback manual atau `host.docker.internal` di container. Redirect ditolak, response dan
+timeout dibatasi, dan key tidak masuk log, event, export, atau capability diagnostics. Codex LB
+lokal tetap dapat dipakai sebagai salah satu provider OpenAI-compatible, tetapi bukan dependency
+atau route khusus aplikasi.
 
-`CodexInvestigator` mencoba paling banyak dua kali. Transport/schema/reference failure disimpan
+Client mengirim context terstruktur dan strict JSON schema tanpa browser, shell, database,
+filesystem, atau cookie handle. Mode `auto` mencoba Responses API lebih dahulu dan hanya berpindah
+ke Chat Completions ketika route pertama benar-benar tidak tersedia (`404/405`).
+`_validate_context_decision` mencocokkan reference model dengan reference server-issued pada
+snapshot yang sama.
+
+`ModelInvestigator` mencoba paling banyak dua kali. Transport/schema/reference failure disimpan
 sebagai `AgentFailure`; kemudian `DeterministicInvestigator` memilih satu public action yang lolos
-policy atau `stop`. Kedua jalur memakai schema yang sama. Capability probe menentukan apakah route
-dan strict output siap; service unavailable tidak diubah menjadi success palsu.
+policy atau `stop`. Kedua jalur memakai schema yang sama. Landing tidak menjalankan probe berbayar;
+`hawkeye llm-probe` adalah handshake strict yang eksplisit. Service unavailable tidak diubah
+menjadi success palsu. Run Codex tanggal 3 Agustus 2026 tetap dicatat sebagai validasi historis,
+bukan requirement runtime saat ini.
 
 ## 7.4 Candidate, recollection, assertion, dan SQLite review
 
@@ -455,8 +467,8 @@ syntax check, manifest/hash integrity, stable reference, append-only trigger, ti
 browser/local walkthrough, dan `git diff --check`. Snapshot angka dibaca dari
 `IMPLEMENTATION_STATUS.md` dan `docs/STATUS.md`; angka live tidak menjadi klaim akurasi umum.
 
-Keterbatasan saat ini adalah ketergantungan Codex pada capability probe/loopback, semantic extraction
-berbasis DOM/visible text tanpa OCR universal, browser dan executor yang bounded serta same-site,
+Keterbatasan saat ini adalah provider model opsional yang bergantung pada konfigurasi operator,
+semantic extraction berbasis DOM/visible text tanpa OCR universal, browser dan executor yang bounded serta same-site,
 candidate/similarity yang bukan ownership probability, reviewer identity lokal, belum adanya public
 deployment/authentication/multi-user authorization, dan perubahan live web menurut waktu/lokasi/
 session. Fixture `.invalid` tetap menjadi regression truth.

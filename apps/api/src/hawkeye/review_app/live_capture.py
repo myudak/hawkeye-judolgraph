@@ -10,7 +10,7 @@ import signal
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any
 
 from hawkeye.collector.safety import SafetyPolicy
@@ -142,6 +142,7 @@ def _handle_worker_message(
 
 
 def _terminate_process_tree(process: Any) -> None:
+    descendants: set[int] = set()
     if os.name == "nt" and process.pid is not None:
         subprocess.run(
             ["taskkill", "/PID", str(process.pid), "/T", "/F"],
@@ -150,12 +151,19 @@ def _terminate_process_tree(process: Any) -> None:
             timeout=10,
         )
     elif process.is_alive() and process.pid is not None:
+        descendants = _linux_descendant_process_ids(process.pid)
         try:
             _signal_process_group(process.pid, int(signal.SIGTERM))
         except ProcessLookupError:
             pass
+        _signal_processes(descendants, int(signal.SIGTERM))
     process.join(5)
-    if process.is_alive():
+    surviving_descendants = (
+        {pid for pid in descendants if _linux_process_is_alive(pid)}
+        if os.name != "nt" and process.pid is not None
+        else set()
+    )
+    if process.is_alive() or surviving_descendants:
         if os.name != "nt" and process.pid is not None:
             try:
                 _signal_process_group(
@@ -164,9 +172,18 @@ def _terminate_process_tree(process: Any) -> None:
                 )
             except ProcessLookupError:
                 pass
+            _signal_processes(
+                surviving_descendants,
+                int(getattr(signal, "SIGKILL", signal.SIGTERM)),
+            )
         else:
             process.kill()
         process.join(2)
+        deadline = monotonic() + 2
+        while any(_linux_process_is_alive(pid) for pid in surviving_descendants):
+            if monotonic() >= deadline:
+                break
+            sleep(0.05)
 
 
 def _signal_process_group(pid: int, signal_number: int) -> None:
@@ -174,6 +191,45 @@ def _signal_process_group(pid: int, signal_number: int) -> None:
     if killpg is None:
         raise OSError("POSIX process-group signaling is unavailable")
     killpg(pid, signal_number)
+
+
+def _linux_descendant_process_ids(root_pid: int) -> set[int]:
+    """Snapshot Linux descendants before the worker can orphan browser subprocesses."""
+
+    if os.name == "nt":
+        return set()
+    descendants: set[int] = set()
+    pending = [root_pid]
+    while pending:
+        parent = pending.pop()
+        children_path = Path(f"/proc/{parent}/task/{parent}/children")
+        try:
+            child_ids = [int(value) for value in children_path.read_text().split()]
+        except (OSError, ValueError):
+            continue
+        for child_pid in child_ids:
+            if child_pid not in descendants:
+                descendants.add(child_pid)
+                pending.append(child_pid)
+    return descendants
+
+
+def _signal_processes(process_ids: set[int], signal_number: int) -> None:
+    for process_id in sorted(process_ids, reverse=True):
+        try:
+            os.kill(process_id, signal_number)
+        except ProcessLookupError:
+            continue
+
+
+def _linux_process_is_alive(process_id: int) -> bool:
+    if os.name == "nt":
+        return False
+    try:
+        fields = Path(f"/proc/{process_id}/stat").read_text().split()
+    except OSError:
+        return False
+    return len(fields) > 2 and fields[2] != "Z"
 
 
 def _mark_timed_out_case(case_directory: Path, message: str) -> None:

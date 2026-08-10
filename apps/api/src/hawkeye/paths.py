@@ -20,13 +20,11 @@ def controlled_fixture_path() -> Path:
         source_fixture = root / "evaluation" / "fixtures" / "controlled-interactions-v1.json"
         if source_fixture.is_file():
             return source_fixture
-    installed = (
-        Path(sysconfig.get_path("data"))
-        / "share"
-        / "hawkeye"
-        / "evaluation"
-        / "controlled-interactions-v1.json"
-    )
-    if installed.is_file():
-        return installed
+    relative = Path("share/hawkeye/evaluation/controlled-interactions-v1.json")
+    package_file = Path(__file__).resolve()
+    installation_roots = (Path(sysconfig.get_path("data")), *package_file.parents)
+    for installation_root in dict.fromkeys(installation_roots):
+        installed = installation_root / relative
+        if installed.is_file():
+            return installed
     raise FileNotFoundError("The controlled interaction fixture is not installed")

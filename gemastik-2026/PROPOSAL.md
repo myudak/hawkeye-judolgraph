@@ -66,7 +66,7 @@ Public seed
 → bounded same-site capture (up to 3 pages, depth 1)
 → verified or explicitly provisional semantic evidence
 → explicit evidence gap
-→ bounded Codex-selected or deterministic safe interaction loop
+→ bounded model-selected or deterministic safe interaction loop
 → public observable
 → direct candidate discovery or local-case hostname match
 → explicit approval before an unseen candidate is collected
@@ -134,8 +134,9 @@ Pengembangan menggunakan milestone berbatas dengan bukti uji pada setiap lapisan
    normalisasi, provenance, konteks, screenshot, dan crop saat bounding box stabil.
 3. **G5 — Controlled Interaction.** Tepat 10 skenario berkualitas mendefinisikan safe reveal,
    redirect/new tab, iframe, tindakan ambigu, login/register, download, dan nihil bukti tersembunyi.
-4. **G6 — Bounded Codex Agent.** Dua endpoint localhost diprobe. Output harus schema-valid; model
-   tidak mengeksekusi tools. Fallback deterministik menjadi jalur resmi saat kemampuan tidak cukup.
+4. **G6 — Bounded Model Agent.** Provider OpenAI-compatible bersifat opsional dan diprobe hanya
+   secara eksplisit. Output harus schema-valid; model tidak mengeksekusi tools. Fallback
+   deterministik menjadi jalur resmi saat konfigurasi atau kemampuan tidak cukup.
 5. **G7 — Candidate Relation and Human Review.** Page B sintetis harus direcollect menjadi
    artefak sebelum assertion. Review SQLite bersifat append-only dan berversi.
 6. **G8 — Progressive Graph and Evaluation.** Event disimpan sebelum render, direduksi secara
@@ -192,7 +193,7 @@ Playwright collector (3 pages / depth 1) ──► filesystem artifacts + SHA-25
 Stable element map ─► server policy ─► narrow interaction executor
                          ▲
                          │ structured AgentDecision only
-             CodexInvestigator / deterministic fallback
+             ModelInvestigator / deterministic fallback
                          │
                          ▼
 Known hostname ─► collected graph node
@@ -213,7 +214,7 @@ flowchart TD
     Q --> E["Verified or provisional semantic evidence"]
     C --> M["Stable interactive element map"]
     M --> P["Server-side policy preflight"]
-    X["Codex strict-schema decision"] --> V["Exact server-issued reference validation"]
+    X["Strict model decision"] --> V["Exact server-issued reference validation"]
     F["Deterministic fallback"] --> P
     V --> P
     P -->|"bounded safe step"| B["Narrow interaction executor"]
@@ -282,11 +283,12 @@ dan snapshot. Referensi stale ditolak. Route Contact/Hubungi Kami same-site bole
 membaca informasi publik, tetapi Live Chat, kirim pesan/form, login, register, aplikasi eksternal,
 payment, dan download tetap diblokir server-side.
 
-Probe lokal aktual menemukan route `/v1/responses`, memilih `gpt-5.6-terra` dari `/v1/models`, dan
-memverifikasi strict JSON-schema output. Pada validasi QQ final 2026-08-03, Codex memilih referensi
-Contact yang diterbitkan server; policy memvalidasi ulang dan browser menyimpan bukti PNG, HTML,
-teks, serta JSON route `/Contact`. Artifact tersebut menghasilkan evidence telepon, WhatsApp, dan
-Telegram yang terpisah.
+Pada validasi historis 2026-08-03, gateway Codex lokal menyediakan `/v1/responses` dan model
+`gpt-5.6-terra`; Codex memilih referensi Contact yang diterbitkan server. Policy memvalidasi ulang
+dan browser menyimpan bukti PNG, HTML, teks, serta JSON route `/Contact`. Artifact tersebut
+menghasilkan evidence telepon, WhatsApp, dan Telegram yang terpisah. Runtime saat ini tidak
+bergantung pada gateway tersebut: setiap provider OpenAI-compatible yang memenuhi kontrak strict
+dapat dikonfigurasi operator, dan kegagalan tetap jatuh ke fallback deterministik.
 Keputusan dijalankan sebagai loop objective maksimum lima decision/tiga interaction. Delta
 observasi sesudah setiap tool kembali menjadi input langkah berikutnya; stale/no-op berulang dan
 budget mempunyai stop reason eksplisit. Jika probe, transport, schema, atau exact-reference check

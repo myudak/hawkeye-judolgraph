@@ -12,7 +12,7 @@ facts.
 ## Objective
 
 Provide a localhost-only reproducible path from Page A capture to a human-reviewed candidate
-relationship, with deterministic behavior when Codex is unavailable and fixture-based evaluation
+relationship, with deterministic behavior when an optional model provider is unavailable and fixture-based evaluation
 that never depends on live gambling or search-result pages.
 
 ## Innovation and impact
@@ -29,7 +29,7 @@ accuracy, organizational, or societal impact has not yet been measured.
 2. Eligible captures write `observations.json`; a readable dynamic capture may produce explicitly
    provisional observations with capped confidence, never strong hidden conclusions.
 3. The controlled fixture runtime exposes six narrow page tools over stable references.
-4. `CodexInvestigator` runs a bounded objective loop (maximum five decisions and three
+4. `ModelInvestigator` runs a bounded objective loop (maximum five decisions and three
    interactions), feeding each observed delta into the next decision; deterministic fallback uses
    the same contract.
 5. Live and fixture investigations persist pages, safe actions, leads, approval, assertions, review
@@ -62,11 +62,13 @@ closed. Controlled unsafe-action block rate is 1.0000 over four prohibited fixtu
 
 ### Agent runtime
 
-Only fixed localhost routes are probeable. The selected route is `/v1/responses`; model discovery
-selected `gpt-5.6-terra` and a strict structured-output probe succeeded. Every decision must retain
-an exact server-issued safe element reference. No native search is assumed. Deterministic fallback
-produces the same decision and loop-step models if the service or validation fails. Repeated stale
-references and no-op deltas stop explicitly instead of looping.
+An operator may configure an OpenAI-compatible Responses or Chat Completions endpoint through
+environment variables. HTTPS is required outside loopback/container-host development, redirects
+are denied, and request time/body size are bounded. Page loads never perform a paid probe;
+`hawkeye llm-probe` is the explicit strict-schema handshake. Every decision must retain an exact
+server-issued safe element reference. No native search is assumed. Deterministic fallback produces
+the same decision and loop-step models if configuration, transport, schema, or reference validation
+fails. Repeated stale references and no-op deltas stop explicitly instead of looping.
 
 ### Candidate and review
 
@@ -111,15 +113,15 @@ files have optional new capture fields and remain parseable by `CaseLoader`.
 
 ## Installation
 
-Requirements: Python 3.12 or newer, a compatible Chromium installed by Playwright, and a loopback
-port. Node is needed only for the JavaScript syntax verification gate; the UI has no npm runtime
-dependency.
+Requirements: Python 3.12, `uv`, Node.js 22+, pnpm 11.3.0, and a loopback port. The shared lockfiles
+own exact installation state; `pnpm setup` synchronizes Python and installs the compatible Chromium.
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-python -m playwright install chromium
+corepack enable
+corepack prepare pnpm@11.3.0 --activate
+pnpm install --frozen-lockfile
+pnpm setup
+pnpm start
 ```
 
 ## Configuration
@@ -127,29 +129,26 @@ python -m playwright install chromium
 - Production URL collection rejects private/loopback targets.
 - Fixture loopback requires `HAWKEYE_TEST_MODE=1` plus explicit CLI flag.
 - Local server host is fixed to `127.0.0.1`; only port is configurable.
-- Enabling workspace writes requires `--workspace <directory>`.
-- Omitting `--workspace` preserves the legacy read-only console.
-- Capability probe timeout is 0–5 seconds; model request timeout is capped at 30 seconds.
+- Workspace cases, SQLite, and comparisons live below the configured `data/` root.
+- Model configuration comes only from `HAWKEYE_LLM_*` environment variables.
+- Model request timeout is greater than zero and capped at 60 seconds.
 
 ## Usage
 
 ```powershell
 uv run hawkeye llm-probe `
-  --output verification-output/codex-capabilities.json
+  --output verification-output/llm-capabilities.json
 
-python -m hawkeye benchmark `
+uv run hawkeye benchmark `
   --output verification-output/benchmark --agent-attempts 3
 
-python -m hawkeye serve `
-  --cases verification-output/demo-cases `
-  --workspace verification-output/mvp-workspace `
-  --port 8760
+uv run hawkeye app --data data --port 8760
 ```
 
-The UI defaults to a verified saved observation, exposes one bounded public URL scan, and keeps the
-main screen to Site Intel → canvas evidence graph → screenshot/evidence inspector → actual
-timeline. Selecting **New safe review walkthrough…** creates the reserved fixture Page A → Page B
-path, after which the user can inspect the assertion, append review, and replay stored events.
+The UI opens on a new-investigation form plus saved cases, exposes one bounded public URL scan, and
+keeps the main workspace to case summary → canvas evidence graph → evidence/provenance inspector →
+actual event timeline. The controlled fixture path remains available for reproducible evaluation;
+the user can inspect assertions, append review, and replay stored events.
 
 ## Screenshots
 
@@ -167,7 +166,7 @@ not canvas animation progress, determine the stable graph.
 
 | Symptom | Meaning | Action |
 |---|---|---|
-| `fallback_required: true` | Model discovery or strict output probe failed | Continue with deterministic fallback |
+| `fallback_required: true` | Model configuration or strict output probe failed | Continue with deterministic fallback |
 | `blocked_by_policy` | URL/action/resource failed server policy | Inspect limitation/event; do not bypass |
 | `captured_with_limitations` | Navigation succeeded but capture adequacy is limited | Inspect readiness; do not auto-assert |
 | `direct_extractor_input_exceeds_2_mb` | HTML was preserved but not sent to extractor | Manual bounded inspection only |

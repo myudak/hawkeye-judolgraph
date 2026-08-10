@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 
@@ -15,6 +16,7 @@ from hawkeye.agent import LlmConfig, OpenAICompatibleClient
 from hawkeye.agent.investigator import ProviderHttpError
 from hawkeye.agent.models import AgentVisibleContext
 from hawkeye.interaction.models import InteractionBudget
+from hawkeye.review_app.workspace import MvpWorkspace
 
 ProviderResponse = tuple[int, dict[str, str], bytes]
 
@@ -102,6 +104,52 @@ def test_missing_environment_configuration_means_fallback_only(
 def test_remote_plain_http_provider_is_rejected() -> None:
     with pytest.raises(ValueError, match="requires HTTPS"):
         LlmConfig(base_url="http://model.example/v1", model="fixture")
+
+
+def test_container_may_use_explicit_host_gateway_for_local_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HAWKEYE_CONTAINER", "1")
+    config = LlmConfig(base_url="http://host.docker.internal:2455/v1", model="fixture")
+    assert config.base_url == "http://host.docker.internal:2455/v1"
+
+
+def test_host_gateway_plain_http_is_rejected_outside_container(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("HAWKEYE_CONTAINER", raising=False)
+    with pytest.raises(ValueError, match="requires HTTPS"):
+        LlmConfig(base_url="http://host.docker.internal:2455/v1", model="fixture")
+
+
+def test_codex_compatible_environment_aliases_are_provider_neutral(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CODEX_BASE_URL", "http://127.0.0.1:2455/v1")
+    monkeypatch.setenv("CODEX_MODEL", "fixture-codex-gateway")
+    monkeypatch.setenv("CODEX_API_KEY", "alias-secret")
+    config = LlmConfig.from_environment()
+    assert config is not None
+    assert config.base_url == "http://127.0.0.1:2455/v1"
+    assert config.model == "fixture-codex-gateway"
+    assert config.api_key == "alias-secret"
+    assert "alias-secret" not in repr(config)
+
+
+def test_workspace_reports_configured_model_without_automatic_probe(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("HAWKEYE_LLM_BASE_URL", "http://127.0.0.1:1/v1")
+    monkeypatch.setenv("HAWKEYE_LLM_MODEL", "configured-not-probed")
+    monkeypatch.setenv("HAWKEYE_LLM_API_KEY", "workspace-secret")
+    status = MvpWorkspace(tmp_path).capability_status()
+    assert status == {
+        "state": "model_configured_unverified",
+        "selected_model": "configured-not-probed",
+        "api_style": "auto",
+        "safe_to_enable_model_path": True,
+    }
+    assert "workspace-secret" not in json.dumps(status)
 
 
 def test_chat_completions_strict_success_and_authorization_is_request_only() -> None:

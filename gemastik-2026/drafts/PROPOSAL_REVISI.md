@@ -219,8 +219,8 @@ limitation sebelum dilanjutkan.
    selector, screenshot/crop, confidence, method, dan limitation.
 3. **G5 — Controlled Safe Expansion:** membuat tepat sepuluh fixture dan enam narrow tools dengan
    stable reference serta policy preflight.
-4. **G6 — Bounded Codex Runtime:** melakukan capability probe, strict-schema validation,
-   exact-reference validation, retry berbatas, dan fallback deterministik.
+4. **G6 — Bounded Model Runtime:** menyediakan adapter OpenAI-compatible, opt-in capability probe,
+   strict-schema/exact-reference validation, retry berbatas, dan fallback deterministik.
 5. **G7 — Candidate Recollection and Review:** menyimpan lead, approval, Page B, assertion, dan
    review append-only.
 6. **G8 — Event-driven Progressive Graph:** menyimpan event sebelum render, mereduksi idempoten,
@@ -234,7 +234,7 @@ flowchart LR
     B --> C["Artefak terverifikasi<br/>screenshot · HTML · visible text · metadata"]
     C --> D["Observasi semantik<br/>verified atau provisional"]
     D --> E["Evidence gap eksplisit"]
-    E --> F["Codex strict decision<br/>atau fallback deterministik"]
+    E --> F["Strict model decision<br/>atau fallback deterministik"]
     F --> G["Policy preflight server"]
     G -->|"satu aksi baca aman"| H["Observable baru"]
     G -->|"tidak aman"| I["Blocked event<br/>executed = false"]
@@ -544,7 +544,7 @@ Buka `http://127.0.0.1:8760/`. Server tidak boleh di-bind ke alamat publik.
    inspector.
 3. Buka Initial/Canonical/Full-page carousel untuk membandingkan perubahan render.
 4. Tinjau observasi semantik beserta raw/normalized value, konteks, dan artifact source.
-5. Lihat timeline untuk mengetahui apakah Codex strict path atau fallback deterministik digunakan.
+5. Lihat timeline untuk mengetahui apakah model strict path atau fallback deterministik digunakan.
 6. Periksa tool preflight. Aksi terlarang harus muncul sebagai blocked dengan `executed=false`.
 7. Jika ditemukan direct candidate yang belum tersimpan, pilih **Approve candidate collection**
    hanya setelah memeriksa URL dan alasan lead.

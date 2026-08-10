@@ -12,11 +12,15 @@
     "dev": "concurrently --kill-others --names API,WEB --prefix-colors magenta,cyan \"uv run hawkeye app --data data --port 8760\" \"pnpm --filter @hawkeye/web dev\"",
     "build": "pnpm --filter @hawkeye/web build",
     "start": "pnpm build && uv run hawkeye app --data data --port 8760",
+    "start:env": "pnpm build && uv run --env-file .env hawkeye app --data data --port 8760",
     "check:web": "pnpm --filter @hawkeye/web check",
     "check:api": "uv run ruff format --check . && uv run ruff check . && uv run mypy apps/api/src/hawkeye && uv run pytest -q",
     "check": "pnpm check:web && pnpm build && pnpm check:api && git diff --check",
     "package": "pnpm build && uv run python scripts/build_package.py",
-    "clean": "node -e \"const fs=require('node:fs'); for (const p of ['apps/api/src/hawkeye/review_app/static','build','dist']) fs.rmSync(p,{recursive:true,force:true})\""
+    "verify:manual": "pnpm build && uv run python scripts/verify_manual.py",
+    "verify:docker": "uv run python scripts/verify_docker.py",
+    "clean": "node -e \"const fs=require('node:fs'); for (const p of ['apps/api/src/hawkeye/review_app/static','apps/api/src/judolgraph_hawkeye.egg-info','build','dist','judolgraph_hawkeye.egg-info']) fs.rmSync(p,{recursive:true,force:true})\"",
+    "clean:cache": "node -e \"const fs=require('node:fs'); for (const p of ['.mypy_cache','.pytest_cache','.ruff_cache']) fs.rmSync(p,{recursive:true,force:true})\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

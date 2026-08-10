@@ -35,13 +35,23 @@ Allowed status vocabulary: implemented, partially implemented, planned, deferred
 | Reduced-motion mode | implemented | review app static assets | frontend syntax/UI API gate | OS reduced-motion setting | Motion is removed; graph information remains |
 | Three-mode benchmark | implemented | `apps/api/src/hawkeye/benchmark.py`, checked-in results | `tests/test_benchmark.py` | Benchmark table | Runtime rounds to milliseconds; fast runs can show 0 ms |
 | Apps monorepo + locked package workflows | implemented | `apps/api`, `apps/web`, `uv.lock`, `pnpm-lock.yaml` | root check/package commands | Build wheel and inspect assets | Browser/Docker downloads still require stable connectivity |
-| Local one-service Docker boundary | implemented, runtime gate pending | `Dockerfile`, `compose.yaml` | Compose config; runtime acceptance pending Docker daemon | `docker compose up --build` | Local single-investigator only; no public deployment/authentication |
+| Local one-service Docker boundary | implemented | `Dockerfile`, `compose.yaml`, `infra/docker/seccomp_profile.json` | `pnpm verify:docker`: non-root, sandboxed capture/OCR, hard-timeout cleanup, persistence | `docker compose up --build` | Local single-investigator only; no public deployment/authentication |
 | Optional live robustness observations | implemented | ignored `evaluation/live-cases/` output | 12-target matrix plus final QQ run | Local QQ default only | QQ produced provisional evidence; live output is never official test truth |
 | Public deployment/authentication | deferred | none | none | none | Requires separate threat model and authorization milestone |
 | Final proposal PDF | deferred | Markdown package | checklist | none | Human confirmations and layout review required |
 | Actual final screenshots | implemented | `gemastik-2026/assets/` | final demo/browser gate | six sanitized fixture figures | Video recording and document-layout diagrams remain human-owned |
 
 ## Current exact verification
+
+Verified on 2026-08-11 (Asia/Jakarta): root frozen pnpm/uv installs passed; Prettier, ESLint,
+TypeScript, five Vitest tests, and the production React build passed; Ruff format checked 146 files,
+Ruff lint passed, strict mypy passed for 69 source files, and all 203 pytest tests passed in 522.72
+seconds with one upstream FastAPI/Starlette deprecation warning. An isolated wheel install loaded
+the packaged UI and all ten controlled fixtures. `pnpm verify:manual` passed
+loopback health/landing/fallback isolation. `pnpm verify:docker` passed a real canonical fixture
+capture with Tesseract OCR, non-root UID, Chromium sandbox, pinned seccomp, minimal capability,
+hard-timeout child cleanup, loopback-only publishing, and restart persistence. `pnpm package` built
+the complete UI-bearing wheel. No live URL or credential is automated test truth.
 
 Verified on 2026-08-08 (Asia/Jakarta): Ruff format checked 132 files; Ruff lint passed; strict mypy
 passed for 65 source files; JavaScript syntax passed; pytest passed all 190 tests in 470.26 seconds

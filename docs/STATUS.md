@@ -11,7 +11,38 @@ jobs with a killable browser boundary, a three-mode benchmark, one bounded
 12-target live robustness matrix, and a truthful Markdown submission package. G2/G3 tags and
 commits remain unchanged.
 
-## Verification snapshot
+## Delivery and monorepo verification snapshot
+
+Verified on 2026-08-11 (Asia/Jakarta) from branch
+`codex/gemastik-preliminary-mvp-48d4`:
+
+- Source is organized as `apps/api/src/hawkeye` plus `apps/web`; root tests/evaluation retain their
+  historical node IDs and fixture paths. Generated Vite assets, wheels, local data, captures,
+  SQLite workspaces, and document exports are ignored rather than tracked source.
+- `pnpm install --frozen-lockfile` and `uv sync --locked --extra dev` passed from the shared root
+  manifests. `pnpm verify:manual` built the production UI, started an isolated loopback FastAPI
+  process, verified `/health` and landing delivery, confirmed `fallback_only` with no credentials,
+  and removed its temporary data/process tree.
+- Root gates passed: Prettier, ESLint, TypeScript, five Vitest projection tests, production Vite
+  build, Ruff format/check across 146 Python files, strict mypy across 69 source files, the final
+  203-test pytest suite in 522.72 seconds, and `git diff --check`. The only warning is the upstream
+  FastAPI/Starlette `httpx` test-client deprecation.
+- Generic provider fixtures passed Responses strict output, Chat Completions strict output,
+  `404/405`-only auto-switch, timeout, redirect denial, response-size bound, exact schema/reference
+  validation, environment aliases for a local compatible gateway, no-probe capability reporting,
+  and secret exclusion. No live credential is stored or required; deterministic fallback remains
+  the credential-free default.
+- `pnpm verify:docker` built the pinned image and passed a real canonical fixture capture with local
+  Tesseract OCR, non-root UID 1001, Chromium sandbox, pinned seccomp, read-only root filesystem,
+  all capabilities dropped except `SYS_CHROOT`, hard-timeout Chromium-child cleanup, host-loopback
+  port publishing, `/health`, and data persistence across Compose `down/up`.
+- `pnpm package` built a wheel containing the Python runtime, CLI, controlled fixture manifest, and
+  complete generated React UI. An installed-wheel locator regression is included in the final 203,
+  and an isolated no-project install loaded the UI plus all ten fixture scenarios from
+  `site-packages`. Container and manual acceptance use temporary data roots and leave no test
+  container or case in canonical project data.
+
+## Historical product verification snapshots
 
 Run on 2026-08-08 (Asia/Jakarta) from branch `codex/gemastik-preliminary-mvp-48d4`:
 
@@ -139,9 +170,10 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
   the interaction capture declares `id-ID` and records that locale-sensitive result.
 - Chromium DNS validation retains the documented TOCTOU residual risk.
 - Capture thresholds and interaction coverage are calibrated only on controlled fixtures.
-- Local OCR is optional and currently unavailable on this machine because Tesseract is not
-  installed; OCR-derived signals would remain provisional. No universal live-web safety guarantee,
-  ownership probability, operator identification, criminality, or legal conclusion is claimed.
+- Local OCR is optional and unavailable on the manual Windows path unless Tesseract is installed;
+  the verified Docker image includes Tesseract. OCR-derived signals remain provisional. No
+  universal live-web safety guarantee, ownership probability, operator identification, criminality,
+  or legal conclusion is claimed.
 - The console remains localhost-only and single-machine; review labels are not authenticated users.
 - Final name, team/institution/category/advisor, external citations, publication/originality
   confirmations, dependency-license legal review, official formatting, video,
@@ -159,5 +191,7 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
 - `0dc6d52` / `445079c` — blocked policy preflight events and timeline event inspector.
 - `6364351` — contact-route evidence extraction, graph taxonomy/aggregation, and core 888 lead
   priority.
+- `d34f275` — source monorepo move, shared lockfiles, generic provider adapter, and initial
+  container/package boundary.
 
 The package/final-status commit is recorded in the delivery handoff. Nothing is pushed or deployed.
