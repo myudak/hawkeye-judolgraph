@@ -328,7 +328,18 @@ def test_read_only_api_uses_verified_ids_redacts_display_values_and_sets_csp(
     chunk = client.get(f"/assets/{chunk_match.group(1)}")
     assert chunk.status_code == 200
     assert chunk.headers["content-type"].startswith("text/javascript")
+    brand_image = client.get("/assets/hawkeye-avatar.png")
+    assert brand_image.status_code == 200
+    assert brand_image.headers["content-type"] == "image/png"
+    font_match = re.search(
+        r"url\(/assets/([^)]*\.(?:woff2))\)", client.get("/assets/styles.css").text
+    )
+    assert font_match is not None
+    font = client.get(f"/assets/{font_match.group(1)}")
+    assert font.status_code == 200
+    assert font.headers["content-type"] == "font/woff2"
     assert client.get("/assets/chunks/%2e%2e%2fapp.js").status_code == 404
+    assert client.get("/assets/not-an-approved-file.png").status_code == 404
     assert listing.json()["cases"][0]["integrity"] == "verified"
     assert detail.status_code == 200
     payload = detail.json()

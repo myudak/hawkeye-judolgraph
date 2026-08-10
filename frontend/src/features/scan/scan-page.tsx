@@ -5,11 +5,13 @@ import {
   Check,
   Clock,
   Code,
+  CursorClick,
   Database,
   FileText,
   FlagCheckered,
   Graph,
   HardDrives,
+  ImageSquare,
   MagnifyingGlass,
   Pulse,
   ShieldCheck,
@@ -21,8 +23,8 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { api } from "@/api/client"
-import type { InvestigationJob } from "@/api/types"
+import { api, jobPreviewUrl } from "@/api/client"
+import type { InvestigationJob, JobPreview } from "@/api/types"
 import { AppHeader } from "@/components/app-header"
 import { HawkMark } from "@/components/brand-mark"
 import { Badge } from "@/components/ui/badge"
@@ -46,6 +48,7 @@ const stageGroups = [
     label: "Preserve & extract",
     stages: [
       "preserving_artifacts",
+      "page_preview_ready",
       "running_ocr",
       "extracting_evidence",
       "page_completed",
@@ -56,7 +59,15 @@ const stageGroups = [
   },
   {
     label: "Bounded investigation",
-    stages: ["verifying_evidence", "running_agent"],
+    stages: [
+      "verifying_evidence",
+      "evidence_verified",
+      "running_agent",
+      "agent_focus_ready",
+      "interaction_preview_ready",
+      "agent_observations_ready",
+      "agent_focus_blocked",
+    ],
     icon: MagnifyingGlass,
   },
   {
@@ -92,6 +103,10 @@ const stageCopy: Record<string, [string, string]> = {
     "Preserving source artifacts",
     "Saving initial, canonical, and full-page screenshots with rendered HTML and response facts.",
   ],
+  page_preview_ready: [
+    "Canonical preview ready",
+    "A real viewport screenshot has been persisted and is available as a transient preview.",
+  ],
   running_ocr: [
     "Checking screenshot text",
     "Running bounded local OCR as supplemental evidence; OCR never replaces source artifacts.",
@@ -116,9 +131,29 @@ const stageCopy: Record<string, [string, string]> = {
     "Re-verifying saved artifacts",
     "Checking the completed case package before the agent can inspect it.",
   ],
+  evidence_verified: [
+    "Case evidence verified",
+    "The manifest and captured artifact hashes passed local verification.",
+  ],
   running_agent: [
     "Running policy-gated exploration",
     "Planning safe public interactions with deterministic fallback and recorded tool events.",
+  ],
+  agent_focus_ready: [
+    "Agent selected a safe control",
+    "The server re-validated the reference and recorded its real viewport position.",
+  ],
+  interaction_preview_ready: [
+    "Public interaction captured",
+    "The resulting read-only page state and screenshot have been persisted.",
+  ],
+  agent_observations_ready: [
+    "Interaction evidence extracted",
+    "Visible public observations were checked after the safe action.",
+  ],
+  agent_focus_blocked: [
+    "Safe action stopped",
+    "The policy-gated action did not complete; no completion is implied.",
   ],
   classifying_indicators: [
     "Classifying judol indicators",
@@ -165,6 +200,226 @@ function stageIcon(stage: string) {
   return Check
 }
 
+function previewTitle(preview: JobPreview): string {
+  if (preview.kind === "agent_before") return "Before safe action"
+  if (preview.kind === "agent_after") return "After safe action"
+  return preview.page_id.replace("page-", "Page ")
+}
+
+function ScanVisual({ job }: { job?: InvestigationJob }) {
+  const previews = job?.visual_state?.previews ?? []
+  const latest = job?.visual_state?.latest_preview
+  const focus = job?.visual_state?.agent_focus
+  const [selectedRevision, setSelectedRevision] = useState<number | null>(null)
+
+  const selected =
+    previews.find((item) => item.revision === selectedRevision) ?? latest
+  const targetBox = focus?.target_bbox
+  const viewportWidth = focus?.viewport?.width ?? 0
+  const viewportHeight = focus?.viewport?.height ?? 0
+  const showTarget = Boolean(
+    selected?.kind === "agent_before" &&
+    focus?.target_preview_revision === selected.revision &&
+    targetBox &&
+    viewportWidth > 0 &&
+    viewportHeight > 0
+  )
+  const targetStyle =
+    showTarget && targetBox
+      ? {
+          left: `${(targetBox.x / viewportWidth) * 100}%`,
+          top: `${(targetBox.y / viewportHeight) * 100}%`,
+          width: `${(targetBox.width / viewportWidth) * 100}%`,
+          height: `${(targetBox.height / viewportHeight) * 100}%`,
+        }
+      : undefined
+
+  return (
+    <div
+      className="scan-preview-panel"
+      aria-busy={job?.status === "queued" || job?.status === "running"}
+    >
+      {selected ? (
+        <>
+          <header className="preview-header">
+            <span>
+              <ImageSquare weight="duotone" />
+              <b>{previewTitle(selected)}</b>
+            </span>
+            <Badge
+              className={cn(
+                "preview-verification",
+                selected.verification === "verified" && "status-success",
+                selected.verification === "persisted" && "status-cyan"
+              )}
+            >
+              {selected.verification === "verified"
+                ? "VERIFIED EVIDENCE"
+                : selected.verification === "persisted"
+                  ? "PERSISTED ACTION"
+                  : "PREVIEW · VERIFICATION PENDING"}
+            </Badge>
+            {selected.revision !== latest?.revision ? (
+              <button
+                className="preview-follow"
+                type="button"
+                onClick={() => setSelectedRevision(null)}
+              >
+                Follow latest
+              </button>
+            ) : null}
+          </header>
+          <div
+            className="preview-viewport"
+            style={{
+              aspectRatio:
+                selected.width && selected.height
+                  ? `${selected.width} / ${selected.height}`
+                  : "1440 / 1024",
+            }}
+          >
+            <img
+              key={selected.revision}
+              src={jobPreviewUrl(job!.job_id, selected.revision)}
+              alt={`Captured public page preview: ${previewTitle(selected)}`}
+              decoding="async"
+            />
+            {job?.status === "running" ? (
+              <span className="preview-shimmer" aria-hidden="true" />
+            ) : null}
+            {job?.status === "running" ? (
+              <span className="preview-scanline" aria-hidden="true" />
+            ) : null}
+            {targetStyle ? (
+              <span className="agent-target" style={targetStyle}>
+                <span className="agent-cursor">
+                  <CursorClick weight="fill" />
+                </span>
+              </span>
+            ) : null}
+          </div>
+          <div className="preview-caption" aria-live="polite">
+            <span>
+              <i
+                className={cn(
+                  "live-dot",
+                  job?.status !== "running" && "live-dot-static"
+                )}
+              />
+              {selected.url || "Captured public page"}
+            </span>
+            <small>{formatTime(selected.captured_at)}</small>
+          </div>
+          {focus ? (
+            <div className={cn("agent-focus-card", `focus-${focus.status}`)}>
+              <span>
+                <CursorClick weight="duotone" />
+              </span>
+              <div>
+                <b>
+                  {focus.status === "selected"
+                    ? "Agent selected a safe public control"
+                    : focus.status === "evidence_extracted"
+                      ? (focus.added_observation_count ?? 0) > 0
+                        ? "New public observations extracted"
+                        : "Post-action extraction completed"
+                      : focus.status === "blocked"
+                        ? "Safe action stopped"
+                        : "Read-only action completed"}
+                </b>
+                <p>
+                  {focus.label || "Public information control"}
+                  {focus.status === "blocked" && focus.reason
+                    ? ` · ${focus.reason}`
+                    : (focus.added_observation_count ?? 0) > 0
+                      ? ` · ${focus.added_observation_count} new observations`
+                      : focus.status === "evidence_extracted"
+                        ? " · no new observations"
+                        : ""}
+                </p>
+                <small>{focus.tool_name || "Policy-gated tool"}</small>
+              </div>
+            </div>
+          ) : null}
+          {previews.length > 1 ? (
+            <div
+              className="preview-thumbnails"
+              role="group"
+              aria-label="Captured preview states"
+            >
+              {previews.slice(-6).map((preview) => (
+                <button
+                  key={preview.revision}
+                  type="button"
+                  className={cn(
+                    preview.revision === selected.revision && "preview-selected"
+                  )}
+                  onClick={() => setSelectedRevision(preview.revision)}
+                  aria-label={`Show ${previewTitle(preview)}`}
+                  aria-pressed={preview.revision === selected.revision}
+                >
+                  <img
+                    src={jobPreviewUrl(job!.job_id, preview.revision, true)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span>{previewTitle(preview)}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div className="preview-waiting">
+          <div className="scan-radar" aria-hidden="true">
+            <span className="radar-ring radar-ring-one" />
+            <span className="radar-ring radar-ring-two" />
+            <span className="radar-ring radar-ring-three" />
+            <span className="radar-axis radar-axis-x" />
+            <span className="radar-axis radar-axis-y" />
+            <span className="radar-sweep" />
+            <span className="radar-ping ping-one" />
+            <span className="radar-ping ping-two" />
+            <span className="radar-core">
+              <HawkMark />
+            </span>
+          </div>
+          <b>
+            {job?.status === "failed"
+              ? "No preview was preserved"
+              : "Waiting for the first persisted frame"}
+          </b>
+          <p>
+            {job?.status === "failed"
+              ? "Capture stopped before a valid screenshot became available."
+              : "The preview appears after a real screenshot has been safely written."}
+          </p>
+        </div>
+      )}
+      <Badge
+        className={cn(
+          "scan-state-badge",
+          job?.status === "failed" && "status-danger",
+          job?.status === "completed" && "status-success"
+        )}
+      >
+        <span
+          className={cn(
+            "live-dot",
+            job?.status !== "running" && "live-dot-static"
+          )}
+        />
+        {job?.status === "failed"
+          ? "CAPTURE STOPPED"
+          : job?.status === "completed"
+            ? "EVIDENCE SAVED"
+            : "INVESTIGATION ACTIVE"}
+      </Badge>
+    </div>
+  )
+}
+
 export function ScanPage() {
   const { jobId } = useParams<{ jobId: string }>()
   const navigate = useNavigate()
@@ -180,13 +435,22 @@ export function ScanPage() {
     retry: (count, error) =>
       count < 2 && !("status" in error && error.status === 404),
   })
+  const jobIsActive = jobQuery.data?.status
+    ? ["queued", "running"].includes(jobQuery.data.status)
+    : false
 
   useEffect(() => {
+    if (!jobIsActive) return
     const timer = window.setInterval(() => setNow(Date.now()), 1_000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [jobIsActive])
 
   const job = jobQuery.data
+  const elapsedAt = jobIsActive
+    ? now
+    : job?.updated_at
+      ? new Date(job.updated_at).getTime()
+      : now
   const groupIndex = job ? currentGroup(job) : 0
   const [phaseTitle, phaseCopy] = stageCopy[job?.stage ?? "queued"] ?? [
     titleCase(job?.stage),
@@ -237,47 +501,18 @@ export function ScanPage() {
             job?.status === "completed" && "scan-console-complete"
           )}
         >
-          <div className="scan-radar-panel">
-            <div className="scan-radar" aria-hidden="true">
-              <span className="radar-ring radar-ring-one" />
-              <span className="radar-ring radar-ring-two" />
-              <span className="radar-ring radar-ring-three" />
-              <span className="radar-axis radar-axis-x" />
-              <span className="radar-axis radar-axis-y" />
-              <span className="radar-sweep" />
-              <span className="radar-ping ping-one" />
-              <span className="radar-ping ping-two" />
-              <span className="radar-core">
-                <HawkMark />
-              </span>
-            </div>
-            <Badge
-              className={cn(
-                "scan-state-badge",
-                job?.status === "failed" && "status-danger",
-                job?.status === "completed" && "status-success"
-              )}
-            >
-              <span className="live-dot" />
-              {job?.status === "failed"
-                ? "CAPTURE STOPPED"
-                : job?.status === "completed"
-                  ? "EVIDENCE SAVED"
-                  : "INVESTIGATION ACTIVE"}
-            </Badge>
-            <p>Bounded public capture and analysis</p>
-          </div>
+          <ScanVisual job={job} />
 
           <div className="scan-progress-panel">
             <header className="scan-phase-heading">
               <div>
                 <p className="eyebrow">CURRENT PHASE</p>
-                <h1>{phaseTitle}</h1>
+                <h1 aria-live="polite">{phaseTitle}</h1>
                 <p>{job?.error || phaseCopy}</p>
               </div>
               <span className="elapsed-clock">
                 <Clock weight="duotone" />
-                {formatElapsed(job?.started_at, now)}
+                {formatElapsed(job?.started_at, elapsedAt)}
               </span>
             </header>
 
@@ -302,9 +537,9 @@ export function ScanPage() {
                 <span>
                   <Clock weight="duotone" />
                 </span>
-                <strong>{formatElapsed(job?.started_at, now)}</strong>
+                <strong>{formatElapsed(job?.started_at, elapsedAt)}</strong>
                 <p>Elapsed time</p>
-                <small>115s hard boundary</small>
+                <small>Bounded collector and agent timing</small>
               </article>
               <article>
                 <span>
@@ -323,17 +558,17 @@ export function ScanPage() {
                 const Icon = group.icon
                 const reached =
                   index < groupIndex || job?.status === "completed"
-                const active =
-                  index === groupIndex && job?.status !== "completed"
+                const active = index === groupIndex && jobIsActive
+                const failed = index === groupIndex && job?.status === "failed"
                 return (
                   <li
                     key={group.label}
                     className={cn(
                       reached && "stage-reached",
                       active && "stage-active",
-                      active && job?.status === "failed" && "stage-failed"
+                      failed && "stage-failed"
                     )}
-                    aria-current={active ? "step" : undefined}
+                    aria-current={active || failed ? "step" : undefined}
                   >
                     <span className="stage-index">
                       {reached ? <Check weight="bold" /> : index + 1}
@@ -341,11 +576,13 @@ export function ScanPage() {
                     <Icon weight="duotone" />
                     <strong>{group.label}</strong>
                     <small>
-                      {reached
-                        ? "Completed"
-                        : active
-                          ? "In progress"
-                          : "Pending"}
+                      {failed
+                        ? "Stopped"
+                        : reached
+                          ? "Completed"
+                          : active
+                            ? "In progress"
+                            : "Pending"}
                     </small>
                   </li>
                 )
@@ -380,13 +617,19 @@ export function ScanPage() {
               <Pulse weight="fill" />
               <span>LIVE ACTIVITY STREAM</span>
             </div>
-            <Badge variant="outline">
-              <span className="live-dot" />{" "}
-              {job?.status === "completed" ? "Captured" : "Live"}
+            <Badge variant="outline" aria-live="polite">
+              <span
+                className={cn("live-dot", !jobIsActive && "live-dot-static")}
+              />{" "}
+              {job?.status === "completed"
+                ? "Captured"
+                : job?.status === "failed"
+                  ? "Stopped"
+                  : "Live"}
             </Badge>
           </header>
           <ScrollArea className="activity-scroll">
-            <div className="activity-list">
+            <div className="activity-list" aria-live="polite">
               {history.length ? (
                 history.map((entry, index) => {
                   const Icon = stageIcon(entry.stage)

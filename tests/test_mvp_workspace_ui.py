@@ -182,10 +182,35 @@ def test_progressive_ui_job_reports_real_capture_stages(
             "launching_browser",
             "capturing_page",
             "preserving_artifacts",
+            "page_preview_ready",
+            "evidence_verified",
             "extracting_evidence",
             "classifying_indicators",
             "building_graph",
             "completed",
         } <= stages
+        visual = status["visual_state"]
+        assert visual["revision"] >= 1
+        assert visual["latest_preview"]["kind"] == "canonical"
+        assert visual["latest_preview"]["verification"] == "verified"
+        assert "case_id" not in visual["latest_preview"]
+        preview = client.get(
+            f"/api/investigation-jobs/{job_id}/preview",
+            params={"revision": visual["latest_preview"]["revision"]},
+        )
+        assert preview.status_code == 200
+        assert preview.headers["content-type"] == "image/png"
+        assert preview.headers["x-hawkeye-preview-state"] == "verified"
+        assert preview.content.startswith(b"\x89PNG\r\n\x1a\n")
+        thumbnail = client.get(
+            f"/api/investigation-jobs/{job_id}/preview",
+            params={
+                "revision": visual["latest_preview"]["revision"],
+                "thumbnail": True,
+            },
+        )
+        assert thumbnail.status_code == 200
+        assert thumbnail.headers["content-type"] == "image/png"
+        assert len(thumbnail.content) < len(preview.content)
         assert status["result"]["gambling_indicators"]["indicator_count"] >= 0
         assert client.get("/api/investigation-jobs/active").json() == {"job": None}

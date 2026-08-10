@@ -252,14 +252,56 @@ export interface JobHistoryItem {
   at?: string
 }
 
+export interface JobPreview {
+  preview_id: string
+  revision: number
+  page_id: string
+  kind: "canonical" | "agent_before" | "agent_after"
+  verification: "transient" | "persisted" | "verified"
+  url?: string | null
+  captured_at?: string | null
+  width?: number | null
+  height?: number | null
+}
+
+export interface JobAgentFocus {
+  status: "selected" | "completed" | "evidence_extracted" | "blocked"
+  label?: string | null
+  tool_name?: string | null
+  iteration?: number
+  target_preview_revision?: number
+  result_preview_revision?: number
+  added_observation_count?: number
+  reason?: string | null
+  target_bbox?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null
+  viewport?: {
+    width?: number | null
+    height?: number | null
+  } | null
+}
+
+export interface JobVisualState {
+  revision: number
+  previews: JobPreview[]
+  latest_preview?: JobPreview | null
+  agent_focus?: JobAgentFocus | null
+}
+
 export interface InvestigationJob {
   job_id: string
   status: "queued" | "running" | "completed" | "failed"
   stage: string
   started_at: string
   updated_at?: string
+  deadline_seconds: number
   detail?: Record<string, unknown>
   history?: JobHistoryItem[]
   error?: string | null
   result?: RunDetails | null
+  visual_state?: JobVisualState
 }

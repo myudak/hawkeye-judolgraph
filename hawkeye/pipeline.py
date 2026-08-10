@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections import deque
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -316,6 +317,17 @@ def investigate(
             viewport=collected.viewport,
             image_dimensions=collected.image_dimensions,
             page_id=current.id,
+        )
+        _emit_progress(
+            progress_callback,
+            "page_preview_ready",
+            case_id=chosen_case_id,
+            page_id=current.id,
+            url=collected.final_url,
+            captured_at=collected.collected_at.isoformat(),
+            width=collected.image_dimensions["width"],
+            height=collected.image_dimensions["height"],
+            sha256=hashlib.sha256(collected.screenshot).hexdigest(),
         )
         visible_text_evidence = storage.save_capture_text(
             collected.visible_text,

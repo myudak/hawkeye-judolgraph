@@ -1,4 +1,4 @@
-import { ArrowSquareOut, Plus, Pulse } from "@phosphor-icons/react"
+import { ArrowSquareOut, Plus, Translate } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -22,10 +22,12 @@ export function AppHeader({
   currentValue,
   context,
   language = "en",
+  onLanguageToggle,
 }: {
   currentValue?: string
   context?: "landing" | "scan" | "workspace" | "summary"
   language?: "en" | "id"
+  onLanguageToggle?: () => void
 }) {
   const navigate = useNavigate()
   const { cases, runs } = useIndexes()
@@ -49,16 +51,6 @@ export function AppHeader({
       >
         <BrandLockup />
       </button>
-
-      <div className="header-signal" aria-hidden="true">
-        <span />
-        <b>
-          {language === "id"
-            ? "INSTRUMEN BUKTI PUBLIK"
-            : "PUBLIC EVIDENCE INSTRUMENT"}
-        </b>
-        <span />
-      </div>
 
       {context === "workspace" || context === "summary" ? (
         <Select value={currentValue} onValueChange={openEvidence}>
@@ -89,32 +81,49 @@ export function AppHeader({
           </SelectContent>
         </Select>
       ) : (
-        <div className="header-mode">
-          <Pulse weight="fill" />
-          {context === "scan" ? "CAPTURE CHANNEL ACTIVE" : "LOCAL · READ ONLY"}
-        </div>
+        <span className="header-spacer" aria-hidden="true" />
       )}
 
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              className="header-action"
-              onClick={() => navigate("/")}
-              variant={context === "landing" ? "default" : "outline"}
-            >
-              <Plus weight="bold" />
-              {language === "id" ? "Investigasi baru" : "New investigation"}
-              {context === "landing" ? null : <ArrowSquareOut />}
-            </Button>
-          }
-        />
-        <TooltipContent>
-          {language === "id"
-            ? "Mulai investigasi publik baru yang terkontrol"
-            : "Start a new bounded public investigation"}
-        </TooltipContent>
-      </Tooltip>
+      <div className="header-actions">
+        {onLanguageToggle ? (
+          <Button
+            className="header-language"
+            type="button"
+            variant="outline"
+            onClick={onLanguageToggle}
+            aria-label={
+              language === "id"
+                ? "Switch to English"
+                : "Ganti ke Bahasa Indonesia"
+            }
+            title={language === "id" ? "Switch to English" : "Bahasa Indonesia"}
+          >
+            <Translate weight="bold" />
+            {language === "id" ? "ID" : "EN"}
+          </Button>
+        ) : null}
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                className="header-action"
+                onClick={() => navigate("/")}
+                variant={context === "landing" ? "default" : "outline"}
+              >
+                <Plus weight="bold" />
+                {language === "id" ? "Investigasi baru" : "New investigation"}
+                {context === "landing" ? null : <ArrowSquareOut />}
+              </Button>
+            }
+          />
+          <TooltipContent>
+            {language === "id"
+              ? "Mulai investigasi publik baru yang terkontrol"
+              : "Start a new bounded public investigation"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </header>
   )
 }

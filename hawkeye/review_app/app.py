@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
+from io import BytesIO
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
+from PIL import Image
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -34,6 +37,7 @@ from hawkeye.review_app.workspace import MvpWorkspace
 from hawkeye.storage import make_case_id
 
 _STATIC_ROOT = Path(__file__).parent / "static"
+_MAX_JOB_PREVIEW_BYTES = 16 * 1024 * 1024
 _CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "base-uri 'none'; "
@@ -186,6 +190,14 @@ def create_app(
             raise HTTPException(status_code=404, detail="Not Found")
         return _static_response(f"chunks/{filename}", "text/javascript; charset=utf-8")
 
+    @app.get("/assets/{filename}", include_in_schema=False)
+    def static_asset(filename: str) -> Response:
+        if re.fullmatch(r"hawkeye-(?:avatar|banner)(?:-[A-Za-z0-9_-]{6,32})?\.png", filename):
+            return _static_response(filename, "image/png")
+        if re.fullmatch(r"(?:geist|public-sans)-[A-Za-z0-9_-]{6,100}\.woff2", filename):
+            return _static_response(filename, "font/woff2")
+        raise HTTPException(status_code=404, detail="Not Found")
+
     @app.get("/api/cases", include_in_schema=False)
     def list_cases() -> dict[str, object]:
         return {"cases": loader.list_cases()}
@@ -232,6 +244,7 @@ def create_app(
             )
             report("verifying_evidence", {"case_id": result.case.case_id})
             loaded = loader.load(result.case.case_id)
+            report("evidence_verified", {"case_id": result.case.case_id})
             report(
                 "running_agent",
                 {
@@ -244,6 +257,7 @@ def create_app(
                 known_cases=_known_case_match_context(loader, exclude_case_id=result.case.case_id),
                 investigation_name=investigation_name,
                 guided=guided,
+                progress_callback=report,
             )
             report(
                 "classifying_indicators",
@@ -291,6 +305,30 @@ def create_app(
         @app.get("/api/investigation-jobs/{job_id}", include_in_schema=False)
         def investigation_job_status(job_id: str) -> dict[str, object]:
             return scan_jobs.status(job_id)
+
+        @app.get("/api/investigation-jobs/{job_id}/preview", include_in_schema=False)
+        def investigation_job_preview(
+            job_id: str,
+            revision: int | None = Query(default=None, ge=1, le=10_000),
+            thumbnail: bool = Query(default=False),
+        ) -> Response:
+            preview = scan_jobs.preview(job_id, revision=revision)
+            content = _read_job_preview(
+                preview,
+                loader=loader,
+                cases_root=cases_path,
+                workspace_root=workspace.root,
+            )
+            if thumbnail:
+                content = _thumbnail_png(content)
+            return Response(
+                content=content,
+                media_type="image/png",
+                headers={
+                    "Content-Disposition": 'inline; filename="investigation-preview.png"',
+                    "X-Hawkeye-Preview-State": str(preview.get("verification", "transient")),
+                },
+            )
 
         @app.get("/api/mvp/scenarios", include_in_schema=False)
         def mvp_scenarios() -> dict[str, object]:
@@ -386,6 +424,107 @@ def _static_response(filename: str, media_type: str) -> Response:
     except OSError as error:
         raise RuntimeError("Trusted review UI asset is unavailable") from error
     return Response(content=content, media_type=media_type)
+
+
+def _read_job_preview(
+    preview: dict[str, object],
+    *,
+    loader: CaseLoader,
+    cases_root: Path,
+    workspace_root: Path,
+) -> bytes:
+    """Resolve only a server-issued preview reference beneath its configured root."""
+
+    source = preview.get("source")
+    if source == "case":
+        case_id = preview.get("case_id")
+        page_id = preview.get("page_id")
+        if not isinstance(case_id, str) or not isinstance(page_id, str):
+            raise HTTPException(status_code=404, detail="Preview unavailable")
+        if (
+            re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,119}", case_id) is None
+            or re.fullmatch(r"page-[0-9]{3}", page_id) is None
+        ):
+            raise HTTPException(status_code=404, detail="Preview unavailable")
+        root = cases_root.resolve()
+        path = (root / case_id / "screenshots" / f"{page_id}.png").resolve()
+        if preview.get("verification") == "verified":
+            try:
+                loaded = loader.load(case_id)
+                page = next(item for item in loaded.pages if item.id == page_id)
+                if page.screenshot_evidence_id is None:
+                    raise StopIteration
+                content = loader.artifact(case_id, page.screenshot_evidence_id).content
+            except (CaseIntegrityError, CaseNotFoundError, StopIteration) as error:
+                raise HTTPException(
+                    status_code=409, detail="Preview failed verification"
+                ) from error
+            return _validate_job_preview(content, preview)
+    elif source == "workspace":
+        workspace_id = preview.get("workspace_id")
+        artifact_name = preview.get("artifact_name")
+        if not isinstance(workspace_id, str) or not isinstance(artifact_name, str):
+            raise HTTPException(status_code=404, detail="Preview unavailable")
+        if (
+            re.fullmatch(r"run-[a-z0-9-]{1,80}-[0-9a-f]{8}", workspace_id) is None
+            or re.fullmatch(r"interaction-[0-9]{3}(?:-before)?\.png", artifact_name) is None
+        ):
+            raise HTTPException(status_code=404, detail="Preview unavailable")
+        root = workspace_root.resolve()
+        path = (root / workspace_id / "artifacts" / artifact_name).resolve()
+    else:
+        raise HTTPException(status_code=404, detail="Preview unavailable")
+
+    if not path.is_relative_to(root) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Preview unavailable")
+    try:
+        if path.stat().st_size > _MAX_JOB_PREVIEW_BYTES:
+            raise HTTPException(status_code=409, detail="Preview failed validation")
+        with path.open("rb") as source_file:
+            content = source_file.read(_MAX_JOB_PREVIEW_BYTES + 1)
+    except OSError as error:
+        raise HTTPException(status_code=404, detail="Preview unavailable") from error
+    return _validate_job_preview(content, preview)
+
+
+def _validate_job_preview(content: bytes, preview: dict[str, object]) -> bytes:
+    expected_sha256 = preview.get("sha256")
+    expected_width = preview.get("width")
+    expected_height = preview.get("height")
+    if (
+        len(content) > _MAX_JOB_PREVIEW_BYTES
+        or len(content) < 24
+        or not content.startswith(b"\x89PNG\r\n\x1a\n")
+        or content[12:16] != b"IHDR"
+        or not isinstance(expected_sha256, str)
+        or hashlib.sha256(content).hexdigest() != expected_sha256
+    ):
+        raise HTTPException(status_code=409, detail="Preview failed validation")
+    width = int.from_bytes(content[16:20], "big")
+    height = int.from_bytes(content[20:24], "big")
+    if (
+        not isinstance(expected_width, int)
+        or not isinstance(expected_height, int)
+        or width != expected_width
+        or height != expected_height
+        or not 1 <= width <= 10_000
+        or not 1 <= height <= 10_000
+    ):
+        raise HTTPException(status_code=409, detail="Preview dimensions failed validation")
+    return content
+
+
+def _thumbnail_png(content: bytes) -> bytes:
+    try:
+        with Image.open(BytesIO(content)) as source:
+            source.load()
+            thumbnail = source.convert("RGB")
+            thumbnail.thumbnail((320, 220), Image.Resampling.LANCZOS)
+            output = BytesIO()
+            thumbnail.save(output, format="PNG", optimize=True)
+            return output.getvalue()
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=409, detail="Preview thumbnail failed") from error
 
 
 def _require_same_origin(request: Request) -> None:

@@ -24,7 +24,7 @@ from hawkeye.investigation import (
     run_live_investigation,
 )
 from hawkeye.models import InvestigationResult
-from hawkeye.pipeline import investigate
+from hawkeye.pipeline import ProgressCallback, investigate
 from hawkeye.storage import make_case_id
 
 _RUN_ID = re.compile(r"^run-[a-z0-9-]{1,80}-[0-9a-f]{8}$")
@@ -118,6 +118,7 @@ class MvpWorkspace:
         known_cases: list[dict[str, object]],
         investigation_name: str = "",
         guided: bool = True,
+        progress_callback: ProgressCallback | None = None,
     ) -> dict[str, object]:
         """Turn a completed live capture into the same auditable agent/event workflow."""
 
@@ -131,6 +132,7 @@ class MvpWorkspace:
             safety_policy=self.safety_policy,
             investigation_name=investigation_name,
             guided=guided,
+            progress_callback=progress_callback,
         )
         return {"workspace_id": run_directory_id, **summary}
 

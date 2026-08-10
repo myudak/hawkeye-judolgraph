@@ -137,6 +137,10 @@ The localhost scan path now runs in an isolated, killable browser process behind
 manager. The UI polls persisted stage snapshots, resumes an active job after reload, names the real
 capture/OCR/extraction/agent/classification/graph stage, and records an explicit failure instead of
 remaining indefinitely on `Scanning`.
+Persisted canonical and interaction screenshots now appear during the active job with bounded
+thumbnail history. Agent selections use the revalidated element's real viewport box; result frames
+are announced only after the action artifacts and tool event are durable. The animation remains a
+projection of evidence state and never substitutes a fake completion percentage.
 
 ## Explicitly out of scope until separately approved
 

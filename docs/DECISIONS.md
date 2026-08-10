@@ -332,3 +332,22 @@ edge labels appear only for selected or hovered context. Evidence, Navigation, a
 hide non-matching nodes and their edges without mutating the reducer output. The default right
 inspector summarizes observed categories before exposing artifacts and provenance. Both sidebars
 may be collapsed for graph inspection, and the EN/ID toggle changes interface copy only.
+
+## ADR-031 — Scan animation projects persisted frames and real stage events
+
+**Status:** accepted; extends ADR-028 and ADR-029.
+
+The progressive scan view may display a screenshot only after its bytes have been written beneath
+the active case or investigation workspace. Every job preview is addressed by a server-issued
+revision, is bound to the owning in-memory job, and is rechecked against its recorded SHA-256 and
+PNG dimensions before delivery. A completed canonical frame is additionally reloaded through the
+verified case manifest. Internal case paths, workspace paths, and hashes are not exposed in the
+public job projection.
+
+An agent-focus frame is recorded only after the stable element reference is revalidated in the
+browser and its real viewport bounding box is obtained. The animated pointer is a presentation of
+that persisted selection, not a live remote cursor or a claim of computer-use control. The result
+frame becomes complete only after its screenshot, state, HTML/text artifacts, and append-only tool
+completion event have been persisted; blocked actions receive a separate stopped state. Shimmer,
+scanlines, elapsed time, and stage labels may express active work, but no fabricated percentage,
+invented substep, or post-completion animation is permitted.

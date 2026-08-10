@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -62,6 +63,8 @@ _CONTACT_OBSERVATION_TYPES = {
     "public_email_address",
 }
 
+LiveProgressCallback = Callable[[str, dict[str, object]], None]
+
 
 @dataclass(frozen=True)
 class _LiveExpansionResult:
@@ -81,6 +84,7 @@ def run_live_investigation(
     safety_policy: SafetyPolicy,
     investigation_name: str = "",
     guided: bool = True,
+    progress_callback: LiveProgressCallback | None = None,
 ) -> dict[str, object]:
     """Create one event-sourced run from a verified public collection."""
 
@@ -305,6 +309,8 @@ def run_live_investigation(
             safety_policy=safety_policy,
             artifacts=artifacts,
             observation_event_ids=observation_event_ids,
+            workspace_id=destination.name,
+            progress_callback=progress_callback,
         )
     else:
         stopped = store.append_event(
@@ -461,6 +467,8 @@ def _run_live_agent_loop(
     safety_policy: SafetyPolicy,
     artifacts: Path,
     observation_event_ids: dict[str, str],
+    workspace_id: str,
+    progress_callback: LiveProgressCallback | None,
 ) -> _LiveExpansionResult:
     """Execute a feedback-driven, at-most-three-action live expansion."""
 
@@ -576,6 +584,9 @@ def _run_live_agent_loop(
                 safety_policy=safety_policy,
                 artifacts=artifacts,
                 interaction_index=iteration,
+                workspace_id=workspace_id,
+                tool_name=decision.tool_name or "page_click_read_only",
+                progress_callback=progress_callback,
             )
             action_summary["iteration"] = iteration
         interaction_html = str(action_summary.pop("_html", ""))
@@ -590,6 +601,36 @@ def _run_live_agent_loop(
         )
         last_event_id = completed.event_id
         status = str(action_summary.get("status", "blocked"))
+        if status == "completed":
+            action_viewport = action_summary.get("viewport")
+            _emit_live_progress(
+                progress_callback,
+                "interaction_preview_ready",
+                workspace_id=workspace_id,
+                artifact_name=action_summary.get("screenshot_artifact"),
+                label=reference.accessible_name,
+                tool_name=decision.tool_name or "page_click_read_only",
+                iteration=iteration,
+                url=action_summary.get("url"),
+                viewport_width=action_viewport.get("width")
+                if isinstance(action_viewport, dict)
+                else None,
+                viewport_height=action_viewport.get("height")
+                if isinstance(action_viewport, dict)
+                else None,
+                target_bbox=action_summary.get("target_bbox"),
+                sha256=action_summary.get("screenshot_sha256"),
+            )
+        else:
+            _emit_live_progress(
+                progress_callback,
+                "agent_focus_blocked",
+                workspace_id=workspace_id,
+                iteration=iteration,
+                label=reference.accessible_name,
+                tool_name=decision.tool_name or "page_click_read_only",
+                reason=action_summary.get("reason"),
+            )
         if status != "completed":
             stale_count = stale_count + 1 if status == "stale_reference" else 0
             prior_results.append(
@@ -715,6 +756,15 @@ def _run_live_agent_loop(
                 "state_changed": state_changed,
                 "next_safe_element_count": len(next_permitted),
             }
+        )
+        _emit_live_progress(
+            progress_callback,
+            "agent_observations_ready",
+            workspace_id=workspace_id,
+            iteration=iteration,
+            label=reference.accessible_name,
+            tool_name=decision.tool_name or "page_click_read_only",
+            added_observation_count=len(added),
         )
         step_observed = store.append_event(
             case_id=case_id,
@@ -1057,6 +1107,9 @@ def _execute_live_interaction(
     safety_policy: SafetyPolicy,
     artifacts: Path,
     interaction_index: int = 1,
+    workspace_id: str,
+    tool_name: str,
+    progress_callback: LiveProgressCallback | None,
 ) -> dict[str, object]:
     permitted, reason, checks = validate_read_only_interaction(element)
     if not permitted:
@@ -1124,6 +1177,26 @@ def _execute_live_interaction(
                     "reason": "visible_text_changed",
                     "executed": False,
                 }
+            locator.scroll_into_view_if_needed(timeout=3_000)
+            target_bbox = locator.bounding_box(timeout=3_000)
+            viewport = {"width": 1440, "height": 1024}
+            before_screenshot = page.screenshot(full_page=False, timeout=5_000)
+            before_screenshot_name = f"interaction-{interaction_index:03d}-before.png"
+            (artifacts / before_screenshot_name).write_bytes(before_screenshot)
+            _emit_live_progress(
+                progress_callback,
+                "agent_focus_ready",
+                workspace_id=workspace_id,
+                artifact_name=before_screenshot_name,
+                label=reference.accessible_name,
+                tool_name=tool_name,
+                iteration=interaction_index,
+                url=page.url,
+                viewport_width=viewport["width"],
+                viewport_height=viewport["height"],
+                target_bbox=target_bbox,
+                sha256=hashlib.sha256(before_screenshot).hexdigest(),
+            )
             before_url = page.url
             direct_destination = element.destination_url or element.href
             if element.declared_behavior == "open_public_link" and direct_destination:
@@ -1171,6 +1244,9 @@ def _execute_live_interaction(
                 "html_artifact": html_name,
                 "visible_text_artifact": visible_text_name,
                 "selected_element": reference.model_dump(mode="json"),
+                "target_bbox": target_bbox,
+                "viewport": viewport,
+                "before_screenshot_artifact": before_screenshot_name,
                 "navigation_fallback": route_fallback,
             }
             (artifacts / state_name).write_text(
@@ -1188,14 +1264,27 @@ def _execute_live_interaction(
         "reason": reason,
         "url": final_url,
         "state_artifact": state_name,
+        "before_screenshot_artifact": before_screenshot_name,
         "screenshot_artifact": screenshot_name,
         "html_artifact": html_name,
         "visible_text_artifact": visible_text_name,
         "request_count": request_count,
         "blocked_request_count": len(blocked_requests),
         "executed": True,
+        "target_bbox": target_bbox,
+        "viewport": viewport,
+        "screenshot_sha256": hashlib.sha256(screenshot).hexdigest(),
         "_html": html,
     }
+
+
+def _emit_live_progress(
+    callback: LiveProgressCallback | None,
+    stage: str,
+    **detail: object,
+) -> None:
+    if callback is not None:
+        callback(stage, detail)
 
 
 def _contact_route_fallback(source_url: str, label: str) -> str | None:

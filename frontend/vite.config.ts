@@ -6,6 +6,7 @@ import { defineConfig } from "vite"
 // https://vite.dev/config/
 export default defineConfig({
   base: "/assets/",
+  publicDir: path.resolve(import.meta.dirname, "./src/assets"),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -17,7 +18,7 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     cssCodeSplit: false,
-    assetsInlineLimit: 1_000_000,
+    assetsInlineLimit: 4_096,
     rollupOptions: {
       output: {
         entryFileNames: "app.js",

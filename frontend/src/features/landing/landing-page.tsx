@@ -42,8 +42,11 @@ import { useCapability, useIndexes } from "@/hooks/use-indexes"
 import { formatTime, hostnameFrom, titleCase } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+const hawkeyeBanner = "/assets/hawkeye-banner.png"
+
 type CaseFilter = "all" | "active" | "complete" | "review" | "error"
 type CaseLayout = "grid" | "list"
+type Language = "en" | "id"
 
 interface CaseEntry {
   kind: "run" | "case"
@@ -133,15 +136,128 @@ function mergeEntries(cases: CaseListItem[], runs: RunListItem[]): CaseEntry[] {
   return [...runEntries, ...caseEntries]
 }
 
-const filterOptions: Array<{ key: CaseFilter; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "complete", label: "Complete" },
-  { key: "review", label: "Needs review" },
-  { key: "error", label: "Integrity errors" },
+const filterOptions: Array<{
+  key: CaseFilter
+  label: Record<Language, string>
+}> = [
+  { key: "all", label: { en: "All", id: "Semua" } },
+  { key: "active", label: { en: "Active", id: "Aktif" } },
+  { key: "complete", label: { en: "Complete", id: "Selesai" } },
+  {
+    key: "review",
+    label: { en: "Needs review", id: "Perlu ditinjau" },
+  },
+  {
+    key: "error",
+    label: { en: "Integrity errors", id: "Error integritas" },
+  },
 ]
 
-function StateBadge({ entry }: { entry: CaseEntry }) {
+const landingCopy = {
+  en: {
+    launchTitle: "Capture a public evidence trail",
+    launchDescription:
+      "Preserve first. Extract deterministically. Review every relationship.",
+    seedLabel: "Public seed URL",
+    seedPlaceholder: "Enter a public web address",
+    nameLabel: "Investigation name",
+    optional: "optional",
+    namePlaceholder: "e.g. Public contact and related-site review",
+    scopeTitle: "Public, read-only scope.",
+    scopeBody:
+      "No sign-in, forms, messaging, purchases, downloads, or access-control bypass.",
+    checkingAgent: "Checking agent",
+    safeFallback: "Safe fallback",
+    creatingWorkspace: "Creating workspace",
+    startInvestigation: "Start investigation",
+    cases: "Cases",
+    casesDescription:
+      "Your saved investigations and verified evidence collections.",
+    search: "Search cases…",
+    sort: "Sort cases",
+    newest: "Newest first",
+    oldest: "Oldest first",
+    domain: "Domain name",
+    filter: "Filter cases",
+    layout: "Case layout",
+    grid: "Grid view",
+    list: "List view",
+    pages: "Pages",
+    indicators: "Indicators",
+    candidates: "Candidates",
+    updated: "Updated WIB",
+    noCases: "No cases match this view",
+    noCasesHelp:
+      "Adjust the search/filter or start a new bounded investigation.",
+    boundaries: "Evidence boundaries",
+    immutableTitle: "Immutable evidence",
+    immutableBody: "Artifacts are hash-verified before display.",
+    extractionTitle: "Transparent extraction",
+    extractionBody: "Every observation retains provenance.",
+    neutralTitle: "Relationship neutral",
+    neutralBody: "Candidates remain pending until review.",
+  },
+  id: {
+    launchTitle: "Tangkap jejak bukti publik",
+    launchDescription:
+      "Simpan lebih dulu. Ekstrak secara deterministik. Tinjau setiap relasi.",
+    seedLabel: "URL publik awal",
+    seedPlaceholder: "Masukkan alamat web publik",
+    nameLabel: "Nama investigasi",
+    optional: "opsional",
+    namePlaceholder: "contoh: Penelusuran kontak dan situs terkait",
+    scopeTitle: "Ruang lingkup publik dan hanya-baca.",
+    scopeBody:
+      "Tanpa login, pengiriman formulir, pesan, pembelian, unduhan, atau bypass kontrol akses.",
+    checkingAgent: "Memeriksa agen",
+    safeFallback: "Fallback aman",
+    creatingWorkspace: "Membuat workspace",
+    startInvestigation: "Mulai investigasi",
+    cases: "Kasus",
+    casesDescription: "Investigasi tersimpan dan koleksi bukti terverifikasi.",
+    search: "Cari kasus…",
+    sort: "Urutkan kasus",
+    newest: "Terbaru",
+    oldest: "Terlama",
+    domain: "Nama domain",
+    filter: "Filter kasus",
+    layout: "Tampilan kasus",
+    grid: "Tampilan grid",
+    list: "Tampilan daftar",
+    pages: "Halaman",
+    indicators: "Indikator",
+    candidates: "Kandidat",
+    updated: "Diperbarui WIB",
+    noCases: "Tidak ada kasus pada tampilan ini",
+    noCasesHelp: "Ubah pencarian/filter atau mulai investigasi baru.",
+    boundaries: "Batas pengumpulan bukti",
+    immutableTitle: "Bukti tidak dapat diubah",
+    immutableBody: "Hash artefak diverifikasi sebelum ditampilkan.",
+    extractionTitle: "Ekstraksi transparan",
+    extractionBody: "Setiap observasi menyimpan asal-usulnya.",
+    neutralTitle: "Relasi tetap netral",
+    neutralBody: "Kandidat tetap tertunda sampai ditinjau.",
+  },
+} as const
+
+function localizedStateLabel(entry: CaseEntry, language: Language) {
+  if (language === "en") return entry.stateLabel
+  if (entry.state === "error") return "Error integritas"
+  if (entry.state === "review") return "Perlu ditinjau"
+  if (entry.state === "active")
+    return entry.stateLabel === "Queued" ? "Dalam antrean" : "Berjalan"
+  if (entry.stateLabel === "Recollected") return "Dikoleksi ulang"
+  if (entry.stateLabel === "Captured · limited") return "Tangkapan terbatas"
+  return "Selesai"
+}
+
+function StateBadge({
+  entry,
+  language,
+}: {
+  entry: CaseEntry
+  language: Language
+}) {
   const tone =
     entry.state === "review"
       ? "warning"
@@ -151,16 +267,29 @@ function StateBadge({ entry }: { entry: CaseEntry }) {
           ? "cyan"
           : "success"
   return (
-    <Badge className={`status-badge status-${tone}`}>{entry.stateLabel}</Badge>
+    <Badge className={`status-badge status-${tone}`}>
+      {localizedStateLabel(entry, language)}
+    </Badge>
   )
 }
 
-function CaseCard({ entry, layout }: { entry: CaseEntry; layout: CaseLayout }) {
+function CaseCard({
+  entry,
+  layout,
+  language,
+}: {
+  entry: CaseEntry
+  layout: CaseLayout
+  language: Language
+}) {
   const navigate = useNavigate()
   const disabled = entry.integrity === "error"
+  const copy = landingCopy[language]
+  const stateLabel = localizedStateLabel(entry, language)
   return (
     <button
       type="button"
+      data-state={entry.state}
       className={cn(
         "case-card group",
         layout === "list" && "case-card-list",
@@ -168,7 +297,7 @@ function CaseCard({ entry, layout }: { entry: CaseEntry; layout: CaseLayout }) {
       )}
       disabled={disabled}
       onClick={() => navigate(`/workspace/${entry.kind}/${entry.id}`)}
-      aria-label={`${entry.title}, ${entry.stateLabel}, ${entry.pages} pages, ${entry.indicators} indicators`}
+      aria-label={`${entry.title}, ${stateLabel}, ${entry.pages} ${copy.pages}, ${entry.indicators} ${copy.indicators}`}
     >
       <span className="case-card-accent" />
       <span className="case-card-head">
@@ -181,29 +310,29 @@ function CaseCard({ entry, layout }: { entry: CaseEntry; layout: CaseLayout }) {
             <small>{entry.caseId}</small>
           </span>
         </span>
-        <StateBadge entry={entry} />
+        <StateBadge entry={entry} language={language} />
       </span>
       <span className="case-card-rule" />
       <span className="case-metrics">
         <span>
           <CardsThree weight="duotone" />
           <b>{entry.pages}</b>
-          <small>Pages</small>
+          <small>{copy.pages}</small>
         </span>
         <span>
           <Binoculars weight="duotone" />
           <b>{entry.indicators}</b>
-          <small>Indicators</small>
+          <small>{copy.indicators}</small>
         </span>
         <span>
           <Funnel weight="duotone" />
           <b>{entry.candidates}</b>
-          <small>Candidates</small>
+          <small>{copy.candidates}</small>
         </span>
         <span>
           <ClockCounterClockwise weight="duotone" />
           <b>{formatTime(entry.updated)}</b>
-          <small>{entry.error || "Updated WIB"}</small>
+          <small>{entry.error || copy.updated}</small>
         </span>
       </span>
       <span className="case-open">
@@ -230,7 +359,15 @@ export function LandingPage() {
   const [filter, setFilter] = useState<CaseFilter>("all")
   const [layout, setLayout] = useState<CaseLayout>("grid")
   const [sort, setSort] = useState("newest")
+  const [language, setLanguage] = useState<Language>(() =>
+    window.localStorage.getItem("hawk-eye-language") === "id" ? "id" : "en"
+  )
   const deferredQuery = useDeferredValue(query)
+  const copy = landingCopy[language]
+
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
 
   useEffect(() => {
     const job = activeJob.data?.job
@@ -276,12 +413,27 @@ export function LandingPage() {
     })
   }
 
+  const toggleLanguage = () => {
+    setLanguage((current) => {
+      const next = current === "en" ? "id" : "en"
+      window.localStorage.setItem("hawk-eye-language", next)
+      return next
+    })
+  }
+
   const capabilityReady = capability.data?.state === "codex_ready"
 
   return (
     <div className="app-page landing-page">
-      <AppHeader context="landing" />
+      <AppHeader
+        context="landing"
+        language={language}
+        onLanguageToggle={toggleLanguage}
+      />
       <main className="landing-main">
+        <figure className="brand-hero-banner">
+          <img src={hawkeyeBanner} alt="HAWK-EYE investigation banner" />
+        </figure>
         <section className="launch-section" aria-labelledby="launch-title">
           <div className="launch-orbit" aria-hidden="true">
             <span />
@@ -293,18 +445,14 @@ export function LandingPage() {
               <Pulse weight="duotone" />
             </span>
             <div>
-              <p className="eyebrow">START NEW INVESTIGATION</p>
-              <h1 id="launch-title">Capture a public evidence trail</h1>
-              <p>
-                Preserve first. Extract deterministically. Review every
-                relationship.
-              </p>
+              <h1 id="launch-title">{copy.launchTitle}</h1>
+              <p>{copy.launchDescription}</p>
             </div>
           </div>
 
           <form className="launch-form" onSubmit={submit}>
             <div className="field-stack launch-url-field">
-              <Label htmlFor="seed-url">Public seed URL</Label>
+              <Label htmlFor="seed-url">{copy.seedLabel}</Label>
               <span className="input-shell">
                 <LinkSimple weight="bold" />
                 <Input
@@ -313,7 +461,7 @@ export function LandingPage() {
                   required
                   value={seedUrl}
                   onChange={(event) => setSeedUrl(event.target.value)}
-                  placeholder="Enter a public web address"
+                  placeholder={copy.seedPlaceholder}
                   autoComplete="url"
                 />
                 <CheckCircle className="input-valid" weight="fill" />
@@ -321,13 +469,13 @@ export function LandingPage() {
             </div>
             <div className="field-stack">
               <Label htmlFor="investigation-name">
-                Investigation name <span>(optional)</span>
+                {copy.nameLabel} <span>({copy.optional})</span>
               </Label>
               <Input
                 id="investigation-name"
                 value={investigationName}
                 onChange={(event) => setInvestigationName(event.target.value)}
-                placeholder="e.g. Public contact and related-site review"
+                placeholder={copy.namePlaceholder}
                 maxLength={200}
               />
             </div>
@@ -335,8 +483,7 @@ export function LandingPage() {
               <div className="scope-notice">
                 <LockKey weight="duotone" />
                 <span>
-                  <b>Public, read-only scope.</b> No sign-in, forms, messaging,
-                  purchases, downloads, or access-control bypass.
+                  <b>{copy.scopeTitle}</b> {copy.scopeBody}
                 </span>
               </div>
               <div
@@ -347,10 +494,10 @@ export function LandingPage() {
               >
                 <span />
                 {capability.isPending
-                  ? "Checking agent"
+                  ? copy.checkingAgent
                   : capabilityReady
                     ? capability.data?.selected_model || "Codex ready"
-                    : "Safe fallback"}
+                    : copy.safeFallback}
               </div>
               <Button
                 type="submit"
@@ -359,8 +506,8 @@ export function LandingPage() {
                 disabled={startJob.isPending}
               >
                 {startJob.isPending
-                  ? "Creating workspace"
-                  : "Start investigation"}
+                  ? copy.creatingWorkspace
+                  : copy.startInvestigation}
                 <ArrowRight weight="bold" />
               </Button>
             </div>
@@ -374,10 +521,8 @@ export function LandingPage() {
                 <Database weight="duotone" />
               </span>
               <div>
-                <h2 id="cases-title">Cases</h2>
-                <p>
-                  Your saved investigations and verified evidence collections.
-                </p>
+                <h2 id="cases-title">{copy.cases}</h2>
+                <p>{copy.casesDescription}</p>
               </div>
             </div>
             <div className="case-controls">
@@ -385,26 +530,26 @@ export function LandingPage() {
                 <MagnifyingGlass />
                 <Input
                   type="search"
-                  placeholder="Search cases…"
+                  placeholder={copy.search}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  aria-label="Search cases"
+                  aria-label={copy.search}
                 />
               </span>
               <Select
                 value={sort}
                 onValueChange={(value) => setSort(value ?? "newest")}
               >
-                <SelectTrigger className="sort-select" aria-label="Sort cases">
+                <SelectTrigger className="sort-select" aria-label={copy.sort}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                  <SelectItem value="name">Domain name</SelectItem>
+                  <SelectItem value="newest">{copy.newest}</SelectItem>
+                  <SelectItem value="oldest">{copy.oldest}</SelectItem>
+                  <SelectItem value="name">{copy.domain}</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="case-filters" aria-label="Filter cases">
+              <div className="case-filters" aria-label={copy.filter}>
                 {filterOptions.map((item) => (
                   <Button
                     key={item.key}
@@ -414,15 +559,15 @@ export function LandingPage() {
                     aria-pressed={filter === item.key}
                     onClick={() => setFilter(item.key)}
                   >
-                    {item.label}
+                    {item.label[language]}
                   </Button>
                 ))}
               </div>
-              <div className="layout-toggle" aria-label="Case layout">
+              <div className="layout-toggle" aria-label={copy.layout}>
                 <Button
                   size="icon-sm"
                   variant={layout === "grid" ? "secondary" : "ghost"}
-                  aria-label="Grid view"
+                  aria-label={copy.grid}
                   aria-pressed={layout === "grid"}
                   onClick={() => setLayout("grid")}
                 >
@@ -431,7 +576,7 @@ export function LandingPage() {
                 <Button
                   size="icon-sm"
                   variant={layout === "list" ? "secondary" : "ghost"}
-                  aria-label="List view"
+                  aria-label={copy.list}
                   aria-pressed={layout === "list"}
                   onClick={() => setLayout("list")}
                 >
@@ -461,33 +606,31 @@ export function LandingPage() {
                   key={`${entry.kind}:${entry.id}`}
                   entry={entry}
                   layout={layout}
+                  language={language}
                 />
               ))}
             </div>
           ) : (
             <div className="empty-cases">
               <Sparkle weight="duotone" />
-              <strong>No cases match this view</strong>
-              <p>
-                Adjust the search/filter or start a new bounded investigation.
-              </p>
+              <strong>{copy.noCases}</strong>
+              <p>{copy.noCasesHelp}</p>
             </div>
           )}
         </section>
 
-        <aside className="landing-principles" aria-label="Evidence boundaries">
+        <aside className="landing-principles" aria-label={copy.boundaries}>
           <span>
             <ShieldCheck weight="duotone" />
-            <b>Immutable evidence</b> Artifacts are hash-verified before
-            display.
+            <b>{copy.immutableTitle}</b> {copy.immutableBody}
           </span>
           <span>
             <Binoculars weight="duotone" />
-            <b>Transparent extraction</b> Every observation retains provenance.
+            <b>{copy.extractionTitle}</b> {copy.extractionBody}
           </span>
           <span>
             <WarningCircle weight="duotone" />
-            <b>Relationship neutral</b> Candidates remain pending until review.
+            <b>{copy.neutralTitle}</b> {copy.neutralBody}
           </span>
         </aside>
       </main>

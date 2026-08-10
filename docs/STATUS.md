@@ -77,6 +77,30 @@ Graph V2 interaction refresh verified on 2026-08-10 (Asia/Jakarta):
   lens reduced QQ to the seed plus one pending candidate, both panels collapsed into full-canvas
   mode, and the simplified inspector exposed clickable brand/contact/link/payment/offer groups.
 
+Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
+
+- Canonical screenshots enter the active job only after persistence and change from transient to
+  verified only after the completed case reload succeeds. Preview delivery rechecks the recorded
+  SHA-256, PNG header, and exact dimensions; verified canonical frames also pass the manifest-backed
+  artifact loader.
+- Policy-gated interactions persist a before frame with the real revalidated element bounding box,
+  then a separate result frame. The result is not projected as completed until screenshot/state/
+  HTML/text artifacts and the append-only `tool.completed` event exist. A failed action is shown as
+  stopped rather than completed.
+- The React scan view is screenshot-first, provides bounded before/after thumbnails, uses shimmer
+  and scanline motion only while the job is active, freezes terminal elapsed time, and reports zero
+  newly extracted observations truthfully. It still uses real stage names rather than percentages.
+- `python -m ruff format --check .`, `python -m ruff check .`, and
+  `python -m mypy hawkeye` passed. `python -m pytest -q --durations=10` passed 191 tests in
+  543.42 seconds with one upstream FastAPI/Starlette deprecation warning.
+- Frontend formatting, ESLint, TypeScript, five projection tests, and production build passed. The
+  lazy landing chunk is 33.79 kB (10.21 kB gzip), the scan chunk is 40.99 kB (12.15 kB gzip), and
+  supplied brand images are served as fixed same-origin assets rather than base64 JavaScript.
+- Local browser QA verified the Indonesian landing, larger case cards, language switch, active scan
+  radar, real stage/elapsed reporting, and the explicit terminal failure state. The live QQ check
+  reached the 115-second browser wall before a valid frame was preserved; the UI froze at 01:56,
+  marked the capture/stage/activity as stopped, and did not fabricate a screenshot or completion.
+
 ## Implemented product boundary
 
 - Canonical collection always uses 0/500/1500/3000 ms checkpoints, may extend observation to

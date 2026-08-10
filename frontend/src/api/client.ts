@@ -101,6 +101,15 @@ export function runArtifactUrl(workspaceId: string, name: string): string {
   return `/api/mvp/runs/${encodeURIComponent(workspaceId)}/artifacts/${encodeURIComponent(name)}`
 }
 
+export function jobPreviewUrl(
+  jobId: string,
+  revision: number,
+  thumbnail = false
+): string {
+  const thumbnailQuery = thumbnail ? "&thumbnail=true" : ""
+  return `/api/investigation-jobs/${encodeURIComponent(jobId)}/preview?revision=${encodeURIComponent(revision)}${thumbnailQuery}`
+}
+
 export function runExportUrl(
   workspaceId: string,
   extension: "md" | "json" | "zip"
