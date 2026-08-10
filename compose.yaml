@@ -21,6 +21,8 @@ services:
       HAWKEYE_LLM_MODEL: "${HAWKEYE_LLM_MODEL:-}"
       HAWKEYE_LLM_API_STYLE: "${HAWKEYE_LLM_API_STYLE:-auto}"
       HAWKEYE_LLM_TIMEOUT_SECONDS: "${HAWKEYE_LLM_TIMEOUT_SECONDS:-15}"
+      HAWKEYE_AUTH_USERNAME: "${HAWKEYE_AUTH_USERNAME:-}"
+      HAWKEYE_AUTH_PASSWORD: "${HAWKEYE_AUTH_PASSWORD:-}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     tmpfs:

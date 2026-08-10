@@ -27,5 +27,17 @@ Run the complete isolated acceptance gate from the repository root:
 pnpm verify:docker
 ```
 
+For the owner-authorized temporary OpenRouter demo, keep `OPENROUTER_APIKEY` in the ignored root
+`.env` file and start the checked-in override:
+
+```powershell
+docker compose -f compose.yaml -f compose.openrouter.yaml up -d --build
+```
+
+The override selects `openai/gpt-5.6-luna` by default and enables only the exact browser origin
+`https://hawkeye.myudak.com`. The published port remains `127.0.0.1:8760`. Basic Auth remains
+optional; with both auth variables empty, the demo is intentionally unauthenticated. Origin checks
+do not authenticate direct clients, and this exception must not be described as production-ready.
+
 Remote single-investigator access is supported through an SSH tunnel while the published port stays
 on host loopback. See `docs/DEPLOYMENT.md`.

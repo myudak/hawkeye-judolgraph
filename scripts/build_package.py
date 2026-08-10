@@ -11,7 +11,19 @@ STATIC_ROOT = REPOSITORY_ROOT / "apps" / "api" / "src" / "hawkeye" / "review_app
 
 
 def main() -> int:
-    required = ("index.html", "app.js", "styles.css")
+    required = (
+        "index.html",
+        "app.js",
+        "styles.css",
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "site.webmanifest",
+        "og-image-1200x630.png",
+        "app-icon-192x192.png",
+        "app-icon-512x512.png",
+        "maskable-icon-192x192.png",
+        "maskable-icon-512x512.png",
+    )
     missing = [name for name in required if not (STATIC_ROOT / name).is_file()]
     chunks = list((STATIC_ROOT / "chunks").glob("*.js"))
     if missing or not chunks:

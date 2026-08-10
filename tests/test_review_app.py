@@ -331,6 +331,16 @@ def test_read_only_api_uses_verified_ids_redacts_display_values_and_sets_csp(
     brand_image = client.get("/assets/hawkeye-avatar.png")
     assert brand_image.status_code == 200
     assert brand_image.headers["content-type"] == "image/png"
+    favicon = client.get("/assets/favicon.ico")
+    manifest = client.get("/assets/site.webmanifest")
+    social_card = client.get("/assets/og-image-1200x630.png")
+    assert favicon.status_code == 200
+    assert favicon.headers["content-type"] == "image/x-icon"
+    assert manifest.status_code == 200
+    assert manifest.headers["content-type"] == "application/manifest+json"
+    assert manifest.json()["short_name"] == "HAWK-EYE"
+    assert social_card.status_code == 200
+    assert social_card.headers["content-type"] == "image/png"
     font_match = re.search(
         r"url\(/assets/([^)]*\.(?:woff2))\)", client.get("/assets/styles.css").text
     )
@@ -636,6 +646,12 @@ def test_react_ui_build_preserves_local_evidence_safety_and_accessibility() -> N
     assert 'id="root"' in html
     assert 'src="/assets/app.js"' in html
     assert 'href="/assets/styles.css"' in html
+    assert 'href="/assets/favicon.ico"' in html
+    assert 'href="/assets/site.webmanifest"' in html
+    assert 'content="/assets/og-image-1200x630.png"' in html
+    assert 'content="1200"' in html
+    assert 'content="630"' in html
+    assert 'content="noindex, nofollow, noarchive, nosnippet"' in html
     assert "http://" not in html
     assert "https://" not in html
     assert "/api/investigation-jobs" in script + chunks

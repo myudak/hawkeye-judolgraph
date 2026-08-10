@@ -143,11 +143,21 @@ thumbnail history. Agent selections use the revalidated element's real viewport 
 are announced only after the action artifacts and tool event are durable. The animation remains a
 projection of evidence state and never substitutes a fake completion percentage.
 
+## Owner-authorized temporary public demo exception
+
+One exact HTTPS origin, `https://hawkeye.myudak.com`, may be enabled explicitly for a temporary
+Cloudflare Tunnel demo while Docker remains published to host loopback. Mutation requests fail
+closed to the exact public Origin (or an exact local same-origin recovery request), forwarded
+headers remain untrusted, and CORS remains disabled. Optional HTTP Basic may be enabled separately;
+the Origin rule alone is not authentication. This exception does not approve general public
+hosting, multi-user access, or production deployment.
+
 ## Explicitly out of scope until separately approved
 
 - Unapproved deeper crawling or automatic real candidate-domain crawling.
 - New external discovery sources.
 - Unreviewed AI-derived relationship conclusions or scoring-weight changes.
 - Login, form submission, CAPTCHA handling, or evasion.
-- Public hosting, multi-user access, authentication, or remote APIs.
+- Public hosting, multi-user identity/authorization, or remote APIs. The optional single-operator
+  HTTP Basic gate is only a local access boundary, not a multi-user account system.
 - Final submission export/upload before the named human-owned checklist items are resolved.

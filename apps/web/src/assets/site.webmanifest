@@ -1,0 +1,41 @@
+{
+  "id": "/",
+  "name": "HAWK-EYE — Investigasi Ekosistem Judi Online",
+  "short_name": "HAWK-EYE",
+  "description": "Workspace OSINT evidence-first untuk menangkap bukti web publik, menelusuri provenance, dan melakukan human review.",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#050b15",
+  "theme_color": "#050b15",
+  "categories": ["security", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "app-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "app-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

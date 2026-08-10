@@ -174,7 +174,13 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
   the verified Docker image includes Tesseract. OCR-derived signals remain provisional. No
   universal live-web safety guarantee, ownership probability, operator identification, criminality,
   or legal conclusion is claimed.
-- The console remains localhost-only and single-machine; review labels are not authenticated users.
+- The console remains localhost-only and single-machine. An optional environment-configured HTTP
+  Basic gate protects every UI/API/artifact route except `/health`; review labels remain audit text,
+  not authenticated user identities.
+- An owner-authorized temporary demo configuration admits only exact Host/Origin
+  `hawkeye.myudak.com` through an external TLS tunnel while Compose remains bound to host loopback.
+  Basic Auth is optional; without it this is explicitly an unauthenticated demo, not a production
+  deployment or identity boundary.
 - Final name, team/institution/category/advisor, external citations, publication/originality
   confirmations, dependency-license legal review, official formatting, video,
   signatures, PDF export, and upload require authorized humans. They are tracked in

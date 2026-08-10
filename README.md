@@ -23,6 +23,10 @@ docker compose up --build -d
 
 Buka [http://127.0.0.1:8760](http://127.0.0.1:8760).
 
+Jika `HAWKEYE_AUTH_USERNAME` dan `HAWKEYE_AUTH_PASSWORD` di `.env` terisi, browser akan meminta
+credential HTTP Basic sebelum menampilkan aplikasi. Endpoint `/health` sengaja tetap tanpa auth
+agar healthcheck container dapat bekerja.
+
 ```powershell
 # Lihat log
 docker compose logs -f hawkeye
@@ -147,10 +151,40 @@ provider remote harus HTTPS.
 Responses benar-benar tidak tersedia (`404/405`). Redirect, response terlalu besar, timeout,
 schema salah, dan reference yang tidak diterbitkan server gagal tertutup ke deterministic fallback.
 
+### OpenRouter + demo domain
+
+Isi `OPENROUTER_APIKEY` hanya di `.env`. Model default override adalah
+`openai/gpt-5.6-luna`, dan dapat diganti melalui `OPENROUTER_MODEL`. Jalankan:
+
+```powershell
+docker compose -f compose.yaml -f compose.openrouter.yaml up -d --build
+```
+
+Override ini tetap mem-publish Docker ke host loopback, mengaktifkan Chat Completions OpenRouter,
+dan mengizinkan exact browser origin `https://hawkeye.myudak.com`. `HAWKEYE_AUTH_USERNAME` dan
+`HAWKEYE_AUTH_PASSWORD` tetap opsional: kosong berarti tanpa login. Exact Origin adalah guard CSRF
+browser, **bukan authentication**; direct client dapat mengirim Origin sendiri.
+
+## Access gate opsional
+
+Untuk melindungi seluruh UI, API, screenshot, review, dan export dengan satu credential operator,
+isi kedua nilai berikut di `.env`:
+
+```dotenv
+HAWKEYE_AUTH_USERNAME=ganti-username
+HAWKEYE_AUTH_PASSWORD=ganti-password-panjang
+```
+
+Kemudian jalankan `pnpm start:env` atau `docker compose up --build -d`. Konfigurasi parsial ditolak
+saat startup, credential tidak dipersist ke case/event/export, dan `/health` tetap publik. HTTP
+Basic hanya merupakan access gate; ia **tidak mengenkripsi** credential. Pertahankan loopback/SSH
+tunnel, atau gunakan reverse proxy HTTPS sebelum akses jaringan.
+
 ## Menjalankan di komputer lain
 
-HAWK-EYE saat ini adalah aplikasi single-investigator tanpa login dan TLS. Jalankan Docker di
-server, tetapi pertahankan bind loopback. Akses dari laptop melalui SSH tunnel:
+HAWK-EYE saat ini adalah aplikasi single-investigator dengan access gate HTTP Basic opsional,
+bukan sistem akun multi-user, dan tidak membawa TLS sendiri. Jalankan Docker di server, tetapi
+pertahankan bind loopback. Akses dari laptop melalui SSH tunnel:
 
 ```powershell
 ssh -N -L 8760:127.0.0.1:8760 user@alamat-server
@@ -159,8 +193,10 @@ ssh -N -L 8760:127.0.0.1:8760 user@alamat-server
 Kemudian buka `http://127.0.0.1:8760` di laptop. Tailscale/WireGuard dapat dipakai sebagai jalur SSH,
 tetapi aplikasi tetap tidak perlu dibuka langsung ke jaringan.
 
-Jangan melakukan router port-forward langsung ke port 8760. Public hosting membutuhkan reverse
-proxy HTTPS, authentication, authorization, rate limit, dan threat-model milestone terpisah.
+Jangan melakukan router port-forward langsung ke port 8760. Ada exception demo sementara untuk
+`hawkeye.myudak.com` melalui outbound-only Cloudflare Tunnel; ini bukan dukungan public production.
+Public production tetap membutuhkan HTTPS edge, identitas/authorization, rate limit, dan threat
+model terpisah.
 Panduan lebih lengkap tersedia di [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Data dan backup

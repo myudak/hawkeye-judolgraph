@@ -375,8 +375,9 @@ Compose runs one FastAPI service containing the React bundle and publishes
 container entry point binds all container interfaces. Runtime uses a matching pinned Playwright
 image, non-root user, Chromium sandbox flag, init, shared IPC, a pinned default-deny seccomp profile,
 all capabilities dropped with only `SYS_CHROOT` restored, `no-new-privileges`, a read-only root
-filesystem, bounded tmpfs, and explicit `/data` persistence. Authentication, LAN/public bind, TLS
-termination, and multi-user authorization remain out of scope.
+filesystem, bounded tmpfs, and explicit `/data` persistence. A later optional single-operator Basic
+gate does not expand this network boundary. LAN/public bind, TLS termination, identity, and
+multi-user authorization remain out of scope.
 
 ## ADR-034 — Model transport is generic, optional, and never probed by page load
 
@@ -391,3 +392,36 @@ The application reports configuration without a paid probe. `hawkeye llm-probe` 
 strict-schema handshake. Every model result still validates as `AgentDecision` against exact
 server-issued references and every failure still activates deterministic fallback. Stored
 historical `codex` runs remain readable as model-assisted history.
+
+## ADR-035 — HTTP Basic is an optional single-operator gate, not deployment identity
+
+**Status:** accepted; extends ADR-004 and ADR-033.
+
+When both `HAWKEYE_AUTH_USERNAME` and `HAWKEYE_AUTH_PASSWORD` are configured, one ASGI middleware
+protects the application shell, static assets, case APIs, previews, review mutations, artifacts,
+and exports. `/health` remains unauthenticated for process/container healthchecks. Partial
+configuration fails startup, comparisons are timing-safe, malformed credentials return one generic
+401 response, and secrets never enter logs, cases, SQLite events, diagnostics, or exports.
+
+Trusted-host validation executes before the credential challenge. This access gate does not add
+TLS, sessions, roles, user identities, recovery, rate limiting, or public-bind authority. Compose
+and the normal CLI therefore remain host-loopback only; remote use continues through an SSH tunnel
+or a separately reviewed HTTPS reverse proxy boundary.
+
+## ADR-036 — One exact Cloudflare Tunnel demo is an explicit temporary exception
+
+**Status:** accepted for owner-authorized demonstration only; does not supersede ADR-004/033.
+
+`HAWKEYE_PUBLIC_DEMO_ORIGIN` may contain one canonical default-port HTTPS origin. When configured,
+its exact hostname joins the trusted-host allowlist and every mutation requires exactly one matching
+public Origin or an exact loopback same-origin recovery request. Missing, duplicate, `null`, HTTP,
+alternate-port, subdomain, wildcard, path-bearing, and attacker origins fail closed. Forwarded host
+and scheme headers remain untrusted, CORS remains disabled, and Docker still publishes only to
+`127.0.0.1`.
+
+The checked-in OpenRouter override configures `https://hawkeye.myudak.com` and maps the ignored
+OpenRouter credential into the runtime. HTTP Basic remains independent and optional at the owner's
+request. Therefore Origin is described only as a browser CSRF guard: a direct client can forge it,
+and an unauthenticated demo is readable/callable by anyone who can reach the tunnel. Cloudflare
+provides external TLS/outbound tunneling, not application identity. General public hosting,
+multi-user authorization, router port-forwarding, and production deployment remain unapproved.

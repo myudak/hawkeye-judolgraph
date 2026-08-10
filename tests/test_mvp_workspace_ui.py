@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from hawkeye.collector.safety import SafetyPolicy
@@ -105,6 +106,105 @@ def test_cross_origin_mutation_and_artifact_traversal_are_blocked(tmp_path: Path
         workspace_id = created["workspace_id"]
         traversal = client.get(f"/api/mvp/runs/{workspace_id}/artifacts/..%2Fpage-a.json")
         assert traversal.status_code in {400, 404}
+
+
+def test_exact_public_demo_origin_allows_public_and_local_browser_mutations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HAWKEYE_PUBLIC_DEMO_ORIGIN", "https://hawkeye.myudak.com")
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    app = create_app(cases, workspace_root=tmp_path / "workspace")
+
+    with TestClient(app, base_url="http://hawkeye.myudak.com") as public_client:
+        allowed = public_client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab"},
+            headers={"Origin": "https://hawkeye.myudak.com"},
+        )
+        assert allowed.status_code == 200
+        assert "access-control-allow-origin" not in allowed.headers
+
+        for origin in (
+            None,
+            "null",
+            "http://hawkeye.myudak.com",
+            "https://hawkeye.myudak.com:444",
+            "https://sub.hawkeye.myudak.com",
+            "https://attacker.invalid",
+        ):
+            headers = {} if origin is None else {"Origin": origin}
+            blocked = public_client.post(
+                "/api/mvp/runs",
+                json={"scenario_id": "redirect-new-tab"},
+                headers=headers,
+            )
+            assert blocked.status_code == 403
+            assert blocked.json() == {"detail": "cross_origin_mutation_blocked"}
+
+    with TestClient(app, base_url="http://127.0.0.1:8760") as local_client:
+        local = local_client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab"},
+            headers={"Origin": "http://127.0.0.1:8760"},
+        )
+        assert local.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://hawkeye.myudak.com",
+        "https://*.myudak.com",
+        "https://user:password@hawkeye.myudak.com",
+        "https://hawkeye.myudak.com:444",
+        "https://hawkeye.myudak.com.",
+        "https://hawkeye.myudak.com/path",
+        "https://hawkeye.myudak.com?query=yes",
+        "https://hawkeye.myudak.com#fragment",
+    ],
+)
+def test_invalid_public_demo_origin_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, origin: str
+) -> None:
+    monkeypatch.setenv("HAWKEYE_PUBLIC_DEMO_ORIGIN", origin)
+    cases = tmp_path / "cases"
+    cases.mkdir()
+
+    with pytest.raises(ValueError, match="HAWKEYE_PUBLIC_DEMO_ORIGIN"):
+        create_app(cases, workspace_root=tmp_path / "workspace")
+
+
+def test_public_demo_ignores_forwarded_host_and_rejects_duplicate_origins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HAWKEYE_PUBLIC_DEMO_ORIGIN", "https://hawkeye.myudak.com")
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    app = create_app(cases, workspace_root=tmp_path / "workspace")
+
+    with TestClient(app, base_url="http://hawkeye.myudak.com") as client:
+        forwarded = client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab"},
+            headers={
+                "Host": "attacker.invalid",
+                "Origin": "https://hawkeye.myudak.com",
+                "Forwarded": "host=hawkeye.myudak.com;proto=https",
+                "X-Forwarded-Host": "hawkeye.myudak.com",
+            },
+        )
+        duplicate = client.post(
+            "/api/mvp/runs",
+            json={"scenario_id": "redirect-new-tab"},
+            headers=[
+                ("Origin", "https://hawkeye.myudak.com"),
+                ("Origin", "https://hawkeye.myudak.com"),
+            ],
+        )
+
+        assert forwarded.status_code == 400
+        assert duplicate.status_code == 403
 
 
 def test_ui_can_create_one_bounded_seed_capture(tmp_path: Path, fixture_server_url: str) -> None:

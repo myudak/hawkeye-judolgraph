@@ -17,6 +17,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from hawkeye.collector.safety import SafetyPolicy
 from hawkeye.pipeline import ProgressCallback
+from hawkeye.review_app.auth import BasicAuthMiddleware, BasicAuthSettings
 from hawkeye.review_app.jobs import (
     InvestigationJobAlreadyRunning,
     InvestigationJobManager,
@@ -33,11 +34,30 @@ from hawkeye.review_app.loader import (
     CaseNotFoundError,
     case_details,
 )
+from hawkeye.review_app.public_demo import PublicDemoOrigin
 from hawkeye.review_app.workspace import MvpWorkspace
 from hawkeye.storage import make_case_id
 
 _STATIC_ROOT = Path(__file__).parent / "static"
 _MAX_JOB_PREVIEW_BYTES = 16 * 1024 * 1024
+_PUBLIC_STATIC_MEDIA_TYPES = {
+    "app-icon-192x192.png": "image/png",
+    "app-icon-512x512.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+    "browserconfig.xml": "application/xml",
+    "favicon-16x16.png": "image/png",
+    "favicon-32x32.png": "image/png",
+    "favicon-48x48.png": "image/png",
+    "favicon-96x96.png": "image/png",
+    "favicon.ico": "image/x-icon",
+    "hawkeye-avatar.png": "image/png",
+    "hawkeye-banner.png": "image/png",
+    "maskable-icon-192x192.png": "image/png",
+    "maskable-icon-512x512.png": "image/png",
+    "mstile-150x150.png": "image/png",
+    "og-image-1200x630.png": "image/png",
+    "site.webmanifest": "application/manifest+json",
+}
 _CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "base-uri 'none'; "
@@ -127,9 +147,16 @@ def create_app(
         openapi_url=None,
         debug=False,
     )
-    # Do not let an attacker-controlled DNS name treat the loopback service as its origin.
-    # This runs before routing and ignores Forwarded/X-Forwarded-Host because V1 has no proxy mode.
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+    auth_settings = BasicAuthSettings.from_environment()
+    public_demo_origin = PublicDemoOrigin.from_environment()
+    allowed_hosts = ["127.0.0.1", "localhost"]
+    if public_demo_origin is not None:
+        allowed_hosts.append(public_demo_origin.hostname)
+    if auth_settings is not None:
+        app.add_middleware(BasicAuthMiddleware, settings=auth_settings)
+    # Middleware insertion is reversed: security headers wrap host validation, which wraps auth.
+    # An attacker-controlled Host is therefore rejected before any credential challenge.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     app.add_middleware(_SecurityHeadersMiddleware)
 
     @app.exception_handler(CaseNotFoundError)
@@ -192,8 +219,9 @@ def create_app(
 
     @app.get("/assets/{filename}", include_in_schema=False)
     def static_asset(filename: str) -> Response:
-        if re.fullmatch(r"hawkeye-(?:avatar|banner)(?:-[A-Za-z0-9_-]{6,32})?\.png", filename):
-            return _static_response(filename, "image/png")
+        media_type = _PUBLIC_STATIC_MEDIA_TYPES.get(filename)
+        if media_type is not None:
+            return _static_response(filename, media_type)
         if re.fullmatch(r"(?:geist|public-sans)-[A-Za-z0-9_-]{6,100}\.woff2", filename):
             return _static_response(filename, "font/woff2")
         raise HTTPException(status_code=404, detail="Not Found")
@@ -271,7 +299,7 @@ def create_app(
         def create_case(payload: _CollectSeedRequest, request: Request) -> dict[str, object]:
             """Collect a bounded same-site case and launch its auditable investigation run."""
 
-            _require_same_origin(request)
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
             return collect_and_investigate(
                 seed_url=payload.seed_url,
                 investigation_name=payload.investigation_name,
@@ -283,7 +311,7 @@ def create_app(
         def create_investigation_job(
             payload: _CollectSeedRequest, request: Request
         ) -> dict[str, object]:
-            _require_same_origin(request)
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
             seed_url = payload.seed_url
             investigation_name = payload.investigation_name
             guided = payload.investigation_mode == "guided"
@@ -344,7 +372,7 @@ def create_app(
 
         @app.post("/api/mvp/runs", include_in_schema=False)
         def mvp_create_run(payload: _CreateRunRequest, request: Request) -> dict[str, object]:
-            _require_same_origin(request)
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
             return workspace.create_run(
                 payload.scenario_id, collection_mode=payload.collection_mode
             )
@@ -366,7 +394,7 @@ def create_app(
         def mvp_review(
             workspace_id: str, payload: _ReviewRequest, request: Request
         ) -> dict[str, object]:
-            _require_same_origin(request)
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
             return workspace.review(
                 workspace_id,
                 assertion_id=payload.assertion_id,
@@ -377,7 +405,7 @@ def create_app(
 
         @app.post("/api/mvp/runs/{workspace_id}/approve", include_in_schema=False)
         def mvp_approve(workspace_id: str, request: Request) -> dict[str, object]:
-            _require_same_origin(request)
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
             return workspace.approve_recollection(workspace_id)
 
         @app.get("/api/mvp/runs/{workspace_id}/artifacts/{artifact_name}", include_in_schema=False)
@@ -527,17 +555,31 @@ def _thumbnail_png(content: bytes) -> bytes:
         raise HTTPException(status_code=409, detail="Preview thumbnail failed") from error
 
 
-def _require_same_origin(request: Request) -> None:
-    """Reject browser cross-origin mutations even though the server is loopback-only."""
+def _require_same_origin(
+    request: Request, *, public_demo_origin: PublicDemoOrigin | None = None
+) -> None:
+    """Reject cross-origin mutations and fail closed for an enabled public demo."""
 
-    origin = request.headers.get("origin")
-    if origin is None:
+    origins = request.headers.getlist("origin")
+    if public_demo_origin is not None:
+        if len(origins) != 1:
+            raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")
+        origin = origins[0]
+        request_hostname = (request.url.hostname or "").casefold()
+        if origin == public_demo_origin.origin and request_hostname == public_demo_origin.hostname:
+            return
+        if request_hostname not in {"127.0.0.1", "localhost"}:
+            raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")
+    elif not origins:
         return
-    expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
-    if origin.rstrip("/") != expected.rstrip("/"):
-        from fastapi import HTTPException
-
+    elif len(origins) != 1:
         raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")
+    else:
+        origin = origins[0]
+    expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
+    if origin.rstrip("/") == expected.rstrip("/"):
+        return
+    raise HTTPException(status_code=403, detail="cross_origin_mutation_blocked")
 
 
 def _known_case_match_context(
