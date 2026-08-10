@@ -21,9 +21,11 @@ import { BrandLockup } from "@/components/brand-mark"
 export function AppHeader({
   currentValue,
   context,
+  language = "en",
 }: {
   currentValue?: string
   context?: "landing" | "scan" | "workspace" | "summary"
+  language?: "en" | "id"
 }) {
   const navigate = useNavigate()
   const { cases, runs } = useIndexes()
@@ -50,7 +52,11 @@ export function AppHeader({
 
       <div className="header-signal" aria-hidden="true">
         <span />
-        <b>PUBLIC EVIDENCE INSTRUMENT</b>
+        <b>
+          {language === "id"
+            ? "INSTRUMEN BUKTI PUBLIK"
+            : "PUBLIC EVIDENCE INSTRUMENT"}
+        </b>
         <span />
       </div>
 
@@ -98,13 +104,15 @@ export function AppHeader({
               variant={context === "landing" ? "default" : "outline"}
             >
               <Plus weight="bold" />
-              New investigation
+              {language === "id" ? "Investigasi baru" : "New investigation"}
               {context === "landing" ? null : <ArrowSquareOut />}
             </Button>
           }
         />
         <TooltipContent>
-          Start a new bounded public investigation
+          {language === "id"
+            ? "Mulai investigasi publik baru yang terkontrol"
+            : "Start a new bounded public investigation"}
         </TooltipContent>
       </Tooltip>
     </header>

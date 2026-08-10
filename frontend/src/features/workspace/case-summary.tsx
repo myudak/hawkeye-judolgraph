@@ -85,12 +85,16 @@ export function CaseSummary({
   projection,
   filters,
   onToggleFilter,
+  language,
 }: {
   source: EvidenceSource
   projection: GraphProjection
   filters: ReadonlySet<VisualKind>
   onToggleFilter: (kind: VisualKind, enabled: boolean) => void
+  language: "en" | "id"
 }) {
+  const tr = (english: string, indonesia: string) =>
+    language === "id" ? indonesia : english
   const run = source.kind === "run" ? source.details : undefined
   const standaloneCase = source.kind === "case" ? source.details : undefined
   const sourceCase = sourceCaseFor(source)
@@ -134,7 +138,9 @@ export function CaseSummary({
       <ScrollArea className="case-summary-scroll">
         <div className="case-summary-content">
           <header className="case-summary-hero">
-            <span className="panel-label">CASE SUMMARY</span>
+            <span className="panel-label">
+              {tr("CASE SUMMARY", "RINGKASAN KASUS")}
+            </span>
             <h1>{hostname}</h1>
             <p>
               {source.kind === "run"
@@ -155,17 +161,30 @@ export function CaseSummary({
 
           <section className="summary-section">
             <h2>
-              <Binoculars weight="duotone" /> Investigation facts
+              <Binoculars weight="duotone" />
+              {tr("Investigation facts", "Fakta investigasi")}
             </h2>
             <div className="summary-metric-grid">
-              <Metric value={pages} label="Captured pages" icon={Browser} />
+              <Metric
+                value={pages}
+                label={tr("Captured pages", "Halaman tersimpan")}
+                icon={Browser}
+              />
               <Metric
                 value={evidence}
-                label="Semantic evidence"
+                label={tr("Semantic evidence", "Bukti semantik")}
                 icon={Binoculars}
               />
-              <Metric value={candidates} label="Reviewable leads" icon={Star} />
-              <Metric value={actions} label="Safe agent actions" icon={Robot} />
+              <Metric
+                value={candidates}
+                label={tr("Reviewable leads", "Lead untuk ditinjau")}
+                icon={Star}
+              />
+              <Metric
+                value={actions}
+                label={tr("Safe agent actions", "Aksi agen aman")}
+                icon={Robot}
+              />
               <Metric
                 value={indicators.indicator_count || 0}
                 label="Judol indicators"
@@ -176,13 +195,18 @@ export function CaseSummary({
 
           <section className="summary-section indicator-boundary-card">
             <h2>
-              <ShieldCheck weight="duotone" /> OSINT indicator boundary
+              <ShieldCheck weight="duotone" />
+              {tr("OSINT indicator boundary", "Batas indikator OSINT")}
             </h2>
-            <strong>{indicators.indicator_count || 0} evidence items</strong>
+            <strong>
+              {indicators.indicator_count || 0}{" "}
+              {tr("evidence items", "item bukti")}
+            </strong>
             <p>
-              Rule-classified public text/entity evidence. This is not a
-              percentage, probability, legal conclusion, or operator
-              attribution.
+              {tr(
+                "Rule-classified public text/entity evidence. This is not a percentage, probability, legal conclusion, or operator attribution.",
+                "Teks dan entitas publik yang diklasifikasi dengan aturan. Ini bukan persentase, probabilitas, kesimpulan hukum, atau atribusi operator."
+              )}
             </p>
             <div className="indicator-chip-list">
               {Object.entries(indicators.category_counts ?? {}).map(
@@ -197,7 +221,8 @@ export function CaseSummary({
 
           <section className="summary-section graph-filter-section">
             <h2>
-              <FadersHorizontal weight="duotone" /> Graph filters
+              <FadersHorizontal weight="duotone" />
+              {tr("Graph filters", "Filter graph")}
             </h2>
             <div className="graph-filter-list">
               {GRAPH_FILTERS.map((filter) => {
@@ -220,8 +245,21 @@ export function CaseSummary({
                         onToggleFilter(filter.key, event.target.checked)
                       }
                     />
-                    <span className="graph-filter-icon">{filter.icon}</span>
-                    <span>{filter.label}</span>
+                    <span className="graph-filter-icon" aria-hidden="true" />
+                    <span>
+                      {language === "id"
+                        ? {
+                            page: "Halaman tersimpan",
+                            contact: "Kontak",
+                            brand: "Brand diklaim",
+                            transaction: "Pembayaran",
+                            offer: "Klaim promo",
+                            destination: "Tujuan eksternal",
+                            candidate: "Kandidat tertunda",
+                            other: "Bukti lain",
+                          }[filter.key]
+                        : filter.label}
+                    </span>
                     <b>{count}</b>
                     {checked ? <Check weight="bold" /> : null}
                   </label>
@@ -231,11 +269,12 @@ export function CaseSummary({
           </section>
 
           <section className="summary-section interpretation-rule">
-            <h2>Interpretation rule</h2>
+            <h2>{tr("Interpretation rule", "Aturan interpretasi")}</h2>
             <p>
-              A candidate remains a pending lead. Evidence similarity never
-              becomes ownership probability. Human review is required before an
-              assertion can be emphasized.
+              {tr(
+                "A candidate remains a pending lead. Evidence similarity never becomes ownership probability. Human review is required before an assertion can be emphasized.",
+                "Kandidat tetap berupa lead tertunda. Kemiripan bukti bukan probabilitas kepemilikan. Klaim baru boleh ditekankan setelah ditinjau manusia."
+              )}
             </p>
           </section>
         </div>

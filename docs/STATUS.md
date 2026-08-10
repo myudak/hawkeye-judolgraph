@@ -64,6 +64,19 @@ React presentation refresh verified on 2026-08-10 (Asia/Jakarta):
 - Lazy chunks are served through a bounded local JavaScript filename route. Missing/traversal-like
   chunk paths remain 404 and are regression-tested.
 
+Graph V2 interaction refresh verified on 2026-08-10 (Asia/Jakarta):
+
+- The canvas now uses a central investigated-site node, density-aware semantic orbits, vector
+  category icons, contextual edge labels, one-hop focus, and Evidence/Navigation/Review lenses.
+- The right inspector defaults to direct category summaries; the left and right panels collapse
+  independently; the footer status strip was removed; the event replay bar separates transport,
+  current event, trail, and scrubber; workspace presentation copy toggles between English and
+  Indonesian without rewriting persisted values.
+- Frontend formatting, lint, TypeScript, five graph tests, and production build passed. Browser QA
+  passed on the saved 11-node QQ investigation and dense 26-node 888 investigation. The Review
+  lens reduced QQ to the seed plus one pending candidate, both panels collapsed into full-canvas
+  mode, and the simplified inspector exposed clickable brand/contact/link/payment/offer groups.
+
 ## Implemented product boundary
 
 - Canonical collection always uses 0/500/1500/3000 ms checkpoints, may extend observation to

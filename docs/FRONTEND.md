@@ -33,6 +33,18 @@ edges without changing stored coordinates or backend graph data. Animation, mini
 selection, and replay are UI state only. Screenshot, HTML, visible-text, readiness, and interaction
 artifacts remain in the evidence inspector instead of becoming graph nodes.
 
+Graph V2 uses a centered investigated-site node, density-aware semantic orbits, circular vector
+icons, contextual relation labels, and one-hop focus. Evidence, Navigation, and Review lenses only
+select truthful subsets of the same projection. The two side panels are independently collapsible;
+full-canvas mode is still the same evidence state. The inspector opens on a categorized observation
+summary and keeps provenance, screenshots, artifacts, technical state, and human review in their
+dedicated tabs.
+
+The workspace shell supports English and Indonesian presentation copy through a local EN/ID
+toggle. Persisted evidence values, URLs, event kinds, identifiers, and reviewer records are never
+translated or rewritten. The language preference is local browser presentation state, not part of
+the case package.
+
 Candidates always display relationship-neutral language. Verification emphasis is derived only
 from persisted review/assertion state. Judol indication is an integer count of classified evidence
 items with provenance; the interface does not derive a probability or percentage.

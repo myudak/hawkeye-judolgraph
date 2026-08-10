@@ -4,6 +4,7 @@ import {
   Globe,
   MagnifyingGlass,
   Pulse,
+  SidebarSimple,
   Warning,
 } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
@@ -13,7 +14,6 @@ import { useNavigate, useParams } from "react-router-dom"
 import { api } from "@/api/client"
 import type { EvidenceSource, InvestigationEvent } from "@/api/types"
 import { AppHeader } from "@/components/app-header"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -22,9 +22,11 @@ import { hostnameFrom } from "@/lib/format"
 import {
   buildCaseProjection,
   buildRunProjection,
+  type GraphLens,
   type GraphNode,
   type VisualKind,
 } from "@/lib/graph"
+import { cn } from "@/lib/utils"
 import { CaseSummary } from "@/features/workspace/case-summary"
 import { EvidenceGraph } from "@/features/workspace/evidence-graph"
 import { EvidenceInspector } from "@/features/workspace/evidence-inspector"
@@ -54,6 +56,13 @@ export function WorkspacePage() {
     event: InvestigationEvent | null
   }>({ sourceKey: "", nodeId: null, event: null })
   const [searchQuery, setSearchQuery] = useState("")
+  const [graphLens, setGraphLens] = useState<GraphLens>("evidence")
+  const [language, setLanguage] = useState<"en" | "id">(
+    () =>
+      (window.localStorage.getItem("hawk-eye-language") as "en" | "id") || "en"
+  )
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
   const [timelineSelection, setTimelineSelection] = useState({
     sourceKey: "",
     index: 0,
@@ -128,10 +137,18 @@ export function WorkspacePage() {
     })
   }
 
+  const toggleLanguage = () => {
+    setLanguage((current) => {
+      const next = current === "en" ? "id" : "en"
+      window.localStorage.setItem("hawk-eye-language", next)
+      return next
+    })
+  }
+
   if (detailsQuery.isError) {
     return (
       <div className="app-page workspace-page">
-        <AppHeader context="workspace" />
+        <AppHeader context="workspace" language={language} />
         <main className="workspace-error">
           <Warning weight="duotone" />
           <h1>Evidence workspace unavailable</h1>
@@ -148,6 +165,7 @@ export function WorkspacePage() {
         <AppHeader
           context="workspace"
           currentValue={kind && id ? `${kind}:${id}` : undefined}
+          language={language}
         />
         <main className="workspace-loading">
           <Skeleton className="h-14 w-full" />
@@ -180,12 +198,16 @@ export function WorkspacePage() {
       <AppHeader
         context="workspace"
         currentValue={`${source.kind}:${source.id}`}
+        language={language}
       />
       <main className="workspace-main">
         <header className="workspace-command-bar">
           <div className="workspace-identity">
             <span className="eyebrow">
-              <Pulse weight="fill" /> ACTIVE INVESTIGATION
+              <Pulse weight="fill" />
+              {language === "id"
+                ? " INVESTIGASI AKTIF"
+                : " ACTIVE INVESTIGATION"}
             </span>
             <strong>{host}</strong>
           </div>
@@ -199,26 +221,91 @@ export function WorkspacePage() {
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search graph nodes…"
+              placeholder={
+                language === "id" ? "Cari node graph…" : "Search graph nodes…"
+              }
               aria-label="Search evidence graph"
             />
           </span>
+          <div className="workspace-display-controls">
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={
+                language === "id"
+                  ? "Switch to English"
+                  : "Ganti ke Bahasa Indonesia"
+              }
+              title={
+                language === "id" ? "Switch to English" : "Bahasa Indonesia"
+              }
+              onClick={toggleLanguage}
+            >
+              {language === "id" ? "ID" : "EN"}
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              aria-pressed={!leftCollapsed}
+              aria-label={
+                leftCollapsed
+                  ? language === "id"
+                    ? "Tampilkan ringkasan kasus"
+                    : "Show case summary"
+                  : language === "id"
+                    ? "Sembunyikan ringkasan kasus"
+                    : "Hide case summary"
+              }
+              title={language === "id" ? "Panel kasus" : "Case panel"}
+              onClick={() => setLeftCollapsed((value) => !value)}
+            >
+              <SidebarSimple weight={leftCollapsed ? "regular" : "fill"} />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              aria-pressed={!rightCollapsed}
+              aria-label={
+                rightCollapsed
+                  ? language === "id"
+                    ? "Tampilkan panel bukti"
+                    : "Show evidence panel"
+                  : language === "id"
+                    ? "Sembunyikan panel bukti"
+                    : "Hide evidence panel"
+              }
+              title={language === "id" ? "Panel bukti" : "Evidence panel"}
+              onClick={() => setRightCollapsed((value) => !value)}
+            >
+              <SidebarSimple
+                className="right-panel-icon"
+                weight={rightCollapsed ? "regular" : "fill"}
+              />
+            </Button>
+          </div>
           <Button
             className="summary-button"
             onClick={() => navigate(`/summary/${source.kind}/${source.id}`)}
           >
             <FileText weight="duotone" />
-            View summary
+            {language === "id" ? "Lihat ringkasan" : "View summary"}
             <ArrowRight />
           </Button>
         </header>
 
-        <section className="workspace-grid">
+        <section
+          className={cn(
+            "workspace-grid",
+            leftCollapsed && "workspace-left-collapsed",
+            rightCollapsed && "workspace-right-collapsed"
+          )}
+        >
           <CaseSummary
             source={source}
             projection={projection}
             filters={filters}
             onToggleFilter={toggleFilter}
+            language={language}
           />
           <div className="graph-workspace">
             <EvidenceGraph
@@ -228,11 +315,15 @@ export function WorkspacePage() {
               filters={filters}
               playbackCutoff={cutoff}
               searchQuery={searchQuery}
+              lens={graphLens}
+              onLensChange={setGraphLens}
+              language={language}
             />
             <InvestigationTimeline
               timeline={projection.timeline}
               activeIndex={timelineIndex}
               onSelect={selectTimeline}
+              language={language}
             />
           </div>
           <EvidenceInspector
@@ -243,23 +334,9 @@ export function WorkspacePage() {
             onFocusNode={(nodeId) =>
               setSelection({ sourceKey, nodeId, event: null })
             }
+            language={language}
           />
         </section>
-
-        <footer className="workspace-status" aria-label="Workspace state">
-          <span>
-            <i /> Evidence package verified
-          </span>
-          <span>
-            {projection.nodes.length} nodes · {projection.edges.length} links
-          </span>
-          <span>
-            {run
-              ? `${run.events.length} persisted events`
-              : `${standaloneCase?.evidence.length ?? 0} verified artifacts`}
-          </span>
-          <Badge variant="outline">LOCAL · READ ONLY</Badge>
-        </footer>
       </main>
     </div>
   )

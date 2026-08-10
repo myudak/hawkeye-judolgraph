@@ -4,6 +4,9 @@ import type { CaseDetails, RunDetails } from "@/api/types"
 import {
   buildCaseProjection,
   buildRunProjection,
+  graphLensAllows,
+  graphNodeText,
+  graphOrbitTarget,
   presentationFor,
 } from "@/lib/graph"
 
@@ -95,6 +98,45 @@ describe("graph projections", () => {
 
     expect(presentation.visualKind).toBe("candidate")
     expect(presentation.label).toBe("Candidate")
+  })
+
+  it("keeps graph lenses as truthful visibility projections", () => {
+    const projection = buildCaseProjection(caseFixture)
+    const root = projection.nodes.find((node) => node.primary)
+    const contact = projection.nodes.find(
+      (node) => node.presentation.visualKind === "contact"
+    )
+    const offer = projection.nodes.find(
+      (node) => node.presentation.visualKind === "offer"
+    )
+
+    expect(root && graphLensAllows(root, "review")).toBe(true)
+    expect(contact && graphLensAllows(contact, "navigation")).toBe(false)
+    expect(offer && graphLensAllows(offer, "evidence")).toBe(true)
+  })
+
+  it("provides deterministic orbit positions and human-readable node copy", () => {
+    const projection = buildCaseProjection(caseFixture)
+    const root = projection.nodes.find((node) => node.primary)
+    const contact = projection.nodes.find(
+      (node) => node.presentation.visualKind === "contact"
+    )
+
+    expect(root).toBeDefined()
+    expect(contact).toBeDefined()
+    expect(graphOrbitTarget(root!, 0, 1)).toEqual({ x: 0, y: 0 })
+    expect(graphOrbitTarget(contact!, 0, 1)).toEqual(
+      graphOrbitTarget(contact!, 0, 1)
+    )
+    expect(graphNodeText(root!)).toMatchObject({
+      title: "example.invalid",
+      subtitle: "Investigated site",
+      badge: "SEED",
+    })
+    expect(graphNodeText(contact!)).toMatchObject({
+      title: "+62000000000",
+      subtitle: "WhatsApp",
+    })
   })
 
   it("reduces persisted run events into a compact replay timeline", () => {

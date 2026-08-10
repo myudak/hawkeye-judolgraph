@@ -19,14 +19,28 @@ export type VisualKind =
   | "candidate"
   | "other"
 
-export type NodeShape = "circle" | "roundSquare" | "diamond" | "hex"
+export type GraphIconKind =
+  | "site"
+  | "page"
+  | "whatsapp"
+  | "telegram"
+  | "phone"
+  | "email"
+  | "contact"
+  | "brand"
+  | "payment"
+  | "offer"
+  | "external"
+  | "candidate"
+  | "other"
+
+export type GraphLens = "evidence" | "navigation" | "review"
 
 export interface NodePresentation {
   visualKind: VisualKind
   label: string
   color: string
-  icon: string
-  shape: NodeShape
+  icon: GraphIconKind
 }
 
 export interface GraphNode {
@@ -73,17 +87,153 @@ export const GRAPH_FILTERS: Array<{
   key: VisualKind
   label: string
   color: string
-  icon: string
 }> = [
-  { key: "page", label: "Pages", color: "#ef276f", icon: "▤" },
-  { key: "contact", label: "Contacts", color: "#18c9b5", icon: "@" },
-  { key: "brand", label: "Claimed brands", color: "#ff9d2e", icon: "◇" },
-  { key: "transaction", label: "Transactions", color: "#ff9d2e", icon: "$" },
-  { key: "offer", label: "Offers", color: "#f5cb5c", icon: "%" },
-  { key: "destination", label: "Destinations", color: "#3abff0", icon: "↗" },
-  { key: "candidate", label: "Candidates", color: "#9a73ff", icon: "☆" },
-  { key: "other", label: "Other evidence", color: "#91a0b4", icon: "···" },
+  { key: "page", label: "Captured pages", color: "#5b91ef" },
+  { key: "contact", label: "Contacts", color: "#3eb7b3" },
+  { key: "brand", label: "Claimed brands", color: "#9270e8" },
+  { key: "transaction", label: "Payments", color: "#e4ae3f" },
+  { key: "offer", label: "Offer claims", color: "#ed7a3f" },
+  { key: "destination", label: "External destinations", color: "#8268d5" },
+  { key: "candidate", label: "Pending candidates", color: "#9a8cb8" },
+  { key: "other", label: "Other evidence", color: "#8797a6" },
 ]
+
+export const GRAPH_LENSES: Array<{
+  key: GraphLens
+  label: string
+  description: string
+}> = [
+  {
+    key: "evidence",
+    label: "Evidence",
+    description: "All captured pages and semantic public observations",
+  },
+  {
+    key: "navigation",
+    label: "Navigation",
+    description: "Captured pages, redirects, and linked destinations",
+  },
+  {
+    key: "review",
+    label: "Review",
+    description: "Pending candidates and persisted review relationships",
+  },
+]
+
+export function graphLensAllows(node: GraphNode, lens: GraphLens): boolean {
+  if (node.primary) return true
+  if (lens === "evidence") return true
+  if (lens === "navigation") {
+    return ["page", "destination", "candidate"].includes(
+      node.presentation.visualKind
+    )
+  }
+  return ["destination", "candidate"].includes(node.presentation.visualKind)
+}
+
+function pathLabel(value: string): string {
+  try {
+    const parsed = new URL(value)
+    const path = `${parsed.pathname}${parsed.search}`
+    return path === "/" ? "/" : path.replace(/\/$/, "") || "/"
+  } catch {
+    return value
+  }
+}
+
+export function graphNodeText(node: GraphNode): {
+  title: string
+  subtitle: string
+  badge?: string
+} {
+  if (node.primary) {
+    return {
+      title: hostnameFrom(node.label) || node.label,
+      subtitle: "Investigated site",
+      badge: "SEED",
+    }
+  }
+  if (node.presentation.visualKind === "page") {
+    return { title: pathLabel(node.label), subtitle: "Captured page" }
+  }
+  if (
+    node.presentation.visualKind === "destination" ||
+    node.presentation.visualKind === "candidate"
+  ) {
+    return {
+      title: hostnameFrom(node.label) || node.label,
+      subtitle:
+        node.presentation.visualKind === "candidate" || node.status === "lead"
+          ? "Pending candidate"
+          : "External destination",
+      badge:
+        node.presentation.visualKind === "candidate" || node.status === "lead"
+          ? "PENDING"
+          : undefined,
+    }
+  }
+  if (node.presentation.visualKind === "transaction") {
+    const values = node.attributes.values as string[] | undefined
+    return {
+      title:
+        values?.slice(0, 2).join(" · ") ||
+        node.label.split("·").at(-1)?.trim() ||
+        node.label,
+      subtitle: "Public payment observation",
+    }
+  }
+  if (node.presentation.visualKind === "offer") {
+    const values = node.attributes.values as string[] | undefined
+    return {
+      title:
+        values?.slice(0, 2).join(" · ") ||
+        node.label.split("·").at(-1)?.trim() ||
+        node.label,
+      subtitle: "Public offer claim",
+    }
+  }
+  return { title: node.label, subtitle: node.presentation.label }
+}
+
+const ORBIT_LAYOUT: Record<
+  VisualKind,
+  { angle: number; spread: number; radius: number }
+> = {
+  page: { angle: -2.45, spread: 1.1, radius: 152 },
+  contact: { angle: -0.72, spread: 1.12, radius: 190 },
+  brand: { angle: -1.55, spread: 0.72, radius: 212 },
+  transaction: { angle: 1.02, spread: 0.9, radius: 190 },
+  offer: { angle: 2.02, spread: 0.95, radius: 208 },
+  destination: { angle: 0.16, spread: 1.05, radius: 274 },
+  candidate: { angle: 0.58, spread: 0.82, radius: 304 },
+  other: { angle: 2.82, spread: 0.9, radius: 248 },
+}
+
+/**
+ * Stable presentation-only placement. It never changes graph truth or implies
+ * that spatial proximity is evidence of a relationship.
+ */
+export function graphOrbitTarget(
+  node: GraphNode,
+  index: number,
+  total: number
+): { x: number; y: number } {
+  if (node.primary) return { x: 0, y: 0 }
+  const orbit = ORBIT_LAYOUT[node.presentation.visualKind]
+  const centered = total <= 1 ? 0 : index / (total - 1) - 0.5
+  const jitter = (seededUnit(`${node.id}:orbit`) - 0.5) * 0.16
+  const spread = Math.min(2.7, orbit.spread + Math.max(0, total - 6) * 0.14)
+  const angle = orbit.angle + centered * spread + jitter
+  const ring =
+    orbit.radius +
+    Math.floor(index / 7) * 76 +
+    (index % 2) * 22 +
+    (seededUnit(`${node.id}:ring`) - 0.5) * 18
+  return {
+    x: Math.cos(angle) * ring,
+    y: Math.sin(angle) * ring * 0.78,
+  }
+}
 
 const CONTACT_TYPES = new Set([
   "public_telegram_alias",
@@ -143,12 +293,12 @@ export function presentationFor(
   if (
     ["case", "domain", "page", "seed_page", "collected_page"].includes(kind)
   ) {
+    const seed = ["case", "domain", "seed_page"].includes(kind)
     return {
       visualKind: "page",
-      label: "Page",
-      color: "#ef276f",
-      icon: "▤",
-      shape: "roundSquare",
+      label: seed ? "Investigated site" : "Captured page",
+      color: seed ? "#ef467f" : "#5b91ef",
+      icon: seed ? "site" : "page",
     }
   }
   if (kind === "public_contact") {
@@ -156,53 +306,47 @@ export function presentationFor(
       return {
         visualKind: "contact",
         label: "WhatsApp",
-        color: "#18c9b5",
-        icon: "WA",
-        shape: "circle",
+        color: "#3eb7b3",
+        icon: "whatsapp",
       }
     }
     if (observationType.includes("telegram")) {
       return {
         visualKind: "contact",
         label: "Telegram",
-        color: "#18c9b5",
-        icon: "TG",
-        shape: "circle",
+        color: "#3eb7b3",
+        icon: "telegram",
       }
     }
     if (observationType.includes("email")) {
       return {
         visualKind: "contact",
         label: "Email",
-        color: "#18c9b5",
-        icon: "@",
-        shape: "circle",
+        color: "#3eb7b3",
+        icon: "email",
       }
     }
     if (observationType.includes("phone")) {
       return {
         visualKind: "contact",
         label: "Phone",
-        color: "#18c9b5",
-        icon: "TEL",
-        shape: "circle",
+        color: "#3eb7b3",
+        icon: "phone",
       }
     }
     return {
       visualKind: "contact",
       label: "Contact",
-      color: "#18c9b5",
-      icon: "ID",
-      shape: "circle",
+      color: "#3eb7b3",
+      icon: "contact",
     }
   }
   if (kind === "claimed_brand") {
     return {
       visualKind: "brand",
       label: "Claimed brand",
-      color: "#ff9d2e",
-      icon: "◇",
-      shape: "hex",
+      color: "#9270e8",
+      icon: "brand",
     }
   }
   if (
@@ -212,44 +356,39 @@ export function presentationFor(
     return {
       visualKind: "transaction",
       label: "Transaction",
-      color: "#ff9d2e",
-      icon: "$",
-      shape: "hex",
+      color: "#e4ae3f",
+      icon: "payment",
     }
   }
   if (kind === "public_claim" && category.includes("offer")) {
     return {
       visualKind: "offer",
       label: "Offer",
-      color: "#f5cb5c",
-      icon: "%",
-      shape: "hex",
+      color: "#ed7a3f",
+      icon: "offer",
     }
   }
   if (["external_destination", "redirect_target"].includes(kind)) {
     return {
       visualKind: "destination",
       label: kind === "redirect_target" ? "Redirect" : "Destination",
-      color: "#3abff0",
-      icon: kind === "redirect_target" ? "↪" : "↗",
-      shape: "diamond",
+      color: "#8268d5",
+      icon: "external",
     }
   }
   if (["candidate", "candidate_domain"].includes(kind)) {
     return {
       visualKind: "candidate",
       label: "Candidate",
-      color: "#9a73ff",
-      icon: "☆",
-      shape: "diamond",
+      color: "#9a8cb8",
+      icon: "candidate",
     }
   }
   return {
     visualKind: "other",
     label: "Other evidence",
-    color: "#91a0b4",
-    icon: "···",
-    shape: "circle",
+    color: "#8797a6",
+    icon: "other",
   }
 }
 
@@ -303,10 +442,10 @@ function normalizeNode(
     sequence: Number(extras.sequence ?? index + 1),
     primary: Boolean(extras.primary),
     radius: extras.primary
-      ? 20
+      ? 34
       : ["case", "domain", "page", "seed_page", "collected_page"].includes(kind)
-        ? 15
-        : 12,
+        ? 24
+        : 21,
   }
   return { ...core, presentation: presentationFor(core) }
 }

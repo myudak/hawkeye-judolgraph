@@ -315,3 +315,20 @@ Filters, layout, animation, minimap, search, selection, and replay cannot create
 evidence. Artifacts and screenshots stay in the provenance inspector; they are not graph nodes.
 No UI state may imply ownership, identity, criminality, legality, or a verified relationship unless
 the persisted evidence/review state explicitly supports that wording.
+
+## ADR-030 — Graph V2 is an evidence-centered semantic orbit, not a topology claim
+
+**Status:** accepted; extends ADR-029.
+
+The graph presentation centers the investigated site and distributes evidence-backed semantic
+nodes through deterministic category orbits. Orbit position, force relaxation, density expansion,
+camera state, minimap position, language, filters, and panel visibility are presentation only.
+Distance, angle, animation, color intensity, and line curvature do not express ownership,
+probability, guilt, identity attribution, or evidence strength.
+
+Every node uses a circular category-specific vector icon and a human-readable title/subtitle.
+Unreviewed candidates retain a dashed pending treatment. One-hop focus dims unrelated content;
+edge labels appear only for selected or hovered context. Evidence, Navigation, and Review lenses
+hide non-matching nodes and their edges without mutating the reducer output. The default right
+inspector summarizes observed categories before exposing artifacts and provenance. Both sidebars
+may be collapsed for graph inspection, and the EN/ID toggle changes interface copy only.

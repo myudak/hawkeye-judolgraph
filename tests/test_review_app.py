@@ -631,9 +631,15 @@ def test_react_ui_build_preserves_local_evidence_safety_and_accessibility() -> N
     assert "aria-current" in chunks
     assert 'screenshots.find((item) => item.label === "Full page")' in source
     assert 'aria-label="Timeline position"' in source
+    assert 'defaultValue="overview"' in source
+    assert "workspace-left-collapsed" in source
+    assert 'language === "id"' in source
+    assert "Evidence package verified" not in source
     assert ".scan-radar" in styles
     assert ".workspace-grid" in styles
     assert ".graph-canvas" in styles
+    assert ".graph-lens-control" in styles
+    assert ".quick-evidence-group" in styles
     assert ".evidence-card-detail>img" in styles
     assert "width<=1120px" in styles
     assert "prefers-reduced-motion" in styles

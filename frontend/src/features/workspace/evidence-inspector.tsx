@@ -58,6 +58,7 @@ import {
   valueOr,
 } from "@/lib/format"
 import type { GraphNode, GraphProjection } from "@/lib/graph"
+import { graphNodeText } from "@/lib/graph"
 import { cn } from "@/lib/utils"
 
 interface EvidenceCardModel {
@@ -151,6 +152,27 @@ function findNodeForObservation(
     )
   })
   if (direct) return direct.id
+  const display = observation.display_value.trim().toLowerCase()
+  const displayHost = hostnameFrom(observation.display_value)
+  const semantic = projection.nodes
+    .filter((node) => !node.primary)
+    .map((node) => ({
+      node,
+      label: node.label.trim().toLowerCase(),
+      host: hostnameFrom(node.label),
+    }))
+    .sort((left, right) => {
+      const leftExact = left.label === display ? 1 : 0
+      const rightExact = right.label === display ? 1 : 0
+      return rightExact - leftExact
+    })
+    .find(
+      ({ label, host }) =>
+        label === display ||
+        (display.length >= 4 && label.includes(display)) ||
+        Boolean(displayHost && host === displayHost)
+    )?.node
+  if (semantic) return semantic.id
   return (
     projection.nodes.find(
       (node) => node.id === `page:${observation.source_page_id}`
@@ -591,9 +613,11 @@ function EvidenceCard({
 function InspectorHeader({
   node,
   source,
+  language,
 }: {
   node?: GraphNode | null
   source: EvidenceSource
+  language: "en" | "id"
 }) {
   const run = source.kind === "run" ? source.details : undefined
   const standaloneCase = source.kind === "case" ? source.details : undefined
@@ -602,14 +626,35 @@ function InspectorHeader({
     : standaloneCase?.final_url_display ||
       standaloneCase?.case_id ||
       "saved evidence"
+  const copy = node ? graphNodeText(node) : null
+  const translatedSubtitle =
+    language === "id" && node
+      ? {
+          page: node.primary ? "Situs yang diperiksa" : "Halaman tersimpan",
+          contact: "Kontak publik",
+          brand: "Brand diklaim",
+          transaction: "Observasi pembayaran",
+          offer: "Klaim promo publik",
+          destination: "Tujuan eksternal",
+          candidate: "Kandidat tertunda",
+          other: "Bukti lain",
+        }[node.presentation.visualKind]
+      : copy?.subtitle
   return (
     <header className="inspector-heading">
-      <span>{node?.presentation.label || "Evidence package"}</span>
-      <h2>{node?.label || hostnameFrom(fallback)}</h2>
+      <span>
+        {translatedSubtitle ||
+          (language === "id" ? "Paket bukti" : "Evidence package")}
+      </span>
+      <h2>{copy?.title || hostnameFrom(fallback)}</h2>
       <p>
         {node?.status === "lead"
-          ? "Relationship: not determined. This candidate requires explicit collection approval or human review."
-          : "Every displayed fact resolves to a verified local artifact, deterministic observation, or persisted event."}
+          ? language === "id"
+            ? "Relasi belum ditentukan. Kandidat ini perlu persetujuan pengambilan atau tinjauan manusia."
+            : "Relationship: not determined. This candidate requires explicit collection approval or human review."
+          : language === "id"
+            ? "Setiap fakta yang tampil dapat ditelusuri ke artefak lokal, observasi deterministik, atau event tersimpan."
+            : "Every displayed fact resolves to a verified local artifact, deterministic observation, or persisted event."}
       </p>
     </header>
   )
@@ -718,18 +763,117 @@ function EventInspector({ event }: { event: InvestigationEvent }) {
   )
 }
 
+function QuickEvidenceSummary({
+  cards,
+  selectedNode,
+  onFocusNode,
+  language,
+}: {
+  cards: EvidenceCardModel[]
+  selectedNode?: GraphNode | null
+  onFocusNode: (nodeId: string) => void
+  language: "en" | "id"
+}) {
+  const groups: Array<{
+    kind: EvidenceCardModel["kind"]
+    english: string
+    indonesia: string
+  }> = [
+    { kind: "brand", english: "Claimed brands", indonesia: "Brand diklaim" },
+    { kind: "contact", english: "Public contacts", indonesia: "Kontak publik" },
+    {
+      kind: "destination",
+      english: "Links & destinations",
+      indonesia: "Link & tujuan",
+    },
+    {
+      kind: "transaction",
+      english: "Payment observations",
+      indonesia: "Observasi pembayaran",
+    },
+    { kind: "offer", english: "Offer claims", indonesia: "Klaim promo" },
+    {
+      kind: "candidate",
+      english: "Pending candidates",
+      indonesia: "Kandidat tertunda",
+    },
+  ]
+
+  return (
+    <section className="inspector-section quick-evidence-summary">
+      <h3>
+        <BinocularsIcon />
+        {language === "id" ? "Yang ditemukan" : "What was found"}
+      </h3>
+      <p>
+        {language === "id"
+          ? "Ringkasan observasi publik. Klik item untuk fokus ke node dan sumbernya."
+          : "Public observations at a glance. Select an item to focus its node and source."}
+      </p>
+      <div className="quick-evidence-groups">
+        {groups.map((group) => {
+          const items = cards.filter((card) => card.kind === group.kind)
+          if (!items.length) return null
+          return (
+            <section key={group.kind} className="quick-evidence-group">
+              <header>
+                <strong>
+                  {language === "id" ? group.indonesia : group.english}
+                </strong>
+                <Badge variant="outline">{items.length}</Badge>
+              </header>
+              <div>
+                {items.slice(0, 6).map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className={cn(
+                      card.nodeId === selectedNode?.id &&
+                        "quick-evidence-active"
+                    )}
+                    disabled={!card.nodeId}
+                    onClick={() => card.nodeId && onFocusNode(card.nodeId)}
+                  >
+                    <span
+                      className={`evidence-card-icon evidence-${card.kind}`}
+                    >
+                      <CardIcon card={card} />
+                    </span>
+                    <span>
+                      <b>{card.value}</b>
+                      <small>{card.title}</small>
+                    </span>
+                  </button>
+                ))}
+                {items.length > 6 ? (
+                  <small className="quick-evidence-more">
+                    +{items.length - 6}{" "}
+                    {language === "id" ? "item lain" : "more items"}
+                  </small>
+                ) : null}
+              </div>
+            </section>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function EvidenceInspector({
   source,
   projection,
   selectedNode,
   selectedEvent,
   onFocusNode,
+  language,
 }: {
   source: EvidenceSource
   projection: GraphProjection
   selectedNode?: GraphNode | null
   selectedEvent?: InvestigationEvent | null
   onFocusNode: (nodeId: string) => void
+  language: "en" | "id"
 }) {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState("")
@@ -795,24 +939,39 @@ export function EvidenceInspector({
 
   return (
     <aside className="evidence-inspector" aria-label="Evidence inspector">
-      <Tabs defaultValue="evidence" className="inspector-tabs">
+      <Tabs defaultValue="overview" className="inspector-tabs">
         <TabsList className="inspector-tab-list">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="evidence">Evidence</TabsTrigger>
-          <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
-          <TabsTrigger value="technical">Technical</TabsTrigger>
+          <TabsTrigger value="overview">
+            {language === "id" ? "Ringkas" : "Overview"}
+          </TabsTrigger>
+          <TabsTrigger value="evidence">
+            {language === "id" ? "Bukti" : "Evidence"}
+          </TabsTrigger>
+          <TabsTrigger value="artifacts">
+            {language === "id" ? "Arsip" : "Artifacts"}
+          </TabsTrigger>
+          <TabsTrigger value="technical">
+            {language === "id" ? "Teknis" : "Technical"}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="inspector-tab-content">
           <ScrollArea className="inspector-scroll">
-            <InspectorHeader node={selectedNode} source={source} />
-            <ScreenshotGallery
-              details={caseDetails}
+            <InspectorHeader
+              node={selectedNode}
+              source={source}
+              language={language}
+            />
+            <QuickEvidenceSummary
+              cards={cards}
               selectedNode={selectedNode}
+              onFocusNode={onFocusNode}
+              language={language}
             />
             <section className="inspector-section">
               <h3>
-                <Globe weight="duotone" /> Selected node
+                <Globe weight="duotone" />
+                {language === "id" ? "Node terpilih" : "Selected node"}
               </h3>
               <FactList facts={selectedNodeFacts(selectedNode)} />
             </section>
@@ -833,13 +992,21 @@ export function EvidenceInspector({
             <MagnifyingGlass />
             <Input
               type="search"
-              placeholder="Find evidence, entity, relation…"
+              placeholder={
+                language === "id"
+                  ? "Cari bukti, entitas, relasi…"
+                  : "Find evidence, entity, relation…"
+              }
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
           <ScrollArea className="inspector-scroll">
-            <InspectorHeader node={selectedNode} source={source} />
+            <InspectorHeader
+              node={selectedNode}
+              source={source}
+              language={language}
+            />
             <ScreenshotGallery
               details={caseDetails}
               selectedNode={selectedNode}
@@ -847,7 +1014,10 @@ export function EvidenceInspector({
             {selectedEvent ? <EventInspector event={selectedEvent} /> : null}
             <section className="inspector-section evidence-catalog-section">
               <h3>
-                <BinocularsIcon /> Evidence and claims{" "}
+                <BinocularsIcon />
+                {language === "id"
+                  ? "Bukti dan klaim"
+                  : "Evidence and claims"}{" "}
                 <Badge variant="outline">{filteredCards.length}</Badge>
               </h3>
               <div className="evidence-card-list">

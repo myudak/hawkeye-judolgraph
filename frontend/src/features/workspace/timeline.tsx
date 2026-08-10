@@ -13,11 +13,13 @@ export function InvestigationTimeline({
   activeIndex,
   onSelect,
   live = false,
+  language,
 }: {
   timeline: TimelineItem[]
   activeIndex: number
   onSelect: (index: number) => void
   live?: boolean
+  language: "en" | "id"
 }) {
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(650)
@@ -40,9 +42,13 @@ export function InvestigationTimeline({
     const card = trackRef.current?.querySelector(
       `[data-index="${activeIndex}"]`
     )
-    card?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
+    if (!(card instanceof HTMLElement) || !trackRef.current) return
+    const left = Math.max(
+      0,
+      card.offsetLeft - trackRef.current.clientWidth + card.offsetWidth
+    )
+    trackRef.current.scrollTo({
+      left,
       behavior: reduceMotion ? "auto" : "smooth",
     })
   }, [activeIndex, reduceMotion])
@@ -62,32 +68,51 @@ export function InvestigationTimeline({
 
   return (
     <section className="timeline-panel" aria-label="Capture and event timeline">
-      <div className="timeline-transport">
-        <Button variant="outline" onClick={replay}>
-          <Rewind weight="bold" />
-          Replay
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          aria-label={playing ? "Pause timeline" : "Play timeline"}
-          onClick={() => setPlaying((value) => !value)}
-          disabled={!timeline.length}
-        >
-          {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
-        </Button>
-        <label>
-          <span>Speed</span>
-          <input
-            type="range"
-            min="180"
-            max="1400"
-            step="10"
-            value={speed}
-            onChange={(event) => setSpeed(Number(event.target.value))}
-            aria-label="Replay speed"
-          />
-        </label>
+      <div className="timeline-topline">
+        <div className="timeline-transport">
+          <Button variant="outline" onClick={replay}>
+            <Rewind weight="bold" />
+            {language === "id" ? "Ulangi" : "Replay"}
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            aria-label={
+              playing
+                ? language === "id"
+                  ? "Jeda timeline"
+                  : "Pause timeline"
+                : language === "id"
+                  ? "Putar timeline"
+                  : "Play timeline"
+            }
+            onClick={() => setPlaying((value) => !value)}
+            disabled={!timeline.length}
+          >
+            {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
+          </Button>
+          <label>
+            <span>{language === "id" ? "Kecepatan" : "Speed"}</span>
+            <input
+              type="range"
+              min="180"
+              max="1400"
+              step="10"
+              value={speed}
+              onChange={(event) => setSpeed(Number(event.target.value))}
+              aria-label="Replay speed"
+            />
+          </label>
+        </div>
+        <div className="timeline-current" aria-live="polite">
+          <span>
+            {language === "id" ? "EVENT SEKARANG" : "CURRENT EVENT"} ·{" "}
+            {String(activeIndex + 1).padStart(2, "0")}/
+            {String(timeline.length).padStart(2, "0")}
+          </span>
+          <strong>{current?.label || "—"}</strong>
+          <small>{current?.detail || "—"}</small>
+        </div>
         <Badge className={cn("timeline-mode", live && "timeline-mode-live")}>
           {mode}
         </Badge>
@@ -129,6 +154,7 @@ export function InvestigationTimeline({
           })}
         </div>
         <div className="timeline-scrubber">
+          <span>01</span>
           <input
             type="range"
             min="0"
@@ -141,6 +167,7 @@ export function InvestigationTimeline({
               onSelect(Number(event.target.value))
             }}
           />
+          <b>{String(Math.max(1, timeline.length)).padStart(2, "0")}</b>
           <time title={exactTime(current?.occurredAt)}>
             {formatTime(current?.occurredAt)}
           </time>
