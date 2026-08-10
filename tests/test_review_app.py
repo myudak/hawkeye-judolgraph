@@ -615,8 +615,9 @@ def test_hostile_display_values_are_bounded_inert_text_inputs(tmp_path: Path) ->
 
 
 def test_react_ui_build_preserves_local_evidence_safety_and_accessibility() -> None:
-    static_root = Path(__file__).parents[1] / "hawkeye" / "review_app" / "static"
-    frontend_root = Path(__file__).parents[1] / "frontend" / "src"
+    repository_root = Path(__file__).parents[1]
+    static_root = repository_root / "apps" / "api" / "src" / "hawkeye" / "review_app" / "static"
+    frontend_root = repository_root / "apps" / "web" / "src"
     script = (static_root / "app.js").read_text(encoding="utf-8")
     html = (static_root / "index.html").read_text(encoding="utf-8")
     styles = (static_root / "styles.css").read_text(encoding="utf-8")

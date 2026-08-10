@@ -1,1 +1,0 @@
-import{a as e,un as t}from"./tooltip-86Uk6wqn.js";var n=t();function r({className:t,...r}){return(0,n.jsx)(`div`,{"data-slot":`skeleton`,className:e(`animate-pulse rounded-2xl bg-muted`,t),...r})}export{r as t};

@@ -351,3 +351,43 @@ frame becomes complete only after its screenshot, state, HTML/text artifacts, an
 completion event have been persisted; blocked actions receive a separate stopped state. Shimmer,
 scanlines, elapsed time, and stage labels may express active work, but no fabricated percentage,
 invented substep, or post-completion animation is permitted.
+
+## ADR-032 — Source is an apps monorepo; generated UI is wheel input, not Git source
+
+**Status:** accepted.
+
+Python source lives in `apps/api/src/hawkeye`; React source lives in `apps/web`. Tests and
+evaluation remain at repository root so controlled fixture identities and pytest node IDs stay
+stable. The root `pyproject.toml` and `uv.lock` own Python; the root `package.json`,
+`pnpm-workspace.yaml`, and one shared `pnpm-lock.yaml` own JavaScript and orchestration.
+
+Vite recreates `apps/api/src/hawkeye/review_app/static`, which is ignored by Git. `pnpm package`
+builds that UI first, fails if required entry/CSS/chunks are missing, and then builds a wheel that
+contains the full bundle and controlled interaction fixture. This removes hashed generated chunks
+from source history without producing a backend-only wheel.
+
+## ADR-033 — The Docker boundary is local single-investigator, not deployment authority
+
+**Status:** accepted.
+
+Compose runs one FastAPI service containing the React bundle and publishes
+`127.0.0.1:${HAWKEYE_PORT}:8760`. The normal CLI retains a fixed loopback host; only the internal
+container entry point binds all container interfaces. Runtime uses a matching pinned Playwright
+image, non-root user, Chromium sandbox flag, init, shared IPC, Docker's seccomp boundary, dropped
+capabilities, `no-new-privileges`, read-only root filesystem, bounded tmpfs, and explicit `/data`
+persistence. Authentication, LAN/public bind, TLS termination, and multi-user authorization remain
+out of scope.
+
+## ADR-034 — Model transport is generic, optional, and never probed by page load
+
+**Status:** accepted; replaces the active portion of the Codex-LB-specific G6 decision.
+
+An operator may configure an OpenAI-compatible Responses or Chat Completions endpoint through
+environment variables. The base URL is not accepted from a UI request. HTTPS is required outside
+loopback, redirects are denied, body/time are bounded, and credentials never enter diagnostics or
+case/event/export records. `auto` switches from Responses to Chat Completions only for `404/405`.
+
+The application reports configuration without a paid probe. `hawkeye llm-probe` is the explicit
+strict-schema handshake. Every model result still validates as `AgentDecision` against exact
+server-issued references and every failure still activates deterministic fallback. Stored
+historical `codex` runs remain readable as model-assisted history.

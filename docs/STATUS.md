@@ -3,8 +3,8 @@
 ## Current milestone
 
 **G4A–G9 — GEMASTIK preliminary MVP plus post-G9 investigator hardening** is implemented and locally verified. The product now combines
-capture adequacy, optional bounded OCR, ten controlled safe-expansion scenarios, a capability-gated
-multi-step Codex path with deterministic fallback, approval-gated live candidate recollection,
+capture adequacy, optional bounded OCR, ten controlled safe-expansion scenarios, an optional
+OpenAI-compatible model path with deterministic fallback, approval-gated live candidate recollection,
 exact cross-case assertions, temporal diffs, append-only human review, a WebGraph-informed 2D canvas
 over event-reduced truth, explainable integer judol-indicator counts, recoverable progressive scan
 jobs with a killable browser boundary, a three-mode benchmark, one bounded
@@ -116,8 +116,9 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
   job. Playwright runs in a spawned process with a final 115-second browser wall-clock stop.
 - Interaction tools use snapshot-bound references in a maximum-five-decision/three-interaction
   objective loop with explicit stale/no-op/budget stop reasons.
-- The current codex-lb probe discovers `gpt-5.6-terra` and verifies strict structured output. The
-  final QQ validation used Codex; transport/schema/reference failure remains a logged fallback.
+- The current runtime accepts an operator-configured OpenAI-compatible provider and performs no
+  automatic probe. The final 2026-08-03 QQ validation used Codex historically;
+  transport/schema/reference failure remains a logged deterministic fallback.
 - Synthetic recollection and live direct-link recollection are implemented. A live candidate is
   collected once only after `candidate_page.approved`; generated candidates are never auto-crawled.
 - Assertions and reviews are append-only; current review status is derived from history.

@@ -87,12 +87,13 @@ controlled read-only scrolling; link discovery in open shadow roots and readable
 iframes; and server-side prohibition of login, registration, download, form submission, ambiguous
 controls, and unsafe destinations.
 
-## G6 — Bounded Codex runtime — completed with verified Codex and fallback paths
+## G6 — Bounded model runtime — completed with generic provider and fallback paths
 
-Completed evidence: a local codex-lb route probe, strict schema validation, bounded retries/failure
-records, exact issued-reference validation, and a deterministic investigator fallback. The final
-2026-08-03 probe discovered `gpt-5.6-terra`, verified strict JSON-schema output, and completed the
-live QQ objective through Codex. Fixture benchmarks remain deterministic fallback truth.
+Current evidence: an operator-configured OpenAI-compatible adapter, explicit opt-in strict-schema
+probe, bounded body/time limits, redirect denial, Responses and Chat Completions support, exact
+issued-reference validation, and a deterministic investigator fallback. Landing-page loads never
+probe or spend tokens. The 2026-08-03 `gpt-5.6-terra` Codex result remains historical qualitative
+validation; fixture benchmarks remain deterministic fallback truth.
 
 ## G7 — Candidate recollection and human review — completed with explicit live approval boundary
 

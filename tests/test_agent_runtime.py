@@ -8,9 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-import pytest
-
-from hawkeye.agent import CodexInvestigator
+from hawkeye.agent import LlmConfig, ModelInvestigator, probe_llm
 from hawkeye.agent.models import AgentVisibleContext
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
 from hawkeye.interaction.models import StableElementReference
@@ -31,7 +29,7 @@ def _context(scenario_index: int = 1) -> AgentVisibleContext:
 def test_valid_structured_model_decision_is_accepted_without_execution() -> None:
     context = _context()
     reference = context.safe_interactive_elements[0]
-    investigator = CodexInvestigator(
+    investigator = ModelInvestigator(
         None,
         request_override=lambda _context: {
             "action": "tool_request",
@@ -41,7 +39,7 @@ def test_valid_structured_model_decision_is_accepted_without_execution() -> None
         },
     )
     result = investigator.choose(context)
-    assert result.mode == "codex"
+    assert result.mode == "model"
     assert result.decision.tool_name == "page_click_read_only"
     assert result.failures == []
 
@@ -54,7 +52,7 @@ def test_free_form_or_invalid_schema_falls_back_after_two_attempts() -> None:
         calls += 1
         return "click the button"
 
-    result = CodexInvestigator(None, request_override=invalid).choose(_context())
+    result = ModelInvestigator(None, request_override=invalid).choose(_context())
     assert calls == 2
     assert result.mode == "deterministic_fallback"
     assert result.decision.action == "tool_request"
@@ -79,7 +77,7 @@ def test_model_cannot_mutate_an_issued_safe_reference() -> None:
             "outcome_summary": "Attempt a mutated selector.",
         }
 
-    result = CodexInvestigator(None, request_override=mutated).choose(context)
+    result = ModelInvestigator(None, request_override=mutated).choose(context)
 
     assert calls == 2
     assert result.mode == "deterministic_fallback"
@@ -90,7 +88,7 @@ def test_model_cannot_mutate_an_issued_safe_reference() -> None:
 
 
 def test_unavailable_endpoint_uses_same_normalized_decision_shape() -> None:
-    result = CodexInvestigator(None).choose(_context())
+    result = ModelInvestigator(None).choose(_context())
     assert result.mode == "deterministic_fallback"
     assert result.decision.model_dump(mode="json")["action"] == "tool_request"
     assert result.raw_response_persisted is False
@@ -122,7 +120,7 @@ def test_fallback_prefers_contact_evidence_over_promotions() -> None:
         evidence_gap="Public phone and messaging identifiers are not yet observed.",
     )
 
-    result = CodexInvestigator(None).choose(context)
+    result = ModelInvestigator(None).choose(context)
 
     assert result.decision.element_reference is not None
     assert result.decision.element_reference.element_id == "contact"
@@ -132,20 +130,7 @@ def test_fallback_prefers_contact_evidence_over_promotions() -> None:
 def _capability_server() -> Iterator[str]:
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:  # noqa: N802
-            body = json.dumps(
-                {
-                    "capabilities": {
-                        "model": "fixture-model",
-                        "streaming": True,
-                        "structured_output": True,
-                        "function_calling": True,
-                        "tool_result_continuation": True,
-                        "cancellation": True,
-                        "native_search": "unsupported",
-                        "native_search_source_urls": False,
-                    }
-                }
-            ).encode()
+            body = json.dumps({"output_parsed": {"ready": True}}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -166,17 +151,20 @@ def _capability_server() -> Iterator[str]:
         server.server_close()
 
 
-def test_capability_probe_uses_advertised_features_and_preserves_no_secrets(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import hawkeye.agent.capability as capability
-
+def test_capability_probe_uses_strict_handshake_and_preserves_no_secrets() -> None:
     with _capability_server() as root:
-        monkeypatch.setattr(capability, "CODEX_LB_ENDPOINTS", (f"{root}/one", f"{root}/two"))
-        diagnostics = capability.probe_codex_lb(timeout_seconds=1)
-    assert diagnostics.supported_route == f"{root}/one"
+        diagnostics = probe_llm(
+            LlmConfig(
+                base_url=root,
+                model="fixture-model",
+                api_style="responses",
+                timeout_seconds=1,
+                api_key="test-secret-never-persisted",
+            )
+        )
+    assert diagnostics.supported_route == f"{root}/responses"
     assert diagnostics.selected_model == "fixture-model"
     assert diagnostics.safe_to_enable_model_path is True
     assert diagnostics.fallback_required is False
     assert diagnostics.secrets_persisted is False
-    assert diagnostics.endpoints[0].native_search_support == "unsupported"
+    assert "test-secret-never-persisted" not in diagnostics.model_dump_json()

@@ -1,0 +1,28 @@
+services:
+  hawkeye:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    ipc: host
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:${HAWKEYE_PORT:-8760}:8760"
+    environment:
+      HAWKEYE_LLM_BASE_URL: "${HAWKEYE_LLM_BASE_URL:-}"
+      HAWKEYE_LLM_API_KEY: "${HAWKEYE_LLM_API_KEY:-}"
+      HAWKEYE_LLM_MODEL: "${HAWKEYE_LLM_MODEL:-}"
+      HAWKEYE_LLM_API_STYLE: "${HAWKEYE_LLM_API_STYLE:-auto}"
+      HAWKEYE_LLM_TIMEOUT_SECONDS: "${HAWKEYE_LLM_TIMEOUT_SECONDS:-15}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+      - /home/pwuser:rw,nosuid,size=256m,uid=1001,gid=1001,mode=0700
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

@@ -91,16 +91,16 @@ inspector and DOM timeline remain usable without interpreting pixels in the canv
 
 | Layer | Implementation | Persistence | Trust boundary |
 |---|---|---|---|
-| URL safety | `hawkeye/collector/safety.py` | none | validates public HTTP(S), DNS, crawl scope |
-| Browser capture | `hawkeye/collector/playwright_collector.py` | filesystem | no interactions; bounded settle budgets |
-| Case pipeline | `hawkeye/pipeline.py` | case JSON/artifacts | extraction eligibility |
-| Semantic evidence | `hawkeye/semantic_evidence.py` | observations/crops | public observables only |
-| Interaction | `hawkeye/interaction/` | normalized decisions | policy before state change |
-| Agent | `hawkeye/agent/` | secret-free diagnostics/events | no direct tool execution |
-| Investigation | `hawkeye/investigation/` | SQLite + fixture artifacts | append-only records |
-| Graph | `hawkeye/investigation/reducer.py` | derived | events are source of truth |
-| Console | `hawkeye/review_app/` | explicit workspace | localhost/Host/origin/CSP controls |
-| Evaluation | `hawkeye/benchmark.py` | JSON + Markdown | synthetic fixtures authoritative |
+| URL safety | `apps/api/src/hawkeye/collector/safety.py` | none | validates public HTTP(S), DNS, crawl scope |
+| Browser capture | `apps/api/src/hawkeye/collector/playwright_collector.py` | filesystem | no interactions; bounded settle budgets |
+| Case pipeline | `apps/api/src/hawkeye/pipeline.py` | case JSON/artifacts | extraction eligibility |
+| Semantic evidence | `apps/api/src/hawkeye/semantic_evidence.py` | observations/crops | public observables only |
+| Interaction | `apps/api/src/hawkeye/interaction/` | normalized decisions | policy before state change |
+| Agent | `apps/api/src/hawkeye/agent/` | secret-free diagnostics/events | no direct tool execution |
+| Investigation | `apps/api/src/hawkeye/investigation/` | SQLite + fixture artifacts | append-only records |
+| Graph | `apps/api/src/hawkeye/investigation/reducer.py` | derived | events are source of truth |
+| Console | `apps/web/` + review API | explicit workspace | localhost/Host/origin/CSP controls |
+| Evaluation | `apps/api/src/hawkeye/benchmark.py` | JSON + Markdown | synthetic fixtures authoritative |
 
 ## SQLite schema and migration behavior
 
@@ -134,7 +134,7 @@ python -m playwright install chromium
 ## Usage
 
 ```powershell
-python -m hawkeye codex-probe `
+uv run hawkeye llm-probe `
   --output verification-output/codex-capabilities.json
 
 python -m hawkeye benchmark `
@@ -196,7 +196,7 @@ python -m ruff format --check .
 python -m ruff check .
 python -m mypy hawkeye
 python -m pytest -q
-node --check hawkeye/review_app/static/app.js
+pnpm check
 git diff --check
 ```
 

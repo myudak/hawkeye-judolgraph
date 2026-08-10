@@ -1,0 +1,9 @@
+packages:
+  - apps/web
+
+sharedWorkspaceLockfile: true
+disallowWorkspaceCycles: true
+
+onlyBuiltDependencies:
+  - "@parcel/watcher"
+  - esbuild

@@ -12,9 +12,9 @@ keputusan manusia, dan graf bukti progresif. Nama internal repositori tetap Judo
 nama tersebut tidak diajukan sebagai nama publik final.
 
 Produk berjalan secara lokal pada `127.0.0.1`. MVP awal menggunakan kolektor Python Playwright,
-penyimpanan artefak berbasis berkas, indeks SQLite append-only, konsol web lokal, agen Codex yang
-dibatasi melalui `codex-lb` ketika kemampuan yang diperlukan dapat diverifikasi, dan fallback
-deterministik ketika endpoint atau kemampuannya tidak tersedia.
+penyimpanan artefak berbasis berkas, indeks SQLite append-only, konsol web lokal, adapter model
+OpenAI-compatible opsional dengan strict output, dan fallback deterministik ketika konfigurasi,
+endpoint, atau hasil model tidak tersedia/valid.
 
 Kalimat produk yang diusulkan:
 
@@ -383,12 +383,10 @@ membuat assertion `publicly_links_to` yang tetap membutuhkan review manusia.
 ### Verifikasi pengembang
 
 ```powershell
-python -m ruff format --check .
-python -m ruff check .
-python -m mypy hawkeye
-python -m pytest -q
-node --check hawkeye/review_app/static/app.js
-git diff --check
+pnpm install --frozen-lockfile
+uv sync --locked --extra dev
+pnpm check
+pnpm package
 ```
 
 TODO — requires human confirmation: sesuaikan instruksi dengan lingkungan evaluator resmi, final

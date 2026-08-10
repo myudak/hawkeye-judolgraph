@@ -315,7 +315,7 @@ flowchart TD
     COL --> SEM["Semantic evidence extractor"]
     SEM --> MAP["Stable interactive-element map"]
     MAP --> POL["Server-side interaction policy"]
-    LB["codex-lb loopback"] --> DEC["Structured AgentDecision only"]
+    LLM["Optional OpenAI-compatible provider"] --> DEC["Structured AgentDecision only"]
     DEC --> REF["Exact issued-reference validation"]
     FALL["Deterministic fallback"] --> POL
     REF --> POL
@@ -341,8 +341,8 @@ database langsung.*
 | FastAPI | API localhost, artifact delivery terverifikasi, dan workspace mutation berbatas |
 | SQLite | Event, lead, assertion, approval, dan review append-only |
 | Pydantic | Validasi schema internal dan structured agent decision |
-| HTML/CSS/JavaScript Canvas 2D | Graph-first console, animasi, minimap, inspector, dan timeline |
-| codex-lb loopback | Optional strict-output Codex path; tidak menjadi dependency wajib |
+| React/TypeScript/Vite + Canvas 2D | Graph-first console, animasi, minimap, inspector, dan timeline |
+| OpenAI-compatible API | Optional strict-output model path; tidak menjadi dependency wajib |
 | Pytest, Ruff, mypy | Test, formatting/lint, dan static type verification |
 
 Produk tidak menggunakan PostgreSQL, distributed queue, Kubernetes, public hosting, atau mandatory

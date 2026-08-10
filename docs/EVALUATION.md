@@ -214,3 +214,16 @@ External candidate mode stops at an approval event. A user may explicitly approv
 observed candidate, after which the product performs one page/depth-zero collection and proposes
 only a `publicly_links_to` assertion for review. The official benchmark and demo still use reserved
 fixture data and no external network.
+
+## Monorepo and container acceptance
+
+Current source checks run from the repository root through `pnpm check`. Python imports resolve
+from `apps/api/src`; frontend checks resolve from `apps/web`; controlled fixtures and pytest node
+IDs remain under their historical root paths. `pnpm package` must produce a wheel containing the
+complete generated UI and the ten-scenario manifest.
+
+Container acceptance uses the same loopback fixtures, never live judol URLs. It must confirm a
+non-root process, `/health`, Tesseract availability, browser capture, child cleanup after a forced
+wall timeout, loopback-only host publishing, and persistence across `docker compose down` / `up`.
+If the Docker daemon or pinned browser download is unavailable, that gate is reported as blocked;
+successful Compose syntax or a cached unit test is not presented as a successful container run.

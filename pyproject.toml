@@ -12,11 +12,15 @@ dependencies = [
   "beautifulsoup4>=4.12.3",
   "fastapi>=0.115.0",
   "Pillow>=10.4.0",
-  "playwright>=1.50.0",
+  "playwright==1.50.0",
   "pydantic>=2.8.2",
   "tldextract>=5.1.3",
   "uvicorn>=0.32.0",
 ]
+
+[project.scripts]
+hawkeye = "hawkeye.cli:main"
+hawkeye-container = "hawkeye.container:main"
 
 [project.optional-dependencies]
 dev = [
@@ -28,15 +32,27 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
+where = ["apps/api/src"]
 include = ["hawkeye*"]
+
+[tool.setuptools.package-data]
+hawkeye = [
+  "review_app/static/*",
+  "review_app/static/chunks/*",
+]
+
+[tool.setuptools.data-files]
+"share/hawkeye/evaluation" = ["evaluation/fixtures/controlled-interactions-v1.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+pythonpath = ["apps/api/src"]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+src = ["apps/api/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -46,3 +62,4 @@ python_version = "3.12"
 strict = true
 warn_unused_ignores = true
 exclude = ["^tests/"]
+mypy_path = "apps/api/src"

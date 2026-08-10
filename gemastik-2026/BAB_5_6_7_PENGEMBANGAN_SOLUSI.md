@@ -303,17 +303,17 @@ frontend adalah vanilla JavaScript tanpa remote runtime dependency.
 
 | Area | Modul utama | Peran |
 |---|---|---|
-| CLI | `hawkeye/cli.py`, `hawkeye/__main__.py` | `investigate`, `serve`, `benchmark`, `codex-probe`, `diagnose`, `evaluate`, `demo` |
-| Model | `hawkeye/models.py` | Capture, readiness, crawl, evidence, observation, candidate, graph |
-| Safety/crawl | `hawkeye/collector/safety.py`, `hawkeye/crawl.py`, `hawkeye/pipeline.py` | URL/DNS, same-host BFS, budget, redirect, failure |
-| Browser | `hawkeye/collector/playwright_collector.py` | Render, checkpoint, screenshot, response, blocked request |
-| Extraction | `hawkeye/extraction/`, `hawkeye/semantic_evidence.py` | Entity dan semantic observation provenance-first |
-| Interaction | `hawkeye/interaction/` | Stable reference, fixtures, preflight, executor |
-| Agent | `hawkeye/agent/` | Capability probe, strict JSON, validation, retry, fallback |
-| Investigation | `hawkeye/investigation/` | Event, lead, assertion, review, runtime, reducer |
-| Storage | `hawkeye/storage/`, `hawkeye/investigation/store.py` | Artifact file, manifest/hash, SQLite append-only |
-| UI | `hawkeye/review_app/` | API, workspace, canvas, minimap, inspector, timeline |
-| Evaluation | `hawkeye/evaluation/`, `hawkeye/benchmark.py` | Manifest verifier, benchmark, policy metrics, report |
+| CLI | `apps/api/src/hawkeye/cli.py` | `investigate`, `app`, `benchmark`, `llm-probe`, `diagnose`, `evaluate`, `demo` |
+| Model | `apps/api/src/hawkeye/models.py` | Capture, readiness, crawl, evidence, observation, candidate, graph |
+| Safety/crawl | `apps/api/src/hawkeye/collector/`, `crawl.py`, `pipeline.py` | URL/DNS, same-host BFS, budget, redirect, failure |
+| Browser | `apps/api/src/hawkeye/collector/playwright_collector.py` | Render, checkpoint, screenshot, response, blocked request |
+| Extraction | `apps/api/src/hawkeye/extraction/`, `semantic_evidence.py` | Entity dan semantic observation provenance-first |
+| Interaction | `apps/api/src/hawkeye/interaction/` | Stable reference, fixtures, preflight, executor |
+| Agent | `apps/api/src/hawkeye/agent/` | Generic OpenAI-compatible client, strict JSON, validation, retry, fallback |
+| Investigation | `apps/api/src/hawkeye/investigation/` | Event, lead, assertion, review, runtime, reducer |
+| Storage | `apps/api/src/hawkeye/storage/`, `investigation/store.py` | Artifact file, manifest/hash, SQLite append-only |
+| UI | `apps/web/`, `apps/api/src/hawkeye/review_app/` | React, API, workspace, canvas, inspector, timeline |
+| Evaluation | `apps/api/src/hawkeye/evaluation/`, `benchmark.py` | Manifest verifier, benchmark, policy metrics, report |
 
 ## 7.2 Capture dan semantic evidence
 
@@ -417,7 +417,7 @@ destination, redirect, dan candidate domain. Edge appearance bermakna:
 | `hidden` | Relasi ditolak atau tidak boleh tampil sebagai graph fact |
 
 Canvas, minimap, pan/zoom/drag, hit-test, search/focus, inspector, screenshot carousel, timeline,
-replay, dan reduced-motion berada di `hawkeye/review_app/static/`. Animation queue hanya proyeksi
+replay, dan reduced-motion dibangun dari `apps/web/` ke generated static bundle. Animation queue hanya proyeksi
 visual; pause, speed, replay, refresh, dan reduced-motion tidak mengubah event truth. Tabel dan
 inspector tetap menjadi jalur pembacaan evidence tanpa canvas.
 
@@ -464,7 +464,7 @@ session. Fixture `.invalid` tetap menjadi regression truth.
 ## 7.8 Rujukan repositori
 
 - `docs/GOAL.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`, `docs/STATUS.md`, `docs/EVALUATION.md`.
-- `hawkeye/pipeline.py`, `hawkeye/collector/`, `hawkeye/semantic_evidence.py`.
-- `hawkeye/interaction/`, `hawkeye/agent/`, `hawkeye/investigation/`.
-- `hawkeye/review_app/`, `evaluation/fixtures/`, `evaluation/benchmarks/`, dan `tests/`.
+- `apps/api/src/hawkeye/pipeline.py`, collector, dan semantic evidence.
+- `apps/api/src/hawkeye/interaction/`, agent, dan investigation.
+- `apps/web/`, review API, `evaluation/fixtures/`, `evaluation/benchmarks/`, dan `tests/`.
 - `gemastik-2026/IMPLEMENTATION_STATUS.md` dan `gemastik-2026/README.md`.

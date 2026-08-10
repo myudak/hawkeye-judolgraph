@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hawkeye.agent import CodexInvestigator, run_controlled_agent_loop
+from hawkeye.agent import ModelInvestigator, run_controlled_agent_loop
 from hawkeye.interaction import ControlledPageSession, load_controlled_scenarios
 from hawkeye.interaction.models import InteractiveElement
 from hawkeye.interaction.policy import validate_read_only_interaction
@@ -37,7 +37,7 @@ def test_all_safe_required_interactions_reveal_only_expected_public_observables(
             continue
         loop = run_controlled_agent_loop(
             session,
-            CodexInvestigator(None),
+            ModelInvestigator(None),
             objective_id=(
                 "find_related_public_destination"
                 if scenario.expected_candidate
@@ -64,7 +64,7 @@ def test_two_step_fixture_requires_feedback_before_destination_is_available() ->
     ]
     loop = run_controlled_agent_loop(
         session,
-        CodexInvestigator(None),
+        ModelInvestigator(None),
         objective_id="find_related_public_destination",
         objective="Find one related public destination.",
         evidence_gap="No destination has been preserved.",

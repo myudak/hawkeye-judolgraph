@@ -1,0 +1,24 @@
+{
+  "name": "hawkeye-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=11.3.0"
+  },
+  "scripts": {
+    "setup": "uv sync --locked --extra dev && uv run playwright install chromium",
+    "dev": "concurrently --kill-others --names API,WEB --prefix-colors magenta,cyan \"uv run hawkeye app --data data --port 8760\" \"pnpm --filter @hawkeye/web dev\"",
+    "build": "pnpm --filter @hawkeye/web build",
+    "start": "pnpm build && uv run hawkeye app --data data --port 8760",
+    "check:web": "pnpm --filter @hawkeye/web check",
+    "check:api": "uv run ruff format --check . && uv run ruff check . && uv run mypy apps/api/src/hawkeye && uv run pytest -q",
+    "check": "pnpm check:web && pnpm build && pnpm check:api && git diff --check",
+    "package": "pnpm build && uv run python scripts/build_package.py",
+    "clean": "node -e \"const fs=require('node:fs'); for (const p of ['apps/api/src/hawkeye/review_app/static','build','dist']) fs.rmSync(p,{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

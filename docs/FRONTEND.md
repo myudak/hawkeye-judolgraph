@@ -51,21 +51,20 @@ items with provenance; the interface does not derive a probability or percentage
 
 ## Production build
 
-From `frontend/`:
+From the repository root:
 
 ```powershell
-npm ci
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-npm run build
+pnpm install --frozen-lockfile
+pnpm check:web
+pnpm build
 ```
 
-The Vite build empties and recreates `hawkeye/review_app/static/`. The entry file and stylesheet
-use stable names (`app.js`, `styles.css`); lazily loaded route chunks are content-hashed beneath
-`static/chunks/`. FastAPI continues to set the self-only content security policy and serve the
-result only on loopback.
+The Vite build empties and recreates
+`apps/api/src/hawkeye/review_app/static/`. That directory is generated and ignored by Git, but is
+included in the Python wheel after `pnpm package`. The entry file and stylesheet use stable names
+(`app.js`, `styles.css`); lazily loaded route chunks are content-hashed beneath `static/chunks/`.
+FastAPI continues to set the self-only content security policy and serve the result only on
+loopback.
 
 ## Accessibility and motion
 

@@ -48,3 +48,8 @@ A competition-ready milestone needs a understandable investigator story, a stabl
 fixture-based automated tests, evidence traceability, a documented threat model and limitations,
 safe defaults, explainable scores, and a reproducible evaluation protocol. A running command alone
 does not meet this standard.
+
+The current delivery is organized as `apps/api` plus `apps/web`, uses locked `uv` and `pnpm`
+workflows, can build one Python wheel containing the generated UI, and has a local-only single
+service Compose boundary. This packaging work does not change evidence semantics, append-only
+history, controlled benchmark truth, or the frozen G2/G3 historical commits.
