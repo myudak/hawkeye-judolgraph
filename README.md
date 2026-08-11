@@ -1,309 +1,316 @@
-# HAWK-EYE / JudolGraph
+<div align="center">
+  <a href="https://hawkeye.myudak.com">
+    <img src="docs/assets/hawkeye-product-overview.png" alt="HAWK-EYE product overview showing its evidence graph, investigation replay, and progressive capture workspace" width="100%" />
+  </a>
 
-HAWK-EYE adalah aplikasi OSINT lokal untuk mengumpulkan, menyimpan, dan menghubungkan bukti publik
-dari sebuah situs. Aplikasi ini memakai browser terisolasi, menyimpan artefak dengan hash, mengekstrak
-observasi deterministik, lalu memproyeksikannya sebagai graph dan timeline yang dapat diaudit.
+  <br />
+  <br />
 
-> **Batas penting:** kandidat bukan bukti kepemilikan, similarity bukan probabilitas, dan indikator
-> judi bukan kesimpulan legal. HAWK-EYE tidak login, mengirim form/pesan, membeli, menyelesaikan
-> CAPTCHA, melewati pembatasan akses, atau otomatis merayapi kandidat baru.
+  <h1>HAWK-EYE / JudolGraph</h1>
 
-## Mulai cepat
+  <p><strong>Evidence-first OSINT for investigating online gambling ecosystems.</strong></p>
 
-Pilih salah satu jalur berikut.
+  <p>
+    HAWK-EYE turns a public seed URL into a reproducible investigation package: captured pages,<br />
+    traceable observations, a temporal relationship graph, reviewable leads, and an auditable replay.
+  </p>
 
-### A. Docker — paling mudah
+  <p>
+    <a href="https://hawkeye.myudak.com"><img src="https://img.shields.io/badge/Live_Demo-hawkeye.myudak.com-ed1764?style=for-the-badge&amp;logo=googlechrome&amp;logoColor=white" alt="Live demo" /></a>
+    <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&amp;logo=python&amp;logoColor=white" alt="Python 3.12" /></a>
+    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-20232A?style=for-the-badge&amp;logo=react&amp;logoColor=61DAFB" alt="React 19" /></a>
+    <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-API-009688?style=for-the-badge&amp;logo=fastapi&amp;logoColor=white" alt="FastAPI" /></a>
+    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&amp;logo=docker&amp;logoColor=white" alt="Docker ready" /></a>
+  </p>
 
-Butuh Docker Desktop atau Docker Engine dengan Compose v2.
+  <p>
+    <a href="https://hawkeye.myudak.com">Live demo</a> ·
+    <a href="#how-it-works">How it works</a> ·
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#architecture">Architecture</a> ·
+    <a href="#documentation">Documentation</a>
+  </p>
+</div>
 
-```powershell
-Copy-Item .env.example .env
-docker compose up --build -d
-```
+> [!IMPORTANT]
+> HAWK-EYE is a **read-only public-web investigation instrument**. It does not bypass access
+> controls, solve CAPTCHAs, sign in, submit forms, download files, or automatically accuse an
+> operator. A discovered domain is a candidate lead until a human reviews the supporting evidence.
 
-Buka [http://127.0.0.1:8760](http://127.0.0.1:8760).
+## Why this project exists
 
-Jika `HAWKEYE_AUTH_USERNAME` dan `HAWKEYE_AUTH_PASSWORD` di `.env` terisi, browser akan meminta
-credential HTTP Basic sebelum menampilkan aplikasi. Endpoint `/health` sengaja tetap tanpa auth
-agar healthcheck container dapat bekerja.
+Online investigations often end as disconnected screenshots, browser history, and conclusions that
+cannot be reproduced. HAWK-EYE approaches the problem as an evidence system rather than a generic
+scraper or opaque AI wrapper.
 
-```powershell
-# Lihat log
-docker compose logs -f hawkeye
+It preserves what a public website showed, records how each observation was extracted, reconstructs
+the investigation as an append-only event stream, and keeps uncertain relationships visibly
+pending. The result is designed to answer three practical questions:
 
-# Stop tanpa menghapus data
-docker compose down
-```
+1. **What was observed?** — captured pages, screenshots, rendered HTML, visible text, response
+   metadata, and normalized public indicators.
+2. **Why is it on the graph?** — every semantic node resolves back to its source page and artifact.
+3. **What changed over time?** — replay and temporal comparison rebuild the investigation from
+   persisted events instead of decorative animation.
 
-Cases, SQLite review history, dan artefak berada di `./data` dan tetap ada setelah container
-direstart. Compose hanya mem-publish port ke `127.0.0.1`, bukan ke LAN atau internet.
+## Product highlights
 
-### B. Manual — pnpm + uv
+| Capability                    | What it delivers                                                                                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Evidence-first capture**    | Full-page screenshots, rendered HTML, visible text, response metadata, capture checkpoints, and optional OCR.                                        |
+| **Bounded investigation**     | Safe same-site navigation and controlled public interactions inside an isolated Playwright worker with a hard deadline.                              |
+| **Explainable extraction**    | Deterministic contacts, payment indicators, public claims, links, brands, and gambling-language indicator counts.                                    |
+| **Temporal evidence graph**   | Canvas-based graph projected from persisted events, with filters, inspector provenance, minimap, and deterministic replay.                           |
+| **Human-reviewed leads**      | Candidate relationships remain pending until an append-only review decision is recorded. Candidate domains are never crawled automatically.          |
+| **Optional model assistance** | An OpenAI-compatible model may select from server-issued safe actions; invalid output, timeout, or missing credentials falls back deterministically. |
+| **Reproducible evaluation**   | Ten controlled interaction fixtures, benchmarks, sanitized demos, strict schemas, and automated safety regression tests.                             |
+| **Portable delivery**         | Polyglot monorepo, locked `pnpm` and `uv` dependencies, a packaged Python wheel, and a hardened single-service Docker runtime.                       |
 
-Butuh Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22+, dan pnpm 11.3.0.
-
-```powershell
-corepack enable
-corepack prepare pnpm@11.3.0 --activate
-pnpm install --frozen-lockfile
-pnpm setup
-pnpm start
-```
-
-`pnpm setup` menjalankan `uv sync --locked --extra dev` dan memasang Chromium yang cocok dengan
-versi Playwright. `pnpm start` membangun React lalu menyajikannya dari FastAPI di
-`http://127.0.0.1:8760`.
-
-Untuk development dengan Vite HMR:
-
-```powershell
-pnpm dev
-```
-
-## Cara kerja singkat
+## How it works
 
 ```mermaid
 flowchart LR
-    A["Public seed URL"] --> B["Bounded Playwright capture"]
-    B --> C["Hash-backed artifacts"]
-    C --> D["Deterministic observations"]
-    D --> E["Policy-gated agent loop"]
-    E --> F["Event-sourced graph"]
-    F --> G["Human review & export"]
-    E -. "provider gagal" .-> H["Deterministic fallback"]
-    H --> F
+    A["Public seed URL"] --> B["Policy validation"]
+    B --> C["Isolated browser capture"]
+    C --> D["Verified evidence package"]
+    D --> E["Deterministic extraction"]
+    E --> F["Append-only event store"]
+    F --> G["Temporal graph + replay"]
+    E --> H["Candidate leads"]
+    H --> I["Human review"]
+    I --> F
+    J["Optional model adapter"] -. "selects only safe server-issued actions" .-> C
+    K["Deterministic fallback"] -. "used when unavailable or invalid" .-> C
 ```
 
-Model tidak mengontrol browser secara langsung. Model hanya menerima konteks yang sudah
-dinormalisasi dan reference aman yang diterbitkan server. Semua tool request tetap divalidasi oleh
-policy HAWK-EYE.
+The model is deliberately **not** given unrestricted browser, shell, or filesystem access. It sees a
+normalized page context and may choose only from bounded references issued by the server. The policy
+layer remains authoritative regardless of provider.
 
-## Struktur repository
+## Investigation workspace
+
+The interface is organized around a single evidence trail:
+
+- **Case summary** shows scope, capture adequacy, indicator counts, candidates, and review state.
+- **Graph workspace** distinguishes seed domains, captured pages, contacts, claims, payments,
+  brands, and pending destinations with stable visual semantics.
+- **Evidence inspector** connects a selected observation to its page, artifact, extraction method,
+  timestamp, and limitation note.
+- **Replay timeline** reconstructs graph state from persisted events and separates live, completed,
+  and historical states.
+- **Progressive scan** displays real capture frames and truthful phase updates while the isolated
+  worker is running.
+- **Case summary and exports** provide human-readable Markdown, JSON, and a portable evidence
+  package for review.
+
+## Architecture
 
 ```text
 apps/
 ├── api/
-│   └── src/hawkeye/       Python, FastAPI, collector, agent, storage, CLI
-└── web/                    React, Vite, Tailwind, shadcn/ui
-tests/                      Test IDs dan fixture paths yang stabil
-evaluation/                 Controlled fixtures, manifests, benchmark
-docs/                       Goal, decisions, status, deployment, evaluation
-gemastik-2026/              Sumber Markdown paket GEMASTIK
-infra/docker/               Catatan khusus container
-scripts/                    Build dan acceptance verification
-data/                       Data lokal; di-ignore Git
+│   └── src/hawkeye/       FastAPI, collector, policy, model adapter, storage
+└── web/                    React, Vite, Tailwind CSS, shadcn-style components
+
+tests/                      Backend, UI contract, security, and regression tests
+evaluation/                 Controlled fixtures and benchmark inputs
+docs/                       Architecture, decisions, deployment, status, and evaluation
+gemastik-2026/              Competition proposal and supporting material
+infra/docker/               Entrypoint, Chromium seccomp, and container guidance
+data/                       Local cases and SQLite workspace (ignored)
 ```
 
-File manifest tetap berada di root agar satu command dapat mengorkestrasi seluruh monorepo:
+### Engineering decisions
 
-- `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml` — JavaScript dan root commands.
-- `pyproject.toml`, `uv.lock`, `.python-version` — Python dan packaging.
-- `Dockerfile`, `compose.yaml` — deployment lokal satu service.
+- **One source of truth:** case artifacts and append-only SQLite events drive graph, inspector,
+  timeline, review state, and exports.
+- **Deterministic by default:** core capture and extraction work without an LLM credential.
+- **Provider-neutral AI:** the optional adapter supports strict OpenAI Responses or Chat Completions
+  compatible endpoints without coupling the evidence model to a vendor.
+- **Killable browser boundary:** browser work runs outside the API process and is terminated as a
+  process tree when its wall-clock deadline expires.
+- **Local-first security:** the default server binds to loopback; Docker runs non-root with a
+  read-only root filesystem, dropped capabilities, a pinned Chromium seccomp profile, and persistent
+  data mounted separately.
+- **Truthful uncertainty:** evidence similarity is not ownership probability, and a candidate is not
+  a confirmed operator relationship.
 
-Folder `.venv`, `node_modules`, `build`, `dist`, `data`, `tmp`, caches, dan `*.egg-info` adalah hasil
-lokal/generated dan tidak masuk Git.
+## Technology stack
 
-## Konfigurasi model opsional
+| Layer               | Technology                                                   |
+| ------------------- | ------------------------------------------------------------ |
+| Web application     | React 19, TypeScript, Vite 8, Tailwind CSS 4, TanStack Query |
+| API and domain core | Python 3.12, FastAPI, Pydantic                               |
+| Browser collection  | Playwright 1.50, Chromium                                    |
+| Evidence processing | Beautiful Soup, Pillow, optional Tesseract OCR               |
+| Persistence         | Append-only SQLite workspace plus filesystem case packages   |
+| Quality             | Pytest, Vitest, Ruff, mypy strict, ESLint, Prettier          |
+| Tooling             | pnpm workspace, uv lockfile, multi-stage Docker build        |
 
-Tanpa model, seluruh produk tetap bekerja memakai deterministic fallback. Label **Fallback aman**
-di landing page berarti base URL/model belum dikonfigurasi, bukan engine mati.
+## Quick start
 
-Salin `.env.example` menjadi `.env`, kemudian isi:
+### Option A — Docker
+
+The simplest path requires Docker Desktop with Compose v2.
+
+```bash
+git clone https://github.com/myudak/hawkeye-judolgraph.git
+cd hawkeye-judolgraph
+docker compose up -d --build
+```
+
+Open [http://127.0.0.1:8760](http://127.0.0.1:8760). Local investigation data persists under
+`./data` across container restarts.
+
+```bash
+docker compose down
+```
+
+### Option B — Manual development
+
+Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22.12+, and Corepack.
+
+```bash
+git clone https://github.com/myudak/hawkeye-judolgraph.git
+cd hawkeye-judolgraph
+
+corepack enable
+pnpm install --frozen-lockfile
+pnpm setup
+pnpm dev
+```
+
+This starts FastAPI on `127.0.0.1:8760` and Vite on `127.0.0.1:5173` with API proxying and hot
+module replacement.
+
+## Optional model configuration
+
+HAWK-EYE remains functional without a model. To enable provider-assisted action selection, copy
+`.env.example` to the ignored `.env` file and configure an OpenAI-compatible endpoint:
 
 ```dotenv
-HAWKEYE_LLM_BASE_URL=https://provider.example/v1
-HAWKEYE_LLM_API_KEY=isi-hanya-di-mesin-lokal
-HAWKEYE_LLM_MODEL=model-id
-HAWKEYE_LLM_API_STYLE=auto
+HAWKEYE_LLM_BASE_URL=https://openrouter.ai/api/v1
+HAWKEYE_LLM_API_KEY=replace-with-your-key
+HAWKEYE_LLM_MODEL=openai/gpt-5.6-luna
+HAWKEYE_LLM_API_STYLE=chat_completions
 HAWKEYE_LLM_TIMEOUT_SECONDS=15
 ```
 
-Untuk mode manual yang membaca `.env`:
+Run the explicit, opt-in handshake before starting the application:
 
-```powershell
+```bash
+uv run --env-file .env hawkeye llm-probe
 pnpm start:env
 ```
 
-Compose membaca `.env` secara otomatis. Landing page tidak melakukan probe berbayar. Verifikasi
-provider secara eksplisit dengan:
+The UI reports one of five honest capability states: `fallback_only`,
+`model_configured_unverified`, `model_ready`, `model_unavailable`, or `configuration_invalid`.
+Opening the landing page never performs a paid model probe.
 
-```powershell
-uv run --env-file .env hawkeye llm-probe `
-  --output verification-output/llm-capability.json
-```
+<details>
+<summary><strong>OpenRouter with Docker</strong></summary>
 
-### Memakai Codex LB lokal
-
-Codex LB dapat dipakai sebagai provider OpenAI-compatible biasa:
+Add the key and desired model to `.env`, then use the checked-in override:
 
 ```dotenv
-HAWKEYE_LLM_BASE_URL=http://127.0.0.1:2455/v1
-HAWKEYE_LLM_MODEL=gpt-5.6-terra
-HAWKEYE_LLM_API_STYLE=auto
+OPENROUTER_APIKEY=replace-with-your-key
+OPENROUTER_MODEL=openai/gpt-5.6-luna
 ```
 
-Jika Codex LB sudah menyimpan credential upstream, HAWK-EYE tidak perlu menggandakan API key.
-Untuk container yang mengakses gateway di host, gunakan
-`http://host.docker.internal:2455/v1`. Plain HTTP ini hanya diterima di container development;
-provider remote harus HTTPS.
-
-`auto` mencoba Responses API terlebih dahulu dan berpindah ke Chat Completions hanya ketika route
-Responses benar-benar tidak tersedia (`404/405`). Redirect, response terlalu besar, timeout,
-schema salah, dan reference yang tidak diterbitkan server gagal tertutup ke deterministic fallback.
-
-### OpenRouter + demo domain
-
-Isi `OPENROUTER_APIKEY` hanya di `.env`. Model default override adalah
-`openai/gpt-5.6-luna`, dan dapat diganti melalui `OPENROUTER_MODEL`. Jalankan:
-
-```powershell
+```bash
 docker compose -f compose.yaml -f compose.openrouter.yaml up -d --build
 ```
 
-Override ini tetap mem-publish Docker ke host loopback, mengaktifkan Chat Completions OpenRouter,
-dan mengizinkan exact browser origin `https://hawkeye.myudak.com`. `HAWKEYE_AUTH_USERNAME` dan
-`HAWKEYE_AUTH_PASSWORD` tetap opsional: kosong berarti tanpa login. Exact Origin adalah guard CSRF
-browser, **bukan authentication**; direct client dapat mengirim Origin sendiri.
+The credential is supplied only at runtime and is not baked into the image.
 
-## Access gate opsional
+</details>
 
-Untuk melindungi seluruh UI, API, screenshot, review, dan export dengan satu credential operator,
-isi kedua nilai berikut di `.env`:
+## Security and evidence boundary
 
-```dotenv
-HAWKEYE_AUTH_USERNAME=ganti-username
-HAWKEYE_AUTH_PASSWORD=ganti-password-panjang
+HAWK-EYE intentionally trades unrestricted autonomy for reproducibility and operator control.
+
+### It does
+
+- collect publicly accessible, read-only content within a bounded scope;
+- validate destinations before browser navigation;
+- keep artifact provenance and integrity metadata;
+- reject model references that were not issued by the server;
+- require human review before treating a candidate relationship as accepted;
+- preserve review decisions in append-only history.
+
+### It does not
+
+- bypass authentication, CAPTCHA, Cloudflare, geographic restrictions, or rate limits;
+- log in, submit forms, send messages, initiate payments, or download arbitrary files;
+- automatically crawl candidate domains;
+- claim legal status, criminality, ownership, or operator identity;
+- treat a similarity score as a probability of common ownership.
+
+The optional public demo configuration adds an exact browser-origin boundary and optional HTTP Basic
+Auth, but it is not a substitute for a multi-user authorization architecture. The supported default
+remains a local, single-investigator deployment.
+
+## Developer workflow
+
+| Command              | Purpose                                                     |
+| -------------------- | ----------------------------------------------------------- |
+| `pnpm setup`         | Sync locked Python dependencies and install Chromium.       |
+| `pnpm dev`           | Run API and web development servers together.               |
+| `pnpm build`         | Build React into the backend static bundle.                 |
+| `pnpm start`         | Build and run the production-like local server.             |
+| `pnpm check`         | Run formatting, lint, types, tests, build, and diff checks. |
+| `pnpm package`       | Build the UI and produce an installable Python wheel.       |
+| `pnpm verify:manual` | Exercise a clean manual installation and health check.      |
+| `pnpm verify:docker` | Run the isolated Docker acceptance suite.                   |
+
+Useful CLI entry points:
+
+```bash
+uv run hawkeye collect https://example.com --output data/cases
+uv run hawkeye app --data data --port 8760
+uv run hawkeye benchmark --output data/benchmark
+uv run hawkeye demo --output data/demo
+uv run hawkeye llm-probe
 ```
 
-Kemudian jalankan `pnpm start:env` atau `docker compose up --build -d`. Konfigurasi parsial ditolak
-saat startup, credential tidak dipersist ke case/event/export, dan `/health` tetap publik. HTTP
-Basic hanya merupakan access gate; ia **tidak mengenkripsi** credential. Pertahankan loopback/SSH
-tunnel, atau gunakan reverse proxy HTTPS sebelum akses jaringan.
+Live URLs are opt-in qualitative inputs, not automated test truth. The deterministic test suite uses
+controlled local fixtures.
 
-## Menjalankan di komputer lain
+## Documentation
 
-HAWK-EYE saat ini adalah aplikasi single-investigator dengan access gate HTTP Basic opsional,
-bukan sistem akun multi-user, dan tidak membawa TLS sendiri. Jalankan Docker di server, tetapi
-pertahankan bind loopback. Akses dari laptop melalui SSH tunnel:
+- [Product goal](docs/GOAL.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Architecture decisions](docs/DECISIONS.md)
+- [Current verification status](docs/STATUS.md)
+- [Evaluation protocol](docs/EVALUATION.md)
+- [Deployment and backup guide](docs/DEPLOYMENT.md)
+- [Docker runtime notes](infra/docker/README.md)
+- [GEMASTIK 2026 package](gemastik-2026/README.md)
 
-```powershell
-ssh -N -L 8760:127.0.0.1:8760 user@alamat-server
-```
+## Project story
 
-Kemudian buka `http://127.0.0.1:8760` di laptop. Tailscale/WireGuard dapat dipakai sebagai jalur SSH,
-tetapi aplikasi tetap tidak perlu dibuka langsung ke jaringan.
+HAWK-EYE was built as a GEMASTIK-ready engineering project around a deceptively difficult question:
+how can a web investigation be visually useful without becoming opaque, over-automated, or
+semantically careless?
 
-Jangan melakukan router port-forward langsung ke port 8760. Ada exception demo sementara untuk
-`hawkeye.myudak.com` melalui outbound-only Cloudflare Tunnel; ini bukan dukungan public production.
-Public production tetap membutuhkan HTTPS edge, identitas/authorization, rate limit, dan threat
-model terpisah.
-Panduan lebih lengkap tersedia di [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The implementation spans browser isolation, evidence packaging, deterministic extraction, policy-
+constrained model assistance, append-only persistence, temporal graph projection, human review,
+container hardening, and a production-grade React interface. The product is intentionally honest
+about incomplete capture and uncertain relationships—the parts most dashboards hide.
 
-## Data dan backup
+## Author
 
-```text
-data/
-├── cases/                 Case packages dan bukti canonical
-├── workspace/             Append-only SQLite events/assertions/reviews
-└── comparisons/           Dokumen perbandingan offline terverifikasi
-```
-
-Backup paling aman:
-
-1. Stop HAWK-EYE.
-2. Salin seluruh folder `data/`.
-3. Simpan salinan beserta tanggal dan versi commit aplikasi.
-
-Export Markdown/JSON/ZIP di UI membantu handoff satu case, tetapi bukan pengganti canonical case
-directory dan SQLite history.
-
-## Perintah developer
-
-| Command | Fungsi |
-| --- | --- |
-| `pnpm setup` | Sync Python lock dan install Chromium |
-| `pnpm dev` | FastAPI + Vite HMR |
-| `pnpm build` | Build React ke generated backend static bundle |
-| `pnpm start` | Build lalu jalankan aplikasi manual |
-| `pnpm start:env` | Sama seperti `start`, tetapi membaca `.env` |
-| `pnpm check` | Format, lint, type, frontend tests, backend tests, build |
-| `pnpm package` | Build UI dan Python wheel |
-| `pnpm verify:manual` | Start/health/landing/fallback smoke test terisolasi |
-| `pnpm verify:docker` | Build + non-root/browser/OCR/persistence Docker acceptance |
-| `pnpm clean` | Hapus generated build/package output; tidak menyentuh `data` |
-| `pnpm clean:cache` | Hapus cache Ruff/mypy/pytest |
-
-Wheel di `dist/` berisi backend, CLI, generated UI, dan controlled interaction manifest. Packaging
-gagal bila `index.html`, CSS, entry JavaScript, atau chunks tidak lengkap.
-
-## CLI utama
-
-```powershell
-uv run hawkeye app --data ./data --port 8760
-uv run hawkeye investigate https://example.com --output ./data/cases
-uv run hawkeye compare <case-a> <case-b> --output <comparison.json>
-uv run hawkeye evaluate <manifest.json> <case-directory> --report <report.json>
-uv run hawkeye diagnose <case-directory> --mode live
-uv run hawkeye benchmark --output <new-directory> --agent-attempts 3
-uv run hawkeye demo --output <new-directory>
-```
-
-Normal CLI sengaja tidak memiliki arbitrary `--host`; ia selalu bind ke `127.0.0.1`. Entry point
-internal container bind ke network namespace container, tetapi Compose hanya meneruskannya ke host
-loopback.
-
-## Verifikasi release
-
-```powershell
-pnpm install --frozen-lockfile
-uv sync --locked --extra dev
-pnpm check
-pnpm verify:manual
-pnpm package
-pnpm verify:docker
-git diff --check
-```
-
-Docker acceptance menggunakan temporary data directory dan port loopback acak. Script memverifikasi
-health, non-root UID, Chromium, Tesseract, port publishing, dan persistence setelah `down/up`, lalu
-membersihkan test container.
-
-## Troubleshooting
-
-### Situs tampil di Chrome tetapi capture HAWK-EYE blank
-
-Playwright tidak otomatis mewarisi cookie, session, atau extension VPN dari Chrome/Edge. Aktifnya VPN
-browser extension bukan bukti bahwa worker Python memakai route yang sama. Jangan mengubah blank
-capture menjadi bukti palsu; cek screenshot/readiness artifact dan ulangi hanya melalui network
-route yang memang dikonfigurasi untuk process/container.
-
-### Label masih “Fallback aman”
-
-- Pastikan base URL dan model keduanya terisi.
-- Untuk manual `.env`, gunakan `pnpm start:env`, bukan `pnpm start`.
-- Restart server setelah mengubah environment.
-- Jalankan `hawkeye llm-probe` untuk membedakan timeout, route unsupported, dan schema mismatch.
-
-### Chromium executable tidak ditemukan
-
-```powershell
-uv run playwright install chromium
-```
-
-Versi `playwright` di `uv.lock` harus cocok dengan browser image di `Dockerfile`.
-
-### Port 8760 sudah dipakai
-
-Untuk Compose, ubah `HAWKEYE_PORT` di `.env`. Untuk manual CLI, gunakan `--port` lain. Semua mode
-tetap bind ke loopback.
-
-### Docker tidak dapat menulis `data`
-
-Pastikan directory host pada `HAWKEYE_DATA_PATH` dapat ditulis oleh user non-root container.
-
-## Sumber kebenaran proyek
-
-Scope, acceptance boundary, keputusan keamanan, status, dan protokol evaluasi berada di
-[`docs/`](docs/). Live URL adalah observasi kualitatif opt-in, bukan unit-test truth. Frozen G2/G3,
-benchmark fixture, case evidence, dan append-only review history tidak diubah oleh reorganisasi
-monorepo ini.
+<div align="center">
+  <strong>Built by Yuda / myudak</strong>
+  <br />
+  <br />
+  <a href="https://github.com/myudak">GitHub</a>
+  ·
+  <a href="https://myudak.com">Portfolio</a>
+  ·
+  <a href="mailto:yudaplzhacker@gmail.com">Email</a>
+  ·
+  <a href="https://hawkeye.myudak.com">Live product</a>
+  <br />
+  <br />
+  <em>Precision. Persistence. Truth.</em>
+</div>
