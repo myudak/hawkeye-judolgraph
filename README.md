@@ -199,7 +199,7 @@ Run the explicit, opt-in handshake before starting the application:
 
 ```bash
 uv run --env-file .env hawkeye llm-probe
-pnpm start:env
+pnpm start
 ```
 
 The UI reports one of five honest capability states: `fallback_only`,
@@ -251,16 +251,16 @@ remains a local, single-investigator deployment.
 
 ## Developer workflow
 
-| Command              | Purpose                                                     |
-| -------------------- | ----------------------------------------------------------- |
-| `pnpm setup`         | Sync locked Python dependencies and install Chromium.       |
-| `pnpm dev`           | Run API and web development servers together.               |
-| `pnpm build`         | Build React into the backend static bundle.                 |
-| `pnpm start`         | Build and run the production-like local server.             |
-| `pnpm check`         | Run formatting, lint, types, tests, build, and diff checks. |
-| `pnpm package`       | Build the UI and produce an installable Python wheel.       |
-| `pnpm verify:manual` | Exercise a clean manual installation and health check.      |
-| `pnpm verify:docker` | Run the isolated Docker acceptance suite.                   |
+| Command              | Purpose                                                              |
+| -------------------- | -------------------------------------------------------------------- |
+| `pnpm setup`         | Sync locked Python dependencies and install Chromium.                |
+| `pnpm dev`           | Run API and web development servers together with optional `.env`.   |
+| `pnpm build`         | Build React into the backend static bundle.                          |
+| `pnpm start`         | Build and run the production-like local server with optional `.env`. |
+| `pnpm check`         | Run formatting, lint, types, tests, build, and diff checks.          |
+| `pnpm package`       | Build the UI and produce an installable Python wheel.                |
+| `pnpm verify:manual` | Exercise a clean manual installation and health check.               |
+| `pnpm verify:docker` | Run the isolated Docker acceptance suite.                            |
 
 Useful CLI entry points:
 

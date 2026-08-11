@@ -9,10 +9,9 @@
   },
   "scripts": {
     "setup": "uv sync --locked --extra dev && uv run playwright install chromium",
-    "dev": "concurrently --kill-others --names API,WEB --prefix-colors magenta,cyan \"uv run hawkeye app --data data --port 8760\" \"pnpm --filter @hawkeye/web dev\"",
+    "dev": "concurrently --kill-others --names API,WEB --prefix-colors magenta,cyan \"node scripts/run_api.mjs\" \"pnpm --filter @hawkeye/web dev\"",
     "build": "pnpm --filter @hawkeye/web build",
-    "start": "pnpm build && uv run hawkeye app --data data --port 8760",
-    "start:env": "pnpm build && uv run --env-file .env hawkeye app --data data --port 8760",
+    "start": "pnpm build && node scripts/run_api.mjs",
     "check:web": "pnpm --filter @hawkeye/web check",
     "check:api": "uv run ruff format --check . && uv run ruff check . && uv run mypy apps/api/src/hawkeye && uv run pytest -q",
     "check": "pnpm check:web && pnpm build && pnpm check:api && git diff --check",
