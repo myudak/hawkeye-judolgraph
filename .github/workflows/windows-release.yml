@@ -18,7 +18,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-2025
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       PLAYWRIGHT_BROWSERS_PATH: "0"
     steps:
@@ -57,14 +57,18 @@ jobs:
           pnpm install --frozen-lockfile
           uv sync --locked --extra dev --extra desktop
           uv run playwright install chromium
-      - name: Run repository quality gates
-        run: pnpm check
+      - name: Run release-specific preflight
+        run: |
+          pnpm check:web
+          pnpm check:api:static
+          pnpm test:release
+          git diff --check
       - name: Build frontend and Windows distribution
         shell: pwsh
         run: |
           pnpm build
           choco install innosetup --no-progress -y
-          uv run python scripts/build_windows.py --version '${{ steps.version.outputs.value }}' --installer
+          uv run python scripts/build_windows.py --version '${{ steps.version.outputs.value }}' --skip-browser-install --installer
       - name: Verify frozen application
         run: uv run python scripts/verify_windows_bundle.py dist/windows/HAWK-EYE/HAWK-EYE.exe
       - name: Verify installer round trip

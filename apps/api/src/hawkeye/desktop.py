@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from types import TracebackType
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Protocol, cast
 
 import uvicorn
 from PIL import Image
@@ -30,6 +30,33 @@ _APP_NAME = "HAWK-EYE"
 _DEFAULT_PORT = 8760
 _READY_TIMEOUT_SECONDS = 20.0
 _SETTINGS_FILENAME = "settings.env"
+
+
+class _MsvcrtApi(Protocol):
+    LK_NBLCK: int
+    LK_UNLCK: int
+
+    def locking(self, file_descriptor: int, mode: int, byte_count: int) -> None: ...
+
+
+class _SocketApi(Protocol):
+    SO_EXCLUSIVEADDRUSE: int
+
+
+class _WindowsOsApi(Protocol):
+    def startfile(self, path: Path) -> None: ...
+
+
+class _User32Api(Protocol):
+    def MessageBoxW(self, owner: int, message: str, title: str, flags: int) -> int: ...
+
+
+class _WindowsDllApi(Protocol):
+    user32: _User32Api
+
+
+class _CtypesWindowsApi(Protocol):
+    windll: _WindowsDllApi
 
 
 @dataclass(frozen=True)
@@ -82,6 +109,8 @@ class _SingleInstance:
             return True
         import msvcrt
 
+        msvcrt_api = cast(_MsvcrtApi, msvcrt)
+
         self._path.parent.mkdir(parents=True, exist_ok=True)
         handle = self._path.open("a+b")
         if handle.seek(0, os.SEEK_END) == 0:
@@ -89,7 +118,7 @@ class _SingleInstance:
             handle.flush()
         handle.seek(0)
         try:
-            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            msvcrt_api.locking(handle.fileno(), msvcrt_api.LK_NBLCK, 1)
         except OSError:
             handle.close()
             return False
@@ -102,9 +131,11 @@ class _SingleInstance:
         if os.name == "nt":
             import msvcrt
 
+            msvcrt_api = cast(_MsvcrtApi, msvcrt)
+
             self._handle.seek(0)
             try:
-                msvcrt.locking(self._handle.fileno(), msvcrt.LK_UNLCK, 1)
+                msvcrt_api.locking(self._handle.fileno(), msvcrt_api.LK_UNLCK, 1)
             except OSError:
                 pass
         self._handle.close()
@@ -231,7 +262,9 @@ def _requested_port(cli_port: int | None) -> int:
 
 def _bind_loopback(port: int) -> socket.socket:
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    if os.name == "nt":
+        socket_api = cast(_SocketApi, socket)
+        listener.setsockopt(socket.SOL_SOCKET, socket_api.SO_EXCLUSIVEADDRUSE, 1)
     try:
         listener.bind(("127.0.0.1", port))
         listener.listen(128)
@@ -281,13 +314,14 @@ def _run_tray(
     server: uvicorn.Server,
     server_thread: threading.Thread,
 ) -> None:
-    import pystray  # type: ignore[import-untyped]
+    import pystray
 
     def open_app(_: Any = None, __: Any = None) -> None:
         webbrowser.open(url, new=2)
 
     def open_data(_: Any = None, __: Any = None) -> None:
-        os.startfile(paths.root)
+        os_api = cast(_WindowsOsApi, os)
+        os_api.startfile(paths.root)
 
     icon = pystray.Icon(
         "hawkeye",
@@ -441,6 +475,7 @@ def _show_error(message: str) -> None:
     if os.name == "nt":
         import ctypes
 
-        ctypes.windll.user32.MessageBoxW(0, message, _APP_NAME, 0x10)
+        ctypes_api = cast(_CtypesWindowsApi, ctypes)
+        ctypes_api.windll.user32.MessageBoxW(0, message, _APP_NAME, 0x10)
     else:
         print(message, file=sys.stderr)

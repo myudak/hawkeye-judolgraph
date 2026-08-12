@@ -26,6 +26,7 @@ hawkeye-container = "hawkeye.container:main"
 dev = [
   "mypy>=1.13.0",
   "pytest>=8.3.3",
+  "pytest-xdist>=3.8.0",
   "ruff>=0.8.0",
   "httpx>=0.28.0",
   "types-beautifulsoup4>=4.12.0.20241020",
@@ -67,3 +68,7 @@ strict = true
 warn_unused_ignores = true
 exclude = ["^tests/"]
 mypy_path = "apps/api/src"
+
+[[tool.mypy.overrides]]
+module = ["pystray", "pystray.*"]
+ignore_missing_imports = true
