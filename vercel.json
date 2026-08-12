@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @hawkeye/marketing build",
-  "outputDirectory": "apps/marketing/dist"
+  "buildCommand": "pnpm --filter @hawkeye/marketing build && node -e \"require('node:fs').cpSync('apps/marketing/dist','dist',{recursive:true})\"",
+  "outputDirectory": "dist"
 }
