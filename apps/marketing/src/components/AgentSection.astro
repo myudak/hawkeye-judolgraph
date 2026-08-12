@@ -1,0 +1,18 @@
+---
+import { ArrowRightIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
+import { AgentBrowserDemo } from "./AgentBrowserDemo";
+const steps = [
+  ["Observasi", "Observation"],
+  ["Aksi agen", "Agent action"],
+  ["Ekstraksi bukti", "Evidence extraction"],
+  ["Tinjauan manusia", "Human review"],
+  ["Relasi terverifikasi", "Verified relationship"],
+];
+---
+
+<section class="section agent-section" aria-labelledby="agent-title"><div class="shell">
+  <div class="section-heading section-heading--split"><div><p class="section-label"><span class="lang-id">Eksplorasi berbatas</span><span class="lang-en">Bounded assistance</span></p><h2 id="agent-title"><span class="lang-id">Agen menelusuri.<br />Manusia memutuskan.</span><span class="lang-en">Agents explore.<br />Humans decide.</span></h2></div><p><span class="lang-id">Agen HAWK-EYE dapat membuka bukti publik tersembunyi secara aman, tetapi tidak membuat kesimpulan atribusi. Setiap aksi dibatasi, dicatat, dan dapat ditinjau.</span><span class="lang-en">HAWK-EYE agents can reveal safe hidden evidence, but they do not make attribution conclusions. Every action is constrained, recorded, and reviewable.</span></p></div>
+  <AgentBrowserDemo client:visible />
+  <ol class="agent-flow">{steps.map(([id, en], index) => <li><span>{String(index + 1).padStart(2, "0")}</span><strong class="lang-id">{id}</strong><strong class="lang-en">{en}</strong>{index < steps.length - 1 && <i aria-hidden="true"><ArrowRightIcon /></i>}</li>)}</ol>
+  <div class="agent-rules"><article class="rule-card rule-card--allowed"><span class="rule-card__icon"><CheckIcon aria-hidden="true" /></span><div><p class="section-label">Agents may</p><h3>Reveal observable public evidence.</h3></div><ul><li>Inspect visible content</li><li>Open safe public routes</li><li>Reveal menus and tabs</li><li>Record evidence</li></ul></article><article class="rule-card rule-card--blocked"><span class="rule-card__icon"><XIcon aria-hidden="true" /></span><div><p class="section-label">Agents may not</p><h3>Cross a safety boundary.</h3></div><ul><li>Log in or submit forms</li><li>Download files</li><li>Bypass restrictions</li><li>Make attribution claims</li></ul></article></div>
+</div></section>

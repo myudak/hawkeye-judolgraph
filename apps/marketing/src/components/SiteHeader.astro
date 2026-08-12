@@ -1,26 +1,14 @@
 ---
-import BrandMark from "./BrandMark.astro";
-import Icon from "./Icon.astro";
-
-interface Props {
-  demoUrl: string;
-}
-
-const { demoUrl } = Astro.props;
+import { Logo } from "@hawkeye/brand";
+import { DownloadSimpleIcon, MoonStarsIcon } from "@phosphor-icons/react";
+import avatar from "../assets/hawkeye-avatar.png";
+import { MobileNavDrawer } from "./MobileNavDrawer";
+interface Props { demoUrl: string; repositoryUrl: string; releaseUrl: string }
+const { demoUrl, repositoryUrl, releaseUrl } = Astro.props;
 ---
 
-<header class="site-header" data-header>
-  <div class="shell site-header__inner">
-    <BrandMark compact />
-    <nav aria-label="Navigasi utama">
-      <a href="#produk">Produk</a>
-      <a href="#cara-kerja">Cara kerja</a>
-      <a href="#bukti">Bukti</a>
-      <a href="#download">Download</a>
-    </nav>
-    <a class="header-cta" href={demoUrl} target="_blank" rel="noreferrer">
-      Coba web
-      <Icon name="external" size={16} />
-    </a>
-  </div>
-</header>
+<header class="site-header" data-header><div class="shell site-header__inner">
+  <a href="#top" class="site-logo" aria-label="HAWK-EYE home"><Logo imageSrc={avatar.src} /></a>
+  <nav class="desktop-nav" aria-label="Navigasi utama"><a href="#platform">Platform</a><a href="#how-it-works"><span class="lang-id">Cara kerja</span><span class="lang-en">How it works</span></a><a href="#safety"><span class="lang-id">Keamanan</span><span class="lang-en">Safety</span></a><a href="#compare"><span class="lang-id">Bandingkan</span><span class="lang-en">Compare</span></a></nav>
+  <div class="site-header__actions"><button class="icon-button language-button" type="button" data-language-toggle aria-label="Ganti bahasa"><span data-language-label>EN</span></button><button class="icon-button theme-button" type="button" data-theme-toggle aria-label="Ganti tema warna"><MoonStarsIcon aria-hidden="true" /></button><a class="github-link" href={repositoryUrl} target="_blank" rel="noreferrer">GitHub ↗</a><a class="header-demo" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Coba demo</span><span class="lang-en">Try demo</span></a><a class="button button--primary header-launch" href={releaseUrl} target="_blank" rel="noreferrer"><DownloadSimpleIcon /><span class="lang-id">Unduh</span><span class="lang-en">Download</span></a><MobileNavDrawer avatar={avatar.src} demoUrl={demoUrl} repositoryUrl={repositoryUrl} releaseUrl={releaseUrl} client:load /></div>
+</div></header>

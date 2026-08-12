@@ -1,6 +1,7 @@
 packages:
   - apps/web
   - apps/marketing
+  - packages/*
 
 sharedWorkspaceLockfile: true
 disallowWorkspaceCycles: true

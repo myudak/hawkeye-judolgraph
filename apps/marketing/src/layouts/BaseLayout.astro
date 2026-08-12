@@ -1,57 +1,32 @@
 ---
 import "@fontsource-variable/newsreader";
+import "@fontsource-variable/geist";
 import "@fontsource-variable/public-sans";
+import "@hawkeye/design/globals.css";
 import "../styles/global.css";
 import overviewImage from "../assets/product-overview.png";
 
-interface Props {
-  title: string;
-  description: string;
-  canonical?: string;
-  image?: string;
-}
-
-const {
-  title,
-  description,
-  canonical = Astro.site?.toString() ?? "https://hawkeye1.myudak.com",
-  image = new URL(
-    overviewImage.src,
-    Astro.site ?? "https://hawkeye1.myudak.com",
-  ).toString(),
-} = Astro.props;
+interface Props { title: string; description: string; canonical?: string; image?: string }
+const { title, description, canonical = Astro.site?.toString() ?? "https://hawkeye1.myudak.com", image = new URL(overviewImage.src, Astro.site ?? "https://hawkeye1.myudak.com").toString() } = Astro.props;
+const schema = { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "HAWK-EYE", applicationCategory: "SecurityApplication", operatingSystem: "Windows, Linux, macOS", description, url: canonical, codeRepository: "https://github.com/myudak/hawkeye-judolgraph", license: "https://opensource.org/license/mit" };
 ---
 
-<!doctype html>
-<html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    <meta name="theme-color" content="#070b12" />
-    <meta name="color-scheme" content="dark" />
-    <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="id_ID" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={image} />
-    <meta property="og:image:alt" content="HAWK-EYE evidence investigation workspace" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={image} />
-
-    <script is:inline>document.documentElement.classList.add("has-js");</script>
-    <title>{title}</title>
-  </head>
-  <body>
-    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
-    <slot />
-  </body>
-</html>
+<!doctype html><html lang="id" data-language="id" data-theme="dark"><head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content={description} /><meta name="theme-color" content="#06111c" /><meta name="color-scheme" content="dark light" /><link rel="canonical" href={canonical} /><link rel="icon" href="/favicon.ico" sizes="any" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:type" content="website" /><meta property="og:locale" content="id_ID" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:url" content={canonical} /><meta property="og:image" content={image} /><meta property="og:image:alt" content="HAWK-EYE evidence investigation workspace" />
+  <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content={image} />
+  <script is:inline>try{const theme=localStorage.getItem("hawkeye-theme");if(theme)document.documentElement.dataset.theme=theme;const language=localStorage.getItem("hawkeye-language");if(language){document.documentElement.dataset.language=language;document.documentElement.lang=language}}catch{}</script>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)}></script><title>{title}</title>
+</head><body><a class="skip-link" href="#main-content">Skip to main content</a><slot />
+<script>
+  const root = document.documentElement;
+  const languageButton = document.querySelector<HTMLButtonElement>("[data-language-toggle]");
+  const languageLabel = document.querySelector<HTMLElement>("[data-language-label]");
+  const syncLanguage = () => { if (languageLabel) languageLabel.textContent = root.dataset.language === "id" ? "EN" : "ID"; };
+  syncLanguage();
+  languageButton?.addEventListener("click", () => { const next = root.dataset.language === "id" ? "en" : "id"; root.dataset.language = next; root.lang = next; localStorage.setItem("hawkeye-language", next); syncLanguage(); });
+  document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => { const next = root.dataset.theme === "dark" ? "light" : "dark"; root.dataset.theme = next; localStorage.setItem("hawkeye-theme", next); });
+  const header = document.querySelector<HTMLElement>("[data-header]");
+  const syncHeader = () => header?.toggleAttribute("data-scrolled", window.scrollY > 8);
+  syncHeader(); window.addEventListener("scroll", syncHeader, { passive: true });
+</script></body></html>

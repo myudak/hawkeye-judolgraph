@@ -1,0 +1,9 @@
+---
+import { ArtifactGallery } from "./ArtifactGallery";
+import screenshotImage from "../assets/policy-block.png";
+---
+
+<section id="evidence" class="section shell evidence-section" aria-labelledby="evidence-title">
+  <div class="section-heading"><p class="section-label"><span class="lang-id">Bukti, bukan asumsi</span><span class="lang-en">Evidence, not assertion</span></p><h2 id="evidence-title"><span class="lang-id">Setiap klaim kembali<br />ke sumbernya.</span><span class="lang-en">Every claim resolves<br />to its source.</span></h2><p><span class="lang-id">Setiap node dan edge terhubung ke artefak yang dipreservasi. Pilih artefak untuk memeriksa isi, waktu pengambilan, dan referensi integritasnya.</span><span class="lang-en">Every node and edge in HAWK-EYE is connected to preserved artifacts. Select an artifact to inspect its content, timestamp, and integrity reference.</span></p></div>
+  <ArtifactGallery screenshot={screenshotImage.src} client:visible />
+</section>

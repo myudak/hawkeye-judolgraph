@@ -1,0 +1,56 @@
+---
+import { ArrowUpRightIcon, GithubLogoIcon } from "@phosphor-icons/react";
+import avatar from "../assets/hawkeye-avatar.png";
+
+const disciplines = [
+  ["01", "Evidence engineering", "Deterministic capture, artifact integrity, and provenance."],
+  ["02", "Safe exploration", "Bounded browser actions with visible policy outcomes."],
+  ["03", "Graph and replay", "Relationship exploration reconstructed from persisted events."],
+  ["04", "Product design", "An evidence-first interface for human interpretation."],
+];
+---
+
+<section class="section shell team-section" aria-labelledby="team-title">
+  <div class="section-heading section-heading--split">
+    <div>
+      <h2 id="team-title"><span class="lang-id">Dibangun oleh Yuda / myudak.</span><span class="lang-en">Built by Yuda / myudak.</span></h2>
+    </div>
+    <p>
+      <span class="lang-id">HAWK-EYE adalah proyek mahasiswa independen yang menggabungkan rekayasa bukti, keamanan web, sistem graph, dan desain interaksi yang dapat dijelaskan.</span><span class="lang-en">HAWK-EYE is an independent student project combining evidence engineering, web safety, graph systems, and explainable interaction design.</span>
+    </p>
+  </div>
+
+  <div class="team-profile">
+    <article class="team-profile__author">
+      <img src={avatar.src} width="256" height="256" alt="HAWK-EYE project mark" />
+      <div>
+        <span>Creator and maintainer</span>
+        <h3>Yuda / myudak</h3>
+        <p>
+          Designs and builds the investigation model, collection engine, evidence
+          workflow, graph experience, and release system.
+        </p>
+        <nav aria-label="Author links">
+          <a href="https://github.com/myudak" target="_blank" rel="noreferrer">
+            <GithubLogoIcon aria-hidden="true" /> GitHub
+          </a>
+          <a href="https://myudak.com" target="_blank" rel="noreferrer">
+            Portfolio <ArrowUpRightIcon aria-hidden="true" />
+          </a>
+        </nav>
+      </div>
+    </article>
+
+    <div class="team-disciplines" aria-label="Project disciplines">
+      {
+        disciplines.map(([index, title, description]) => (
+          <article>
+            <span>{index}</span>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

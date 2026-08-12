@@ -1,36 +1,9 @@
 ---
-import BrandMark from "./BrandMark.astro";
-import Icon from "./Icon.astro";
-
-interface Props {
-  demoUrl: string;
-  repositoryUrl: string;
-}
-
-const { demoUrl, repositoryUrl } = Astro.props;
+import { Logo } from "@hawkeye/brand";
+import avatar from "../assets/hawkeye-avatar.png";
+interface Props { repositoryUrl: string }
+const { repositoryUrl } = Astro.props;
+const columns = [{ title: "Platform", links: [["Evidence workflow", "#evidence"], ["Investigation graph", "#platform"], ["Replay system", "#how-it-works"]] }, { title: "Resources", links: [["Documentation", `${repositoryUrl}/tree/main/docs`], ["Evaluation protocol", `${repositoryUrl}/blob/main/docs/EVALUATION.md`], ["Threat model", `${repositoryUrl}/blob/main/docs/THREAT_MODEL.md`], ["GitHub", repositoryUrl]] }, { title: "Project", links: [["License", `${repositoryUrl}/blob/main/LICENSE`], ["Roadmap", `${repositoryUrl}/blob/main/docs/ROADMAP.md`], ["Status", `${repositoryUrl}/blob/main/docs/STATUS.md`], ["Contributing", `${repositoryUrl}/blob/main/CONTRIBUTING.md`]] }];
 ---
 
-<footer class="site-footer">
-  <div class="shell site-footer__grid">
-    <div>
-      <BrandMark />
-      <p>Alat investigasi ekosistem judi online berbasis bukti publik yang dapat ditelusuri.</p>
-    </div>
-    <div class="footer-links">
-      <span>Produk</span>
-      <a href="#produk">Fitur</a>
-      <a href="#cara-kerja">Cara kerja</a>
-      <a href={demoUrl} target="_blank" rel="noreferrer">Demo web</a>
-    </div>
-    <div class="footer-links">
-      <span>Proyek</span>
-      <a href={repositoryUrl} target="_blank" rel="noreferrer">GitHub <Icon name="external" size={13} /></a>
-      <a href={`${repositoryUrl}/tree/main/docs`} target="_blank" rel="noreferrer">Dokumentasi</a>
-      <a href="https://myudak.com" target="_blank" rel="noreferrer">Tentang pembuat</a>
-    </div>
-  </div>
-  <div class="shell site-footer__base">
-    <span>© {new Date().getFullYear()} HAWK-EYE / JudolGraph</span>
-    <span>Kandidat adalah lead, bukan kesimpulan.</span>
-  </div>
-</footer>
+<footer class="site-footer"><div class="shell site-footer__top"><div class="site-footer__brand"><Logo imageSrc={avatar.src} /><p>Evidence-driven public web investigation with provenance, neutrality, and explainable review.</p></div>{columns.map((column) => <nav aria-label={column.title}><strong>{column.title}</strong>{column.links.map(([label, href]) => <a href={href}>{label}</a>)}</nav>)}</div><div class="shell site-footer__bottom"><span>© 2026 HAWK-EYE</span><span>Open source <i>•</i> Local-first <i>•</i> Evidence-driven</span></div></footer>

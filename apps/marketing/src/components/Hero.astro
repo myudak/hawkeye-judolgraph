@@ -1,0 +1,17 @@
+---
+import { EvidenceGraph } from "@hawkeye/graph";
+import { ArrowUpRightIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+
+interface Props { demoUrl: string; releaseUrl: string; releaseLabel: string }
+const { demoUrl, releaseUrl, releaseLabel } = Astro.props;
+---
+
+<section class="hero shell" aria-labelledby="hero-title">
+  <div class="hero__copy">
+    <h1 id="hero-title"><span class="lang-en">Trace the public web.<br /><em>Prove every connection.</em></span><span class="lang-id">Telusuri web publik.<br /><em>Buktikan setiap hubungan.</em></span></h1>
+    <p class="hero__lead"><span class="lang-en">HAWK-EYE preserves what a public page showed, extracts observable facts, and maps every relationship back to evidence. Pending leads remain pending. Uncertainty stays visible.</span><span class="lang-id">HAWK-EYE menyimpan apa yang tampil di halaman publik, mengekstrak fakta yang dapat diamati, dan menghubungkan setiap relasi kembali ke bukti. Lead tetap pending. Ketidakpastian tetap terlihat.</span></p>
+    <div class="hero__actions"><a class="button button--primary" href={releaseUrl} target="_blank" rel="noreferrer"><DownloadSimpleIcon /><span class="lang-id">Unduh untuk Windows</span><span class="lang-en">{releaseLabel}</span></a><a class="button button--secondary" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Coba demo online</span><span class="lang-en">Try online demo</span><ArrowUpRightIcon /></a></div>
+    <ul class="trust-list" aria-label="Kualitas produk"><li>● <span class="lang-id">Berjalan lokal</span><span class="lang-en">Local-first</span></li><li>● <span class="lang-id">Sumber terbuka</span><span class="lang-en">Open source</span></li><li>● <span class="lang-id">Berbasis bukti</span><span class="lang-en">Evidence-backed</span></li></ul>
+  </div>
+  <div class="hero__graph"><div class="hero__graph-label"><span><span class="lang-id">Graph investigasi</span><span class="lang-en">Investigation graph</span></span><span><span class="lang-id">Contoh terkendali · 7 node</span><span class="lang-en">Controlled example · 7 nodes</span></span></div><EvidenceGraph compact client:load /></div>
+</section>
