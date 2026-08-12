@@ -11,10 +11,10 @@ import CompareSection from "../components/CompareSection.astro";
 import TeamSection from "../components/TeamSection.astro";
 
 const repositoryUrl = "https://github.com/myudak/hawkeye-judolgraph";
+const defaultWindowsDownloadUrl = `${repositoryUrl}/releases/download/v1.0.0/HAWK-EYE-Setup-1.0.0-windows-x64.exe`;
 const demoUrl = import.meta.env.PUBLIC_DEMO_URL || "https://hawkeye1.myudak.com";
-const directDownloadUrl = import.meta.env.PUBLIC_WINDOWS_DOWNLOAD_URL;
-const releaseUrl = directDownloadUrl || `${repositoryUrl}/releases`;
-const releaseLabel = directDownloadUrl ? "Download for Windows" : "Get Windows release";
+const releaseUrl = import.meta.env.PUBLIC_WINDOWS_DOWNLOAD_URL || defaultWindowsDownloadUrl;
+const releaseLabel = "Download for Windows";
 const title = "HAWK-EYE — Evidence-driven public web investigation";
 const description = "Preserve public web evidence, extract observable entities, and map explainable relationships with full provenance.";
 ---
