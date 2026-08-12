@@ -54,6 +54,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           uv sync --locked --extra dev --extra desktop
+          uv run playwright install chromium
       - name: Run repository quality gates
         run: pnpm check
       - name: Build frontend and Windows distribution
