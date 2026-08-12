@@ -5,6 +5,23 @@
 Evaluation measures engine behavior and evidence integrity. It does not evaluate criminality,
 ownership, or calibrated mirror-detection accuracy.
 
+## Windows distribution acceptance
+
+A release candidate is accepted only when a clean native Windows build proves all of the following:
+
+1. locked Python and JavaScript dependencies install without credentials;
+2. the generated React bundle and controlled fixture are present in the frozen application;
+3. the packaged executable passes its `spawn` worker probe and launches bundled Chromium without a
+   first-run download;
+4. the packaged server becomes healthy on an ephemeral loopback port and serves the actual React
+   shell;
+5. the executable closes with its child process tree and leaves user data outside the installation;
+6. portable ZIP, optional installer, and SHA-256 manifest contain no `.env`, LLM credential, live
+   capture, or workspace database.
+
+GitHub Actions repeats this gate on a native Windows runner before artifact upload or tagged release.
+Tesseract availability is reported separately because OCR is optional outside the Docker image.
+
 ## Corpus layout
 
 ```text

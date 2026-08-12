@@ -93,9 +93,7 @@ def test_missing_environment_configuration_means_fallback_only(
         "HAWKEYE_LLM_BASE_URL",
         "HAWKEYE_LLM_MODEL",
         "HAWKEYE_LLM_API_KEY",
-        "CODEX_BASE_URL",
-        "CODEX_MODEL",
-        "CODEX_API_KEY",
+        "HAWKEYE_LLM_ENABLED",
     ):
         monkeypatch.delenv(name, raising=False)
     assert LlmConfig.from_environment() is None
@@ -122,18 +120,20 @@ def test_host_gateway_plain_http_is_rejected_outside_container(
         LlmConfig(base_url="http://host.docker.internal:2455/v1", model="fixture")
 
 
-def test_codex_compatible_environment_aliases_are_provider_neutral(
+def test_provider_can_be_disabled_without_deleting_stored_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("CODEX_BASE_URL", "http://127.0.0.1:2455/v1")
-    monkeypatch.setenv("CODEX_MODEL", "fixture-codex-gateway")
-    monkeypatch.setenv("CODEX_API_KEY", "alias-secret")
-    config = LlmConfig.from_environment()
-    assert config is not None
-    assert config.base_url == "http://127.0.0.1:2455/v1"
-    assert config.model == "fixture-codex-gateway"
-    assert config.api_key == "alias-secret"
-    assert "alias-secret" not in repr(config)
+    monkeypatch.setenv("HAWKEYE_LLM_BASE_URL", "http://127.0.0.1:2455/v1")
+    monkeypatch.setenv("HAWKEYE_LLM_MODEL", "fixture-provider")
+    monkeypatch.setenv("HAWKEYE_LLM_API_KEY", "stored-secret")
+    monkeypatch.setenv("HAWKEYE_LLM_ENABLED", "0")
+    assert LlmConfig.from_environment() is None
+
+
+def test_invalid_provider_enabled_flag_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HAWKEYE_LLM_ENABLED", "sometimes")
+    with pytest.raises(ValueError, match="must be true or false"):
+        LlmConfig.from_environment()
 
 
 def test_workspace_reports_configured_model_without_automatic_probe(

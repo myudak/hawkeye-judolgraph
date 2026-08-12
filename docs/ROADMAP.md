@@ -152,6 +152,15 @@ headers remain untrusted, and CORS remains disabled. Optional HTTP Basic may be 
 the Origin rule alone is not authentication. This exception does not approve general public
 hosting, multi-user access, or production deployment.
 
+## G10 — Windows end-user distribution — implemented, verification pending
+
+Implementation scope: a non-elevated per-user installer and portable `onedir` ZIP, bundled matching
+Chromium, early frozen multiprocessing dispatch, browser auto-open, notification-area lifecycle,
+stable `%LOCALAPPDATA%` storage, SHA-256 release manifest, frozen-runtime smoke test, and native
+Windows GitHub release workflow. Completion requires the local quality gates plus a real frozen
+bundle/browser/health smoke test; those results are recorded in `docs/STATUS.md` rather than assumed
+from source inspection.
+
 ## Explicitly out of scope until separately approved
 
 - Unapproved deeper crawling or automatic real candidate-domain crawling.

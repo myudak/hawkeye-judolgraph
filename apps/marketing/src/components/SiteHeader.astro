@@ -1,0 +1,26 @@
+---
+import BrandMark from "./BrandMark.astro";
+import Icon from "./Icon.astro";
+
+interface Props {
+  demoUrl: string;
+}
+
+const { demoUrl } = Astro.props;
+---
+
+<header class="site-header" data-header>
+  <div class="shell site-header__inner">
+    <BrandMark compact />
+    <nav aria-label="Navigasi utama">
+      <a href="#produk">Produk</a>
+      <a href="#cara-kerja">Cara kerja</a>
+      <a href="#bukti">Bukti</a>
+      <a href="#download">Download</a>
+    </nav>
+    <a class="header-cta" href={demoUrl} target="_blank" rel="noreferrer">
+      Coba web
+      <Icon name="external" size={16} />
+    </a>
+  </div>
+</header>

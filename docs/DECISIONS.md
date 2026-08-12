@@ -425,3 +425,20 @@ request. Therefore Origin is described only as a browser CSRF guard: a direct cl
 and an unauthenticated demo is readable/callable by anyone who can reach the tunnel. Cloudflare
 provides external TLS/outbound tunneling, not application identity. General public hosting,
 multi-user authorization, router port-forwarding, and production deployment remain unapproved.
+
+## ADR-037 — Windows distribution is one-folder, per-user, and browser-hosted
+
+**Status:** accepted; extends ADR-004, ADR-031, ADR-032, and ADR-033.
+
+The Windows release freezes the existing Python service and generated React bundle with PyInstaller
+in `onedir` mode. It bundles only the Chromium revision required by locked Playwright, calls
+`multiprocessing.freeze_support()` before application imports, validates the frozen spawn/browser
+paths before release, starts one loopback server, and opens the system browser. A notification-area
+control owns reopen/data/exit actions; no embedded browser is granted privileged APIs.
+
+Mutable state lives under `%LOCALAPPDATA%\HAWK-EYE`, outside both installer and portable folders.
+The Inno Setup package installs per user without elevation and preserves data on uninstall. The
+portable ZIP must retain its full folder. Tesseract may be included only from an explicit reviewed
+build input; otherwise OCR remains an honest optional capability. The executable, installer, and
+GitHub release do not authorize LAN/public bind, auto-update, code-signing claims, or multi-user
+deployment.

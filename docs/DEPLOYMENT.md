@@ -1,5 +1,10 @@
 # Deployment dan Akses Mesin Lain
 
+For the double-click Windows installer and portable ZIP, see
+[WINDOWS_DISTRIBUTION.md](WINDOWS_DISTRIBUTION.md). That distribution remains loopback-only and
+stores mutable state under `%LOCALAPPDATA%\HAWK-EYE`; it is separate from the Docker/server path
+documented below.
+
 ## Boundary saat ini
 
 HAWK-EYE adalah aplikasi single-investigator. Ia memiliki access gate HTTP Basic opsional dan satu

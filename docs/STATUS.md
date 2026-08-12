@@ -200,4 +200,26 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
 - `d34f275` — source monorepo move, shared lockfiles, generic provider adapter, and initial
   container/package boundary.
 
-The package/final-status commit is recorded in the delivery handoff. Nothing is pushed or deployed.
+## Windows distribution verification — 2026-08-12
+
+- The native Windows `onedir` bundle and non-elevated Inno Setup installer were rebuilt from the
+  locked monorepo with the generated React application and Playwright Chromium included.
+- Repository gates passed: Prettier, ESLint, TypeScript, five frontend projection tests, Vite
+  production build, Ruff format/check, mypy over 73 source files, 232 backend tests, and Astro
+  diagnostics for the presentation site. The upstream FastAPI/Starlette deprecation warning remains.
+- The frozen executable passed its spawn, `tldextract` snapshot, bundled-Chromium, health, and React
+  landing self-tests. A silent installer round trip then installed the application, repeated the
+  same smoke test, and uninstalled it successfully.
+- Final local assets: `HAWK-EYE-1.0.0-windows-x64-portable.zip` (308,685,926 bytes; SHA-256
+  `527d433f47358187621aa7614d581899c67337137dfa4dac75a8463b0b39cfaf`) and
+  `HAWK-EYE-Setup-1.0.0-windows-x64.exe` (220,790,396 bytes; SHA-256
+  `79a9a37e9338be522314286e81d1555c6d9f0003e20619f7929bf19117cc224f`).
+- The desktop settings surface can enable/disable an OpenAI-compatible provider, retain or remove a
+  locally stored key, and apply a validated configuration to new investigations without a paid
+  probe. API secrets are not returned in normal or oversized-input validation responses.
+- The current Windows assets are unsigned. They are suitable for a transparent competition preview;
+  a generally distributed production build still requires code signing and completion of the
+  dependency redistribution review.
+
+The package/final-status commit is recorded in the delivery handoff. Generated release assets remain
+ignored and are published only through the tagged GitHub release workflow.

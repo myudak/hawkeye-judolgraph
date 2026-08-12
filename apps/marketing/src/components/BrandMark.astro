@@ -1,0 +1,17 @@
+---
+import avatar from "../assets/hawkeye-avatar.png";
+
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
+
+<a class:list={["brand", { "brand--compact": compact }]} href="#top" aria-label="HAWK-EYE beranda">
+  <img src={avatar.src} width="48" height="48" alt="" />
+  <span class="brand__wordmark">
+    <strong>HAWK-EYE</strong>
+    <small>JUDOLGRAPH</small>
+  </span>
+</a>

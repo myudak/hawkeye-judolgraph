@@ -1,0 +1,36 @@
+---
+import BrandMark from "./BrandMark.astro";
+import Icon from "./Icon.astro";
+
+interface Props {
+  demoUrl: string;
+  repositoryUrl: string;
+}
+
+const { demoUrl, repositoryUrl } = Astro.props;
+---
+
+<footer class="site-footer">
+  <div class="shell site-footer__grid">
+    <div>
+      <BrandMark />
+      <p>Alat investigasi ekosistem judi online berbasis bukti publik yang dapat ditelusuri.</p>
+    </div>
+    <div class="footer-links">
+      <span>Produk</span>
+      <a href="#produk">Fitur</a>
+      <a href="#cara-kerja">Cara kerja</a>
+      <a href={demoUrl} target="_blank" rel="noreferrer">Demo web</a>
+    </div>
+    <div class="footer-links">
+      <span>Proyek</span>
+      <a href={repositoryUrl} target="_blank" rel="noreferrer">GitHub <Icon name="external" size={13} /></a>
+      <a href={`${repositoryUrl}/tree/main/docs`} target="_blank" rel="noreferrer">Dokumentasi</a>
+      <a href="https://myudak.com" target="_blank" rel="noreferrer">Tentang pembuat</a>
+    </div>
+  </div>
+  <div class="shell site-footer__base">
+    <span>© {new Date().getFullYear()} HAWK-EYE / JudolGraph</span>
+    <span>Kandidat adalah lead, bukan kesimpulan.</span>
+  </div>
+</footer>

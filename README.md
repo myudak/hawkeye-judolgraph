@@ -21,6 +21,8 @@
     <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-20232A?style=for-the-badge&amp;logo=react&amp;logoColor=61DAFB" alt="React 19" /></a>
     <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-API-009688?style=for-the-badge&amp;logo=fastapi&amp;logoColor=white" alt="FastAPI" /></a>
     <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&amp;logo=docker&amp;logoColor=white" alt="Docker ready" /></a>
+    <a href="https://github.com/myudak/hawkeye-judolgraph/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/myudak/hawkeye-judolgraph/ci.yml?branch=main&amp;style=for-the-badge&amp;label=quality" alt="Quality gates" /></a>
+    <a href="https://github.com/myudak/hawkeye-judolgraph/releases"><img src="https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&amp;logo=windows11&amp;logoColor=white" alt="Windows installer" /></a>
   </p>
 
   <p>
@@ -64,7 +66,7 @@ pending. The result is designed to answer three practical questions:
 | **Human-reviewed leads**      | Candidate relationships remain pending until an append-only review decision is recorded. Candidate domains are never crawled automatically.          |
 | **Optional model assistance** | An OpenAI-compatible model may select from server-issued safe actions; invalid output, timeout, or missing credentials falls back deterministically. |
 | **Reproducible evaluation**   | Ten controlled interaction fixtures, benchmarks, sanitized demos, strict schemas, and automated safety regression tests.                             |
-| **Portable delivery**         | Polyglot monorepo, locked `pnpm` and `uv` dependencies, a packaged Python wheel, and a hardened single-service Docker runtime.                       |
+| **Portable delivery**         | Windows installer/portable ZIP with bundled Chromium, locked `pnpm` and `uv` dependencies, a Python wheel, and hardened Docker runtime.              |
 
 ## How it works
 
@@ -148,7 +150,20 @@ data/                       Local cases and SQLite workspace (ignored)
 
 ## Quick start
 
-### Option A — Docker
+### Option A — Windows app
+
+Download either asset from [GitHub Releases](https://github.com/myudak/hawkeye-judolgraph/releases):
+
+- `HAWK-EYE-Setup-<version>-windows-x64.exe` — recommended per-user installer with Start Menu and
+  optional desktop shortcuts;
+- `HAWK-EYE-<version>-windows-x64-portable.zip` — extract the complete folder, then double-click
+  `HAWK-EYE.exe`.
+
+No Python, Node.js, pnpm, uv, or browser download is required. HAWK-EYE opens in the default browser
+and remains available from its Windows notification-area icon. Investigation data is stored in
+`%LOCALAPPDATA%\HAWK-EYE`, outside the application directory, so upgrades do not replace it.
+
+### Option B — Docker
 
 The simplest path requires Docker Desktop with Compose v2.
 
@@ -165,7 +180,7 @@ Open [http://127.0.0.1:8760](http://127.0.0.1:8760). Local investigation data pe
 docker compose down
 ```
 
-### Option B — Manual development
+### Option C — Manual development
 
 Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22.12+, and Corepack.
 
@@ -251,16 +266,17 @@ remains a local, single-investigator deployment.
 
 ## Developer workflow
 
-| Command              | Purpose                                                              |
-| -------------------- | -------------------------------------------------------------------- |
-| `pnpm setup`         | Sync locked Python dependencies and install Chromium.                |
-| `pnpm dev`           | Run API and web development servers together with optional `.env`.   |
-| `pnpm build`         | Build React into the backend static bundle.                          |
-| `pnpm start`         | Build and run the production-like local server with optional `.env`. |
-| `pnpm check`         | Run formatting, lint, types, tests, build, and diff checks.          |
-| `pnpm package`       | Build the UI and produce an installable Python wheel.                |
-| `pnpm verify:manual` | Exercise a clean manual installation and health check.               |
-| `pnpm verify:docker` | Run the isolated Docker acceptance suite.                            |
+| Command                | Purpose                                                              |
+| ---------------------- | -------------------------------------------------------------------- |
+| `pnpm setup`           | Sync locked Python dependencies and install Chromium.                |
+| `pnpm dev`             | Run API and web development servers together with optional `.env`.   |
+| `pnpm build`           | Build React into the backend static bundle.                          |
+| `pnpm start`           | Build and run the production-like local server with optional `.env`. |
+| `pnpm check`           | Run formatting, lint, types, tests, build, and diff checks.          |
+| `pnpm package`         | Build the UI and produce an installable Python wheel.                |
+| `pnpm package:windows` | Build the Windows onedir and portable ZIP on a Windows host.         |
+| `pnpm verify:manual`   | Exercise a clean manual installation and health check.               |
+| `pnpm verify:docker`   | Run the isolated Docker acceptance suite.                            |
 
 Useful CLI entry points:
 
@@ -283,6 +299,7 @@ controlled local fixtures.
 - [Current verification status](docs/STATUS.md)
 - [Evaluation protocol](docs/EVALUATION.md)
 - [Deployment and backup guide](docs/DEPLOYMENT.md)
+- [Windows application and release guide](docs/WINDOWS_DISTRIBUTION.md)
 - [Docker runtime notes](infra/docker/README.md)
 - [GEMASTIK 2026 package](gemastik-2026/README.md)
 

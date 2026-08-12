@@ -1,0 +1,57 @@
+---
+import "@fontsource-variable/newsreader";
+import "@fontsource-variable/public-sans";
+import "../styles/global.css";
+import overviewImage from "../assets/product-overview.png";
+
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  image?: string;
+}
+
+const {
+  title,
+  description,
+  canonical = Astro.site?.toString() ?? "https://hawkeye1.myudak.com",
+  image = new URL(
+    overviewImage.src,
+    Astro.site ?? "https://hawkeye1.myudak.com",
+  ).toString(),
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#070b12" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:alt" content="HAWK-EYE evidence investigation workspace" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+
+    <script is:inline>document.documentElement.classList.add("has-js");</script>
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+    <slot />
+  </body>
+</html>

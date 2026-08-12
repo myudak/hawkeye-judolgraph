@@ -75,6 +75,13 @@ class MvpWorkspace:
         assert self._capability_status is not None
         return dict(self._capability_status)
 
+    def refresh_model_configuration(self) -> dict[str, object]:
+        """Apply new operator configuration to future investigation work without probing it."""
+
+        self._capability_status = None
+        self._investigator = None
+        return self.capability_status()
+
     def scenarios(self) -> list[dict[str, object]]:
         return [
             {

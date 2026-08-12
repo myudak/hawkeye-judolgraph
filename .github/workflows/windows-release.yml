@@ -1,0 +1,97 @@
+name: Windows release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the v prefix
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: "0"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $version = '${{ github.ref_name }}'.TrimStart('v')
+          } else {
+            $version = '${{ inputs.version }}'
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') {
+            throw "Invalid release version: $version"
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Install locked dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          uv sync --locked --extra dev --extra desktop
+      - name: Run repository quality gates
+        run: pnpm check
+      - name: Build frontend and Windows distribution
+        shell: pwsh
+        run: |
+          pnpm build
+          choco install innosetup --no-progress -y
+          uv run python scripts/build_windows.py --version '${{ steps.version.outputs.value }}' --installer
+      - name: Verify frozen application
+        run: uv run python scripts/verify_windows_bundle.py dist/windows/HAWK-EYE/HAWK-EYE.exe
+      - name: Verify installer round trip
+        shell: pwsh
+        run: scripts/verify_windows_installer.ps1 dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe
+      - name: Attest release assets
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/HAWK-EYE-${{ steps.version.outputs.value }}-windows-x64-portable.zip
+            dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: HAWK-EYE-${{ steps.version.outputs.value }}-windows-x64
+          path: |
+            dist/HAWK-EYE-${{ steps.version.outputs.value }}-windows-x64-portable.zip
+            dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe
+            dist/SHA256SUMS-windows.txt
+          if-no-files-found: error
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $assets = @(
+            'dist/HAWK-EYE-${{ steps.version.outputs.value }}-windows-x64-portable.zip',
+            'dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe',
+            'dist/SHA256SUMS-windows.txt'
+          )
+          gh release create $tag @assets --verify-tag --generate-notes --title "HAWK-EYE $tag"

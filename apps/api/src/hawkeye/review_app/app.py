@@ -11,11 +11,12 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from hawkeye.collector.safety import SafetyPolicy
+from hawkeye.desktop_settings import DesktopSettingsStore
 from hawkeye.pipeline import ProgressCallback
 from hawkeye.review_app.auth import BasicAuthMiddleware, BasicAuthSettings
 from hawkeye.review_app.jobs import (
@@ -119,12 +120,23 @@ class _CollectSeedRequest(BaseModel):
     investigation_mode: Literal["guided", "capture_only"] = "guided"
 
 
+class _DesktopSettingsRequest(BaseModel):
+    enabled: bool = True
+    base_url: str = Field(default="", max_length=2048)
+    model: str = Field(default="", max_length=200)
+    api_style: Literal["auto", "responses", "chat_completions"] = "auto"
+    timeout_seconds: float = Field(default=15, gt=0, le=60)
+    api_key: SecretStr | None = None
+    clear_api_key: bool = False
+
+
 def create_app(
     cases_root: Path | str,
     *,
     comparisons_root: Path | str | None = None,
     workspace_root: Path | str | None = None,
     collection_safety_policy: SafetyPolicy | None = None,
+    desktop_settings: DesktopSettingsStore | None = None,
 ) -> FastAPI:
     """Create the local console; optional MVP writes remain inside one explicit workspace."""
 
@@ -365,6 +377,46 @@ def create_app(
         @app.get("/api/mvp/capabilities", include_in_schema=False)
         def mvp_capabilities() -> dict[str, object]:
             return workspace.capability_status()
+
+        @app.get("/api/settings", include_in_schema=False)
+        def desktop_settings_view() -> dict[str, object]:
+            if desktop_settings is None:
+                return {
+                    "available": False,
+                    "enabled": False,
+                    "api_key_configured": False,
+                    "applies_to": "manual_environment",
+                }
+            settings = desktop_settings.view()
+            settings["capability"] = workspace.capability_status()
+            return settings
+
+        @app.put("/api/settings", include_in_schema=False)
+        def desktop_settings_update(
+            payload: _DesktopSettingsRequest, request: Request
+        ) -> dict[str, object]:
+            _require_same_origin(request, public_demo_origin=public_demo_origin)
+            if desktop_settings is None:
+                raise HTTPException(status_code=409, detail="desktop_settings_unavailable")
+            if scan_jobs.active() is not None:
+                raise HTTPException(status_code=409, detail="settings_locked_during_investigation")
+            api_key = payload.api_key.get_secret_value() if payload.api_key is not None else None
+            if api_key is not None and len(api_key) > 4096:
+                raise HTTPException(status_code=422, detail="API key exceeds 4096 characters")
+            try:
+                settings = desktop_settings.update(
+                    enabled=payload.enabled,
+                    base_url=payload.base_url,
+                    model=payload.model,
+                    api_style=payload.api_style,
+                    timeout_seconds=payload.timeout_seconds,
+                    api_key=api_key,
+                    clear_api_key=payload.clear_api_key,
+                )
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+            settings["capability"] = workspace.refresh_model_configuration()
+            return settings
 
         @app.get("/api/mvp/runs", include_in_schema=False)
         def mvp_runs() -> dict[str, object]:

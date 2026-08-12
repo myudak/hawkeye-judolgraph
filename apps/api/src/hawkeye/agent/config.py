@@ -36,13 +36,17 @@ class LlmConfig:
     def from_environment(cls) -> LlmConfig | None:
         """Read config without making a network request.
 
-        CODEX_* aliases are accepted for local Codex-compatible gateways while the provider-
-        neutral HAWKEYE_LLM_* names remain the documented contract.
+        HAWKEYE_LLM_ENABLED can temporarily disable a stored provider without deleting it.
         """
 
-        base_url = _first_env("HAWKEYE_LLM_BASE_URL", "CODEX_BASE_URL")
-        model = _first_env("HAWKEYE_LLM_MODEL", "CODEX_MODEL")
-        api_key = _first_env("HAWKEYE_LLM_API_KEY", "CODEX_API_KEY")
+        enabled = os.environ.get("HAWKEYE_LLM_ENABLED", "").strip().casefold()
+        if enabled in {"0", "false", "no", "off"}:
+            return None
+        if enabled not in {"", "1", "true", "yes", "on"}:
+            raise ValueError("HAWKEYE_LLM_ENABLED must be true or false")
+        base_url = _first_env("HAWKEYE_LLM_BASE_URL")
+        model = _first_env("HAWKEYE_LLM_MODEL")
+        api_key = _first_env("HAWKEYE_LLM_API_KEY")
         style = os.environ.get("HAWKEYE_LLM_API_STYLE", "auto").strip() or "auto"
         timeout_text = os.environ.get("HAWKEYE_LLM_TIMEOUT_SECONDS", "15").strip() or "15"
         if not base_url and not model and not api_key:

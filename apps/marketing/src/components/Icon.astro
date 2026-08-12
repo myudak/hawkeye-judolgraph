@@ -1,0 +1,23 @@
+---
+interface Props {
+  name: "arrow" | "download" | "external" | "graph" | "shield" | "timeline" | "capture" | "review" | "github";
+  size?: number;
+}
+
+const { name, size = 20 } = Astro.props;
+const paths: Record<Props["name"], string[]> = {
+  arrow: ["M5 12h14", "m13 6 6 6-6 6"],
+  download: ["M12 3v12", "m7-5 5 5 5-5", "M5 21h14"],
+  external: ["M15 3h6v6", "m10 11 11-11", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"],
+  graph: ["M6 5h.01", "M18 5h.01", "M12 19h.01", "M6 5l6 14", "m6-14-6 14", "M6 5h12"],
+  shield: ["M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z", "m9 12 2 2 4-5"],
+  timeline: ["M12 2a10 10 0 1 0 10 10", "M12 6v6l4 2"],
+  capture: ["M4 8V5a1 1 0 0 1 1-1h3", "M16 4h3a1 1 0 0 1 1 1v3", "M20 16v3a1 1 0 0 1-1 1h-3", "M8 20H5a1 1 0 0 1-1-1v-3", "M8 12h8"],
+  review: ["M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"],
+  github: ["M15 22v-4a4.8 4.8 0 0 0-1-3.5c3.3-.4 6.8-1.6 6.8-7A5.4 5.4 0 0 0 19.4 4 5 5 0 0 0 19.3.5S18 0 15 2a13.4 13.4 0 0 0-6 0C6 .1 4.7.5 4.7.5A5 5 0 0 0 4.6 4a5.4 5.4 0 0 0-1.4 3.7c0 5.4 3.5 6.5 6.8 7A4.8 4.8 0 0 0 9 18v4", "M9 18c-5 .5-5-2-7-2.5"],
+};
+---
+
+<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {paths[name].map((path) => <path d={path} />)}
+</svg>

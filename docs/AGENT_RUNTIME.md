@@ -11,12 +11,13 @@ The optional transport is configured only by the operator environment:
 HAWKEYE_LLM_BASE_URL
 HAWKEYE_LLM_API_KEY
 HAWKEYE_LLM_MODEL
+HAWKEYE_LLM_ENABLED=0|1
 HAWKEYE_LLM_API_STYLE=auto|responses|chat_completions
 HAWKEYE_LLM_TIMEOUT_SECONDS
 ```
 
-`CODEX_BASE_URL`, `CODEX_API_KEY`, and `CODEX_MODEL` are accepted aliases for a local
-Codex-compatible OpenAI gateway. The base URL must be HTTPS except for loopback development and
+Set `HAWKEYE_LLM_ENABLED=0` to temporarily disable a stored provider without deleting its endpoint,
+model, or API key. The base URL must be HTTPS except for loopback development and
 cannot contain credentials, query parameters, or a fragment. Provider redirects are rejected, the
 response body is bounded, the timeout is capped, and an API key is sent only to the validated
 origin. It is never included in diagnostics, events, UI responses, exception messages, exports, or

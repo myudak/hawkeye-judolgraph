@@ -5,6 +5,8 @@ import type {
   InvestigationJob,
   RunDetails,
   RunListItem,
+  DesktopSettings,
+  DesktopSettingsUpdate,
 } from "@/api/types"
 
 export class ApiError extends Error {
@@ -47,10 +49,21 @@ function postJson<T>(path: string, payload: unknown): Promise<T> {
   })
 }
 
+function putJson<T>(path: string, payload: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+}
+
 export const api = {
   listCases: () => requestJson<{ cases: CaseListItem[] }>("/api/cases"),
   listRuns: () => requestJson<{ runs: RunListItem[] }>("/api/mvp/runs"),
   capability: () => requestJson<CapabilityStatus>("/api/mvp/capabilities"),
+  settings: () => requestJson<DesktopSettings>("/api/settings"),
+  updateSettings: (payload: DesktopSettingsUpdate) =>
+    putJson<DesktopSettings>("/api/settings", payload),
   activeJob: () =>
     requestJson<{ job: InvestigationJob | null }>(
       "/api/investigation-jobs/active"

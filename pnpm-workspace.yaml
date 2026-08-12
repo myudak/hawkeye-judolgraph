@@ -1,5 +1,6 @@
 packages:
   - apps/web
+  - apps/marketing
 
 sharedWorkspaceLockfile: true
 disallowWorkspaceCycles: true
@@ -7,3 +8,9 @@ disallowWorkspaceCycles: true
 onlyBuiltDependencies:
   - "@parcel/watcher"
   - esbuild
+
+minimumReleaseAgeExclude:
+  - astro@7.2.1
+
+allowBuilds:
+  esbuild: true

@@ -247,6 +247,29 @@ export interface CapabilityStatus {
   safe_to_enable_model_path?: boolean
 }
 
+export interface DesktopSettings {
+  available: boolean
+  enabled: boolean
+  base_url?: string
+  model?: string
+  api_style?: "auto" | "responses" | "chat_completions"
+  timeout_seconds?: number
+  api_key_configured: boolean
+  settings_path_display?: string
+  applies_to?: string
+  capability?: CapabilityStatus
+}
+
+export interface DesktopSettingsUpdate {
+  enabled: boolean
+  base_url: string
+  model: string
+  api_style: "auto" | "responses" | "chat_completions"
+  timeout_seconds: number
+  api_key?: string
+  clear_api_key: boolean
+}
+
 export interface JobHistoryItem {
   stage: string
   at?: string

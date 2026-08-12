@@ -17,6 +17,7 @@ import {
 import { hostnameFrom, titleCase } from "@/lib/format"
 import { useIndexes } from "@/hooks/use-indexes"
 import { BrandLockup } from "@/components/brand-mark"
+import { SettingsDialog } from "@/components/settings-dialog"
 
 export function AppHeader({
   currentValue,
@@ -85,6 +86,7 @@ export function AppHeader({
       )}
 
       <div className="header-actions">
+        <SettingsDialog language={language} />
         {onLanguageToggle ? (
           <Button
             className="header-language"
