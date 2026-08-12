@@ -12,6 +12,7 @@ build/
 dist/
 *.spec.bak
 node_modules/
+.vercel/
 apps/api/src/hawkeye/review_app/static/
 data/
 cases/
