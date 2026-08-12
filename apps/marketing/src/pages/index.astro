@@ -8,7 +8,6 @@ import EvidenceSection from "../components/EvidenceSection.astro";
 import AgentSection from "../components/AgentSection.astro";
 import SafetySection from "../components/SafetySection.astro";
 import CompareSection from "../components/CompareSection.astro";
-import TeamSection from "../components/TeamSection.astro";
 
 const repositoryUrl = "https://github.com/myudak/hawkeye-judolgraph";
 const defaultWindowsDownloadUrl = `${repositoryUrl}/releases/download/v1.0.0/HAWK-EYE-Setup-1.0.0-windows-x64.exe`;
@@ -21,6 +20,6 @@ const description = "Preserve public web evidence, extract observable entities, 
 
 <BaseLayout {title} {description}><div id="top" class="site"><SiteHeader {demoUrl} {repositoryUrl} {releaseUrl} /><main id="main-content"><Hero {demoUrl} {releaseUrl} {releaseLabel} />
   <section id="platform" class="principles"><div class="shell principles__grid"><div><span>01</span><strong><span class="lang-id">Preservasi lebih dulu</span><span class="lang-en">Preserve first</span></strong><p><span class="lang-id">Tangkap halaman publik sebelum interpretasi dimulai.</span><span class="lang-en">Capture the public page before interpretation begins.</span></p></div><div><span>02</span><strong><span class="lang-id">Telusuri setiap fakta</span><span class="lang-en">Trace every fact</span></strong><p><span class="lang-id">Setiap observasi terhubung kembali ke artefak sumbernya.</span><span class="lang-en">Every observation resolves to its source artifact.</span></p></div><div><span>03</span><strong><span class="lang-id">Jaga lead tetap netral</span><span class="lang-en">Keep leads neutral</span></strong><p><span class="lang-id">Kandidat tetap pending sampai manusia memutuskan.</span><span class="lang-en">A candidate remains pending until a human decides.</span></p></div></div></section>
-  <ProductDemoSection /><EvidenceSection /><AgentSection /><SafetySection /><CompareSection /><TeamSection />
+  <ProductDemoSection /><EvidenceSection /><AgentSection /><SafetySection /><CompareSection />
   <section class="cta-section"><div class="shell cta-card"><div><h2><span class="lang-id">Jalankan HAWK-EYE sesuai kebutuhanmu.</span><span class="lang-en">Run HAWK-EYE your way.</span></h2><p><span class="lang-id">Unduh build Windows lokal atau jelajahi demonstrasi online.</span><span class="lang-en">Download the local Windows build or explore the temporary online demonstration.</span></p></div><div><a class="button button--primary" href={releaseUrl} target="_blank" rel="noreferrer">↓ <span class="lang-id">Unduh</span><span class="lang-en">Download</span></a><a class="button button--secondary" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Coba demo online</span><span class="lang-en">Try online demo</span> ↗</a></div></div></section>
 </main><SiteFooter {repositoryUrl} /></div></BaseLayout>
