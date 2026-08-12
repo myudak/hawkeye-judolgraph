@@ -94,4 +94,4 @@ jobs:
             'dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe',
             'dist/SHA256SUMS-windows.txt'
           )
-          gh release create $tag @assets --verify-tag --generate-notes --title "HAWK-EYE $tag"
+          gh release create $tag @assets --verify-tag --generate-notes --prerelease --title "HAWK-EYE $tag"
