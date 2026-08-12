@@ -39,6 +39,6 @@
     "@types/react-dom": "^19.2.3",
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^0.14.1",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   }
 }
