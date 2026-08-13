@@ -1,4 +1,5 @@
 export { EvidenceGraph } from "./evidence-graph";
+export type { GraphBackground } from "./evidence-graph";
 export { GraphControls } from "./graph-controls";
 export { GraphEdge } from "./graph-edge";
 export { GraphLegend } from "./graph-legend";

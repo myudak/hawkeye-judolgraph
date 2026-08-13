@@ -61,6 +61,7 @@ const colors: Record<string, string> = {
 };
 
 type GraphLanguage = "id" | "en";
+export type GraphBackground = "dark" | "transparent" | "chroma";
 
 function readLanguage(): GraphLanguage {
   if (typeof document === "undefined") return "id";
@@ -233,11 +234,31 @@ export function EvidenceGraph({
   compact = false,
   selectedId: controlledSelected,
   onSelectionChange,
+  background = "dark",
+  showAgent = true,
+  showControls = true,
+  showMinimap = true,
+  showLegend = true,
+  showStatus = true,
+  showFallback = true,
+  outputWidth,
+  outputHeight,
+  onCanvasReady,
 }: {
   visibleStep?: number;
   compact?: boolean;
   selectedId?: string;
   onSelectionChange?: (node: EvidenceNodeData) => void;
+  background?: GraphBackground;
+  showAgent?: boolean;
+  showControls?: boolean;
+  showMinimap?: boolean;
+  showLegend?: boolean;
+  showStatus?: boolean;
+  showFallback?: boolean;
+  outputWidth?: number;
+  outputHeight?: number;
+  onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -267,6 +288,11 @@ export function EvidenceGraph({
     x: number;
     y: number;
   } | null>(null);
+
+  useEffect(() => {
+    onCanvasReady?.(canvasRef.current);
+    return () => onCanvasReady?.(null);
+  }, [onCanvasReady]);
 
   const nodes = useMemo(
     () => demoNodes.filter((node) => node.step <= visibleStep),
@@ -346,10 +372,10 @@ export function EvidenceGraph({
       const bounds = container.getBoundingClientRect();
       const width = Math.max(320, Math.floor(bounds.width));
       const height = Math.max(compact ? 500 : 560, Math.floor(bounds.height));
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
       sizeRef.current = { width, height };
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = outputWidth ?? Math.floor(width * dpr);
+      canvas.height = outputHeight ?? Math.floor(height * dpr);
       const miniBounds = minimap.getBoundingClientRect();
       minimap.width = Math.max(1, Math.floor(miniBounds.width * dpr));
       minimap.height = Math.max(1, Math.floor(miniBounds.height * dpr));
@@ -359,7 +385,7 @@ export function EvidenceGraph({
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [compact, fitView]);
+  }, [compact, fitView, outputHeight, outputWidth]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -374,8 +400,9 @@ export function EvidenceGraph({
     const paint = (time: number) => {
       const delta = Math.min(32, Math.max(1, time - last));
       last = time;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
       const { width, height } = sizeRef.current;
+      const scaleX = canvas.width / width;
+      const scaleY = canvas.height / height;
       const camera = cameraRef.current;
       const sim = simulationRef.current;
       camera.x += (camera.targetX - camera.x) * graphMotion.cameraEase;
@@ -396,13 +423,17 @@ export function EvidenceGraph({
         x: (node.x - camera.x) * camera.zoom + width / 2,
         y: (node.y - camera.y) * camera.zoom + height / 2,
       });
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.setTransform(scaleX, 0, 0, scaleY, 0, 0);
       context.clearRect(0, 0, width, height);
-      context.fillStyle = "#07131f";
-      context.fillRect(0, 0, width, height);
-      context.fillStyle = "rgba(143, 163, 181, 0.13)";
-      for (let x = 18; x < width; x += 28)
-        for (let y = 18; y < height; y += 28) context.fillRect(x, y, 1, 1);
+      if (background !== "transparent") {
+        context.fillStyle = background === "chroma" ? "#00b140" : "#07131f";
+        context.fillRect(0, 0, width, height);
+      }
+      if (background === "dark") {
+        context.fillStyle = "rgba(143, 163, 181, 0.13)";
+        for (let x = 18; x < width; x += 28)
+          for (let y = 18; y < height; y += 28) context.fillRect(x, y, 1, 1);
+      }
 
       for (const [index, edge] of edges.entries()) {
         const aNode = sim.get(edge.source);
@@ -560,7 +591,7 @@ export function EvidenceGraph({
         }
       }
 
-      if (!reducedMotionRef.current && values.length > 1) {
+      if (showAgent && !reducedMotionRef.current && values.length > 1) {
         const available = values.filter((node) => time >= node.bornAt);
         const targetIndex = Math.floor(time / 2100) % available.length;
         const target = available[targetIndex];
@@ -707,7 +738,7 @@ export function EvidenceGraph({
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [edges, language]);
+  }, [background, edges, language, showAgent]);
 
   const screenNodeAt = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -812,6 +843,7 @@ export function EvidenceGraph({
   return (
     <section
       className={`canvas-graph ${compact ? "canvas-graph--compact" : ""}`}
+      data-background={background}
       aria-label={
         language === "id"
           ? "Graph bukti interaktif"
@@ -840,41 +872,44 @@ export function EvidenceGraph({
           }}
           onWheel={onWheel}
         />
-        <div
-          className="canvas-graph__controls"
-          aria-label="Graph view controls"
-        >
-          <button
-            type="button"
-            onClick={() => zoom(1.22)}
-            aria-label="Zoom in"
-            title="Zoom in"
+        {showControls && (
+          <div
+            className="canvas-graph__controls"
+            aria-label="Graph view controls"
           >
-            <MagnifyingGlassPlusIcon />
-          </button>
-          <button
-            type="button"
-            onClick={() => zoom(0.82)}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <MagnifyingGlassMinusIcon />
-          </button>
-          <button
-            type="button"
-            onClick={fitView}
-            aria-label="Fit graph to view"
-            title="Fit view"
-          >
-            <CornersOutIcon />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => zoom(1.22)}
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <MagnifyingGlassPlusIcon />
+            </button>
+            <button
+              type="button"
+              onClick={() => zoom(0.82)}
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <MagnifyingGlassMinusIcon />
+            </button>
+            <button
+              type="button"
+              onClick={fitView}
+              aria-label="Fit graph to view"
+              title="Fit view"
+            >
+              <CornersOutIcon />
+            </button>
+          </div>
+        )}
         <canvas
           ref={minimapRef}
           className="canvas-graph__minimap"
+          hidden={!showMinimap}
           aria-hidden="true"
         />
-        <GraphLegend language={language} />
+        {showLegend && <GraphLegend language={language} />}
         {hovered && (
           <div
             className="canvas-graph__tooltip"
@@ -889,27 +924,33 @@ export function EvidenceGraph({
             </small>
           </div>
         )}
-        <div className="canvas-graph__activity" aria-hidden="true">
-          <i />
-          <span>
-            {language === "id"
-              ? "Menelusuri halaman publik"
-              : "Exploring public pages"}
-          </span>
-        </div>
-        <div className="canvas-graph__agent-status" aria-hidden="true">
-          <span>{language === "id" ? "DIBANTU MODEL" : "MODEL-ASSISTED"}</span>
-          <strong>
-            {language === "id"
-              ? "Aksi browser aman dipilih"
-              : "Safe browser action selected"}
-          </strong>
-          <small>
-            {language === "id"
-              ? "Konteks ternormalisasi · referensi dari server saja"
-              : "Normalized context · server-issued references only"}
-          </small>
-        </div>
+        {showStatus && (
+          <div className="canvas-graph__activity" aria-hidden="true">
+            <i />
+            <span>
+              {language === "id"
+                ? "Menelusuri halaman publik"
+                : "Exploring public pages"}
+            </span>
+          </div>
+        )}
+        {showStatus && showAgent && (
+          <div className="canvas-graph__agent-status" aria-hidden="true">
+            <span>
+              {language === "id" ? "DIBANTU MODEL" : "MODEL-ASSISTED"}
+            </span>
+            <strong>
+              {language === "id"
+                ? "Aksi browser aman dipilih"
+                : "Safe browser action selected"}
+            </strong>
+            <small>
+              {language === "id"
+                ? "Konteks ternormalisasi · referensi dari server saja"
+                : "Normalized context · server-issued references only"}
+            </small>
+          </div>
+        )}
       </div>
       {!compact && active && (
         <aside className="graph-inspector" aria-live="polite">
@@ -954,33 +995,33 @@ export function EvidenceGraph({
           </p>
         </aside>
       )}
-      <details className="graph-fallback">
-        <summary>
-          {language === "id"
-            ? "Lihat sebagai tabel"
-            : "View as a table"}
-        </summary>
-        <table>
-          <thead>
-            <tr>
-              <th>{language === "id" ? "Entitas" : "Entity"}</th>
-              <th>{language === "id" ? "Jenis" : "Type"}</th>
-              <th>Status</th>
-              <th>{language === "id" ? "Sumber" : "Source"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {nodes.map((node) => (
-              <tr key={node.id}>
-                <td>{node.label}</td>
-                <td>{node.kind}</td>
-                <td>{node.state}</td>
-                <td>{localizedNode(node, language).source}</td>
+      {showFallback && (
+        <details className="graph-fallback">
+          <summary>
+            {language === "id" ? "Lihat sebagai tabel" : "View as a table"}
+          </summary>
+          <table>
+            <thead>
+              <tr>
+                <th>{language === "id" ? "Entitas" : "Entity"}</th>
+                <th>{language === "id" ? "Jenis" : "Type"}</th>
+                <th>Status</th>
+                <th>{language === "id" ? "Sumber" : "Source"}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
+            </thead>
+            <tbody>
+              {nodes.map((node) => (
+                <tr key={node.id}>
+                  <td>{node.label}</td>
+                  <td>{node.kind}</td>
+                  <td>{node.state}</td>
+                  <td>{localizedNode(node, language).source}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
     </section>
   );
 }

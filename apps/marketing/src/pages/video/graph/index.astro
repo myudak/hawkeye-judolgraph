@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { VideoGraphStudio } from "../../../components/VideoGraphStudio";
+
+const title = "HAWK-EYE Graph Capture Studio";
+const description = "Studio lokal untuk menyiapkan dan merekam animasi evidence graph HAWK-EYE.";
+---
+
+<BaseLayout {title} {description} canonical="https://hawkeye.myudak.com/video/graph/" robots="noindex, nofollow">
+  <VideoGraphStudio client:load />
+</BaseLayout>

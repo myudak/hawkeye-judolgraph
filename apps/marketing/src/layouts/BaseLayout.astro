@@ -5,13 +5,14 @@ import "@fontsource-variable/public-sans";
 import "@hawkeye/design/globals.css";
 import "../styles/global.css";
 
-interface Props { title: string; description: string; canonical?: string; image?: string }
+interface Props { title: string; description: string; canonical?: string; image?: string; robots?: string }
 const siteUrl = Astro.site ?? new URL("https://hawkeye.myudak.com");
 const {
   title,
   description,
   canonical = siteUrl.toString(),
   image = new URL("/og/hawkeye-social.png", siteUrl).toString(),
+  robots = "index, follow, max-image-preview:large",
 } = Astro.props;
 const schema = {
   "@context": "https://schema.org",
@@ -38,7 +39,7 @@ const schema = {
 ---
 
 <!doctype html><html lang="id" data-language="id" data-theme="dark"><head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content={description} /><meta name="robots" content="index, follow, max-image-preview:large" /><meta name="theme-color" content="#06111c" /><meta name="color-scheme" content="dark light" /><link rel="canonical" href={canonical} /><link rel="icon" href="/favicon.ico" sizes="any" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content={description} /><meta name="robots" content={robots} /><meta name="theme-color" content="#06111c" /><meta name="color-scheme" content="dark light" /><link rel="canonical" href={canonical} /><link rel="icon" href="/favicon.ico" sizes="any" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta property="og:type" content="website" /><meta property="og:site_name" content="HAWK-EYE" /><meta property="og:locale" content="id_ID" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:url" content={canonical} /><meta property="og:image" content={image} /><meta property="og:image:secure_url" content={image} /><meta property="og:image:type" content="image/png" /><meta property="og:image:width" content="1672" /><meta property="og:image:height" content="941" /><meta property="og:image:alt" content="Workspace investigasi bukti publik HAWK-EYE" />
   <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content={image} /><meta name="twitter:image:alt" content="Workspace investigasi bukti publik HAWK-EYE" />
   <script is:inline>try{const theme=localStorage.getItem("hawkeye-theme");if(theme)document.documentElement.dataset.theme=theme;const language=localStorage.getItem("hawkeye-language");if(language){document.documentElement.dataset.language=language;document.documentElement.lang=language}}catch{}</script>
