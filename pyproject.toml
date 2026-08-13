@@ -7,6 +7,7 @@ name = "judolgraph-hawkeye"
 version = "1.0.0"
 description = "A small, evidence-driven public web collection engine."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
   "beautifulsoup4>=4.12.3",

@@ -442,3 +442,19 @@ portable ZIP must retain its full folder. Tesseract may be included only from an
 build input; otherwise OCR remains an honest optional capability. The executable, installer, and
 GitHub release do not authorize LAN/public bind, auto-update, code-signing claims, or multi-user
 deployment.
+
+## ADR-038 — Project-authored source adopts MIT with independent third-party notices
+
+**Status:** accepted for the 1.0.0 competition snapshot on 2026-08-13.
+
+Project-authored source and documentation adopt the MIT License. The full text lives in the root
+`LICENSE`; root JavaScript and Python metadata declare `MIT`. This adoption applies to work whose
+rights are held by HAWK-EYE contributors and does not relicense upstream libraries, fonts, icons,
+runtimes, browser bundles, build tools, collected web material, or other third-party assets.
+
+`THIRD_PARTY_NOTICES.md` and the Gemastik component inventory record the exact locked direct
+dependencies plus a production JavaScript license summary. Every release format must be audited
+against its actual contents and preserve applicable upstream licenses/notices. A change to either
+lockfile, Chromium, desktop toolchain, fonts, or optional OCR invalidates the snapshot until the
+audit is regenerated. License adoption changes distribution permissions only; it does not change
+the localhost, public-read-only, policy, evidence-interpretation, or human-review boundaries.

@@ -1,5 +1,24 @@
 # Project Status
 
+## Gemastik license and document snapshot — 2026-08-13
+
+- Project-authored source now adopts MIT through the root `LICENSE`, JavaScript/Python metadata,
+  ADR-038, an exact direct-dependency inventory, and `THIRD_PARTY_NOTICES.md`.
+- The inventory is based on the current `uv.lock`, `pnpm-lock.yaml`, official package metadata,
+  and a production `pnpm licenses` export. It preserves PyInstaller bootloader-exception,
+  pystray LGPL, font OFL, Chromium notices, and other non-MIT obligations independently.
+- Six Gemastik technical-document figures were recaptured from the current React application at
+  1440×1000 using only `hawkeye demo` and controlled `.invalid` scenarios. Their timestamp,
+  source commit, workspace IDs, dimensions, and SHA-256 values are recorded in
+  `gemastik-2026/assets/technical-current/screenshot-manifest.json`.
+- The three Word deliverables render to 19, 5, and 3 pages respectively; every rendered page was
+  visually inspected and all three accessibility audits report zero high/medium/low findings.
+  Frontend formatting/lint/typecheck, five Vitest tests, production Vite build, Astro diagnostics,
+  Ruff format/check, strict mypy over 73 source files, and `git diff --check` passed. The complete
+  backend suite passed 232 tests serially in 510.51 seconds. Two `-n auto` attempts each exposed the
+  same crawl-budget fixture timing flake on one worker (2/5 then 3/5 pages); the isolated test and
+  all 14 crawl tests passed, so the acceptance result uses the stable full serial gate.
+
 ## Current milestone
 
 **G4A–G9 — GEMASTIK preliminary MVP plus post-G9 investigator hardening** is implemented and locally verified. The product now combines

@@ -1,0 +1,58 @@
+{
+  "captured_at": "2026-08-13T03:55:49.226181+00:00",
+  "source": "http://127.0.0.1:8890",
+  "source_commit": "6c4a6ec41d1c1d7903c612b460c82af02afdf13f",
+  "fixture_boundary": "hawkeye demo plus controlled .invalid fixture runs; no public URL",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "workspaces": {
+    "redirect": "run-redirect-new-tab-69708177",
+    "policy": "run-login-register-distractors-f9d98417"
+  },
+  "screenshots": [
+    {
+      "file": "01-beranda-kasus.png",
+      "description": "Beranda React dengan formulir investigasi dan kasus fixture terverifikasi.",
+      "bytes": 772350,
+      "sha256": "9bdca0bbd20d3892647ab59e44649962abfbdf76f69dc3b46ad5a8edf090fb9d",
+      "url": "http://127.0.0.1:8890/"
+    },
+    {
+      "file": "02-workspace-graf-bukti.png",
+      "description": "Workspace graf berbasis event untuk fixture redirect/new-tab.",
+      "bytes": 280812,
+      "sha256": "883a8a547952081615987c9decb6b0f4caccf5c36e117471c2a6adff4d0d31d8",
+      "url": "http://127.0.0.1:8890/#/workspace/run/run-redirect-new-tab-69708177"
+    },
+    {
+      "file": "03-bukti-dan-review.png",
+      "description": "Panel bukti, klaim kandidat, dan formulir review append-only.",
+      "bytes": 290254,
+      "sha256": "a8c28a76e0a5056ffd7f758765207658ab50e60e90d865be6790f94b5f92db64",
+      "url": "http://127.0.0.1:8890/#/workspace/run/run-redirect-new-tab-69708177"
+    },
+    {
+      "file": "04-batas-teknis.png",
+      "description": "Panel batas teknis runtime dan jumlah event tersimpan.",
+      "bytes": 265325,
+      "sha256": "6896585ab890c8de15289f09cbcabdfd17877312b3f210786c8e8273fc52acbf",
+      "url": "http://127.0.0.1:8890/#/workspace/run/run-redirect-new-tab-69708177"
+    },
+    {
+      "file": "05-preflight-kebijakan.png",
+      "description": "Event preflight kebijakan: dua kontrol tidak aman diblokir tanpa eksekusi.",
+      "bytes": 299188,
+      "sha256": "3f7027ba81120b3380bc72dd5fdf4265a236bcb160252b0670a6febfa9766198",
+      "url": "http://127.0.0.1:8890/#/workspace/run/run-login-register-distractors-f9d98417"
+    },
+    {
+      "file": "06-ringkasan-dan-ekspor.png",
+      "description": "Ringkasan investigasi yang dapat dicetak dan diekspor.",
+      "bytes": 279457,
+      "sha256": "e3070a1d9c915a39ff663ef4ba098e21fde72ae8d98f7d8c0b23dbf92bf4328a",
+      "url": "http://127.0.0.1:8890/#/summary/run/run-redirect-new-tab-69708177"
+    }
+  ]
+}
