@@ -1,3 +1,8 @@
+---
+name: gemastik-writing
+description: Draft, rewrite, review, and edit GEMASTIK technical proposals using concise, evidence-first Indonesian technical writing. Use especially for GEMASTIK Software Development proposals and reports.
+---
+
 # GEMASTIK Technical Writing Skill
 
 ## Purpose
