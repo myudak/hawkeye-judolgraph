@@ -194,6 +194,7 @@ export function VideoGraphStudio({
         compact
         visibleStep={step}
         background={background}
+        frameRate={60}
         showAgent={preset === "agent"}
         showControls={!renderOnly}
         showMinimap={!renderOnly}

@@ -241,6 +241,7 @@ export function EvidenceGraph({
   showLegend = true,
   showStatus = true,
   showFallback = true,
+  frameRate = 30,
   outputWidth,
   outputHeight,
   onCanvasReady,
@@ -256,6 +257,7 @@ export function EvidenceGraph({
   showLegend?: boolean;
   showStatus?: boolean;
   showFallback?: boolean;
+  frameRate?: 30 | 60;
   outputWidth?: number;
   outputHeight?: number;
   onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
@@ -277,6 +279,8 @@ export function EvidenceGraph({
   const hoveredRef = useRef<string | null>(null);
   const selectedRef = useRef(controlledSelected ?? "seed");
   const reducedMotionRef = useRef(false);
+  const activeRef = useRef(true);
+  const intersectingRef = useRef(true);
   const [selected, setSelected] = useState(controlledSelected ?? "seed");
   const language = useSyncExternalStore(
     subscribeLanguage,
@@ -293,6 +297,27 @@ export function EvidenceGraph({
     onCanvasReady?.(canvasRef.current);
     return () => onCanvasReady?.(null);
   }, [onCanvasReady]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        intersectingRef.current = Boolean(entry?.isIntersecting);
+        activeRef.current = intersectingRef.current && !document.hidden;
+      },
+      { rootMargin: "160px" },
+    );
+    const syncVisibility = () => {
+      activeRef.current = !document.hidden && intersectingRef.current;
+    };
+    observer.observe(container);
+    document.addEventListener("visibilitychange", syncVisibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", syncVisibility);
+    };
+  }, []);
 
   const nodes = useMemo(
     () => demoNodes.filter((node) => node.step <= visibleStep),
@@ -396,8 +421,19 @@ export function EvidenceGraph({
     if (!context || !mini) return;
     let frame = 0;
     let last = performance.now();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const frameInterval = 1000 / frameRate;
 
     const paint = (time: number) => {
+      if (!activeRef.current) {
+        last = time;
+        frame = window.requestAnimationFrame(paint);
+        return;
+      }
+      if (time - last < frameInterval) {
+        frame = window.requestAnimationFrame(paint);
+        return;
+      }
       const delta = Math.min(32, Math.max(1, time - last));
       last = time;
       const { width, height } = sizeRef.current;
@@ -683,62 +719,65 @@ export function EvidenceGraph({
         }
       }
 
-      const miniWidth = minimap.width / dpr;
-      const miniHeight = minimap.height / dpr;
-      mini.setTransform(dpr, 0, 0, dpr, 0, 0);
-      mini.clearRect(0, 0, miniWidth, miniHeight);
-      mini.fillStyle = "rgba(4, 13, 23, 0.94)";
-      mini.fillRect(0, 0, miniWidth, miniHeight);
-      const bounds = { minX: -390, maxX: 390, minY: -290, maxY: 290 };
-      const miniPoint = (node: SimNode) => ({
-        x: ((node.x - bounds.minX) / (bounds.maxX - bounds.minX)) * miniWidth,
-        y: ((node.y - bounds.minY) / (bounds.maxY - bounds.minY)) * miniHeight,
-      });
-      mini.strokeStyle = "rgba(122,145,162,.24)";
-      mini.lineWidth = 0.75;
-      for (const edge of edges) {
-        const a = sim.get(edge.source);
-        const b = sim.get(edge.target);
-        if (!a || !b) continue;
-        const ap = miniPoint(a);
-        const bp = miniPoint(b);
-        mini.beginPath();
-        mini.moveTo(ap.x, ap.y);
-        mini.lineTo(bp.x, bp.y);
-        mini.stroke();
-      }
-      for (const node of values) {
-        const point = miniPoint(node);
-        mini.fillStyle = nodeColor(node);
-        mini.beginPath();
-        mini.arc(
-          point.x,
-          point.y,
-          node.id === "seed" ? 3.8 : 2.5,
-          0,
-          Math.PI * 2,
+      if (showMinimap) {
+        const miniWidth = minimap.width / dpr;
+        const miniHeight = minimap.height / dpr;
+        mini.setTransform(dpr, 0, 0, dpr, 0, 0);
+        mini.clearRect(0, 0, miniWidth, miniHeight);
+        mini.fillStyle = "rgba(4, 13, 23, 0.94)";
+        mini.fillRect(0, 0, miniWidth, miniHeight);
+        const bounds = { minX: -390, maxX: 390, minY: -290, maxY: 290 };
+        const miniPoint = (node: SimNode) => ({
+          x: ((node.x - bounds.minX) / (bounds.maxX - bounds.minX)) * miniWidth,
+          y:
+            ((node.y - bounds.minY) / (bounds.maxY - bounds.minY)) * miniHeight,
+        });
+        mini.strokeStyle = "rgba(122,145,162,.24)";
+        mini.lineWidth = 0.75;
+        for (const edge of edges) {
+          const a = sim.get(edge.source);
+          const b = sim.get(edge.target);
+          if (!a || !b) continue;
+          const ap = miniPoint(a);
+          const bp = miniPoint(b);
+          mini.beginPath();
+          mini.moveTo(ap.x, ap.y);
+          mini.lineTo(bp.x, bp.y);
+          mini.stroke();
+        }
+        for (const node of values) {
+          const point = miniPoint(node);
+          mini.fillStyle = nodeColor(node);
+          mini.beginPath();
+          mini.arc(
+            point.x,
+            point.y,
+            node.id === "seed" ? 3.8 : 2.5,
+            0,
+            Math.PI * 2,
+          );
+          mini.fill();
+        }
+        const worldWidth = width / camera.zoom;
+        const worldHeight = height / camera.zoom;
+        mini.strokeStyle = "rgba(237, 70, 127, .76)";
+        mini.lineWidth = 1;
+        mini.strokeRect(
+          ((camera.x - worldWidth / 2 - bounds.minX) /
+            (bounds.maxX - bounds.minX)) *
+            miniWidth,
+          ((camera.y - worldHeight / 2 - bounds.minY) /
+            (bounds.maxY - bounds.minY)) *
+            miniHeight,
+          (worldWidth / (bounds.maxX - bounds.minX)) * miniWidth,
+          (worldHeight / (bounds.maxY - bounds.minY)) * miniHeight,
         );
-        mini.fill();
       }
-      const worldWidth = width / camera.zoom;
-      const worldHeight = height / camera.zoom;
-      mini.strokeStyle = "rgba(237, 70, 127, .76)";
-      mini.lineWidth = 1;
-      mini.strokeRect(
-        ((camera.x - worldWidth / 2 - bounds.minX) /
-          (bounds.maxX - bounds.minX)) *
-          miniWidth,
-        ((camera.y - worldHeight / 2 - bounds.minY) /
-          (bounds.maxY - bounds.minY)) *
-          miniHeight,
-        (worldWidth / (bounds.maxX - bounds.minX)) * miniWidth,
-        (worldHeight / (bounds.maxY - bounds.minY)) * miniHeight,
-      );
       frame = window.requestAnimationFrame(paint);
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [background, edges, language, showAgent]);
+  }, [background, edges, frameRate, language, showAgent, showMinimap]);
 
   const screenNodeAt = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
