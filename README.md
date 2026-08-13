@@ -316,17 +316,41 @@ about incomplete capture and uncertain relationships—the parts most dashboards
 ## Author
 
 <div align="center">
-  <strong>Built by Yuda / myudak</strong>
+
+  <p>
+    <img src="./apps/marketing/public/UNDIPOfficial.png" alt="Universitas Diponegoro" height="110" />
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <img src="./apps/marketing/public/logo-gemastik.png" alt="GEMASTIK" height="110" />
+  </p>
+
+  <h3>HAWK-EYE</h3>
+
+  <strong>Dirancang oleh Tim</strong>
+  <br />
+  <strong>Ajarin Kami Sepuh</strong>
+
   <br />
   <br />
-  <a href="https://github.com/myudak">GitHub</a>
+
+  <table>
+    <tr>
+      <td align="left">Muchammad Yuda Tri Ananda</td>
+    </tr>
+    <tr>
+      <td align="left">Olivia Oktaviani</td>
+    </tr>
+    <tr>
+      <td align="left">Syifa Aeni Mudrikah</td>
+    </tr>
+  </table>
+
+  <sub>Universitas Diponegoro · GEMASTIK XIX</sub>
+
+  <br />
+  <br />
+
+  <a href="https://hawkeye.myudak.com">Live Demo</a>
   ·
-  <a href="https://myudak.com">Portfolio</a>
-  ·
-  <a href="mailto:yudaplzhacker@gmail.com">Email</a>
-  ·
-  <a href="https://hawkeye.myudak.com">Live product</a>
-  <br />
-  <br />
-  <em>Precision. Persistence. Truth.</em>
+  <a href="https://github.com/myudak/hawkeye-judolgraph">GitHub</a>
+
 </div>
