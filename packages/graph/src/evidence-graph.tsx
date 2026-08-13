@@ -17,6 +17,7 @@ import {
 import { GraphLegend } from "./graph-legend";
 import { drawOfficialSocialIcon } from "./canvas-icons";
 import { applyMagneticForces, releaseWithMomentum } from "./force-simulation";
+import { graphMotion, graphPalette } from "./theme";
 import type { EvidenceKind, EvidenceNodeData } from "./types";
 
 interface SimNode extends EvidenceNodeData {
@@ -52,11 +53,11 @@ interface PointerState {
 }
 
 const colors: Record<string, string> = {
-  seed: "#ef467f",
-  page: "#5b91ef",
-  contact: "#27c5ba",
-  pending: "#9b7dde",
-  rejected: "#9b687c",
+  seed: graphPalette.seed,
+  page: graphPalette.page,
+  contact: graphPalette.contact,
+  pending: graphPalette.candidate,
+  rejected: graphPalette.rejected,
 };
 
 type GraphLanguage = "id" | "en";
@@ -377,9 +378,9 @@ export function EvidenceGraph({
       const { width, height } = sizeRef.current;
       const camera = cameraRef.current;
       const sim = simulationRef.current;
-      camera.x += (camera.targetX - camera.x) * 0.12;
-      camera.y += (camera.targetY - camera.y) * 0.12;
-      camera.zoom += (camera.targetZoom - camera.zoom) * 0.12;
+      camera.x += (camera.targetX - camera.x) * graphMotion.cameraEase;
+      camera.y += (camera.targetY - camera.y) * graphMotion.cameraEase;
+      camera.zoom += (camera.targetZoom - camera.zoom) * graphMotion.cameraEase;
 
       const values = [...sim.values()];
       applyMagneticForces({
@@ -892,8 +893,8 @@ export function EvidenceGraph({
           <i />
           <span>
             {language === "id"
-              ? "Agen menelusuri bukti publik"
-              : "Agent exploring public evidence"}
+              ? "Menelusuri halaman publik"
+              : "Exploring public pages"}
           </span>
         </div>
         <div className="canvas-graph__agent-status" aria-hidden="true">
@@ -941,8 +942,8 @@ export function EvidenceGraph({
                       ? "Ditolak peninjau"
                       : "Rejected by reviewer"
                     : language === "id"
-                      ? "Bukti terverifikasi"
-                      : "Evidence verified"}
+                      ? "Ditemukan"
+                      : "Observed"}
               </dd>
             </div>
           </dl>
@@ -956,8 +957,8 @@ export function EvidenceGraph({
       <details className="graph-fallback">
         <summary>
           {language === "id"
-            ? "Tabel graph aksesibel"
-            : "Accessible graph table"}
+            ? "Lihat sebagai tabel"
+            : "View as a table"}
         </summary>
         <table>
           <thead>

@@ -39,6 +39,8 @@
   --he-radius: 18px;
   --he-radius-lg: 28px;
   --he-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --hk-pink: #ed1764;
+  --hk-panel: #0b1824;
 }
 
 :root[data-theme="light"] {
@@ -75,4 +77,6 @@
   --he-line: #dce3e8;
   --he-line-strong: #bdc9d1;
   --he-shadow: 0 24px 70px rgb(25 44 64 / 12%);
+  --hk-pink: #d5165b;
+  --hk-panel: #ffffff;
 }

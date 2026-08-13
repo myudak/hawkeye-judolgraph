@@ -30,7 +30,7 @@ const events = [
   {
     step: 3,
     time: "00:11",
-    title: { id: "Relasi terverifikasi", en: "Relationship verified" },
+    title: { id: "Hubungan ditinjau", en: "Relationship reviewed" },
     detail: {
       id: "Entitas yang ditemukan ditautkan kembali ke halaman sumber.",
       en: "Observed entities were linked back to the captured page.",
@@ -63,10 +63,10 @@ export function ProductDemo() {
 
   const current = events[step - 1];
   return (
-    <div className="replay-demo">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card/75 shadow-2xl">
       <EvidenceGraph visibleStep={step} compact />
-      <div className="replay-console">
-        <div className="replay-console__controls">
+      <div className="border-t border-border p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -100,10 +100,10 @@ export function ProductDemo() {
               </>
             )}
           </Button>
-          <label>
+          <label className="ml-auto flex items-center gap-2 text-xs font-semibold text-muted-foreground max-sm:w-full max-sm:justify-between">
             {localize(language, { id: "Kecepatan", en: "Speed" })}
             <select
-              className="he-select"
+              className="min-h-9 rounded-full border border-border bg-background px-3 text-foreground"
               value={speed}
               onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                 setSpeed(Number(event.target.value))
@@ -119,15 +119,21 @@ export function ProductDemo() {
             </select>
           </label>
         </div>
-        <div className="replay-console__event" aria-live="polite">
-          <span>{current.time}</span>
+        <div className="mt-5 flex items-start gap-4" aria-live="polite">
+          <span className="font-mono text-xs font-semibold text-[var(--hk-pink)]">
+            {current.time}
+          </span>
           <div>
-            <strong>{localize(language, current.title)}</strong>
-            <p>{localize(language, current.detail)}</p>
+            <strong className="text-base text-foreground">
+              {localize(language, current.title)}
+            </strong>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {localize(language, current.detail)}
+            </p>
           </div>
         </div>
         <input
-          className="replay-range"
+          className="my-5 h-1 w-full accent-[var(--hk-pink)]"
           type="range"
           min="1"
           max="4"
@@ -141,10 +147,11 @@ export function ProductDemo() {
             en: "Investigation timeline",
           })}
         />
-        <ol className="replay-steps">
+        <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {events.map((event) => (
             <li key={event.step} data-active={event.step <= step}>
               <button
+                className="w-full rounded-lg border border-border px-3 py-3 text-left text-xs text-muted-foreground transition hover:border-[var(--hk-pink)]/40 hover:text-foreground data-[active=true]:bg-[var(--hk-pink)]/5"
                 type="button"
                 onClick={() => {
                   setPlaying(false);
@@ -152,7 +159,7 @@ export function ProductDemo() {
                 }}
                 aria-label={`${localize(language, { id: "Buka", en: "Go to" })} ${localize(language, event.title)}`}
               >
-                <i />
+                <i className="mr-2 inline-block size-1.5 rounded-full bg-current" />
                 {localize(language, event.title)}
               </button>
             </li>

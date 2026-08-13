@@ -1,18 +1,55 @@
 ---
-import { ArrowRightIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
+import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { AgentBrowserDemo } from "./AgentBrowserDemo";
-const steps = [
-  ["Observasi", "Observation"],
-  ["Aksi agen", "Agent action"],
-  ["Ekstraksi bukti", "Evidence extraction"],
-  ["Tinjauan manusia", "Human review"],
-  ["Relasi terverifikasi", "Verified relationship"],
+
+const allowed = [
+  ["Membaca konten yang terlihat", "Read visible content"],
+  ["Membuka rute publik yang aman", "Open safe public routes"],
+  ["Membuka menu, tab, dan tautan", "Open menus, tabs, and links"],
+  ["Mencatat observasi baru", "Record new observations"],
+];
+const blocked = [
+  ["Login atau mengirim formulir", "Log in or submit forms"],
+  ["Mengunduh file", "Download files"],
+  ["Melewati CAPTCHA atau pembatasan", "Bypass CAPTCHA or restrictions"],
+  ["Mengakses shell atau filesystem", "Access a shell or filesystem"],
 ];
 ---
 
-<section class="section agent-section" aria-labelledby="agent-title"><div class="shell">
-  <div class="section-heading section-heading--split"><div><p class="section-label"><span class="lang-id">Eksplorasi berbatas</span><span class="lang-en">Bounded assistance</span></p><h2 id="agent-title"><span class="lang-id">Agen menelusuri.<br />Manusia memutuskan.</span><span class="lang-en">Agents explore.<br />Humans decide.</span></h2></div><p><span class="lang-id">Agen HAWK-EYE dapat membuka bukti publik tersembunyi secara aman, tetapi tidak membuat kesimpulan atribusi. Setiap aksi dibatasi, dicatat, dan dapat ditinjau.</span><span class="lang-en">HAWK-EYE agents can reveal safe hidden evidence, but they do not make attribution conclusions. Every action is constrained, recorded, and reviewable.</span></p></div>
-  <AgentBrowserDemo client:visible />
-  <ol class="agent-flow">{steps.map(([id, en], index) => <li><span>{String(index + 1).padStart(2, "0")}</span><strong class="lang-id">{id}</strong><strong class="lang-en">{en}</strong>{index < steps.length - 1 && <i aria-hidden="true"><ArrowRightIcon /></i>}</li>)}</ol>
-  <div class="agent-rules"><article class="rule-card rule-card--allowed"><span class="rule-card__icon"><CheckIcon aria-hidden="true" /></span><div><p class="section-label"><span class="lang-id">Agen boleh</span><span class="lang-en">Agents may</span></p><h3><span class="lang-id">Membuka bukti publik yang dapat diamati.</span><span class="lang-en">Reveal observable public evidence.</span></h3></div><ul><li><span class="lang-id">Memeriksa konten terlihat</span><span class="lang-en">Inspect visible content</span></li><li><span class="lang-id">Membuka rute publik yang aman</span><span class="lang-en">Open safe public routes</span></li><li><span class="lang-id">Membuka menu dan tab</span><span class="lang-en">Reveal menus and tabs</span></li><li><span class="lang-id">Merekam bukti</span><span class="lang-en">Record evidence</span></li></ul></article><article class="rule-card rule-card--blocked"><span class="rule-card__icon"><XIcon aria-hidden="true" /></span><div><p class="section-label"><span class="lang-id">Agen dilarang</span><span class="lang-en">Agents may not</span></p><h3><span class="lang-id">Melewati batas keselamatan.</span><span class="lang-en">Cross a safety boundary.</span></h3></div><ul><li><span class="lang-id">Login atau mengirim formulir</span><span class="lang-en">Log in or submit forms</span></li><li><span class="lang-id">Mengunduh file</span><span class="lang-en">Download files</span></li><li><span class="lang-id">Menerobos pembatasan</span><span class="lang-en">Bypass restrictions</span></li><li><span class="lang-id">Membuat klaim atribusi</span><span class="lang-en">Make attribution claims</span></li></ul></article></div>
-</div></section>
+<section class="border-y border-border bg-[color-mix(in_srgb,var(--hk-panel)_56%,transparent)] py-20 sm:py-28" aria-labelledby="agent-title">
+  <div class="mx-auto w-full max-w-[90rem] px-5 sm:px-8">
+    <div class="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(25rem,0.55fr)] lg:items-end">
+      <h2 id="agent-title" class="text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+        <span class="lang-id">Model membantu memilih langkah penelusuran</span>
+        <span class="lang-en">The model helps choose an investigation step</span>
+      </h2>
+      <p class="max-w-2xl text-base leading-7 text-muted-foreground lg:justify-self-end">
+        <span class="lang-id">Model hanya memilih aksi dari opsi yang diterbitkan server. Browser tetap dikendalikan sistem, setiap aksi dicatat, dan deterministic fallback tetap tersedia.</span>
+        <span class="lang-en">The model only selects from server-issued actions. The system retains browser control, records every action, and keeps a deterministic fallback available.</span>
+      </p>
+    </div>
+
+    <AgentBrowserDemo client:visible />
+
+    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+      <article class="rounded-xl border border-teal-400/25 bg-teal-400/5 p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="flex size-9 items-center justify-center rounded-full bg-teal-400/10 text-teal-300"><CheckIcon aria-hidden="true" /></span>
+          <h3 class="text-lg font-semibold text-foreground"><span class="lang-id">Aksi yang tersedia</span><span class="lang-en">Available actions</span></h3>
+        </div>
+        <ul class="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+          {allowed.map(([id, en]) => <li class="flex gap-2"><CheckIcon className="mt-0.5 shrink-0 text-teal-300" aria-hidden="true" /><span class="lang-id">{id}</span><span class="lang-en">{en}</span></li>)}
+        </ul>
+      </article>
+      <article class="rounded-xl border border-[var(--hk-pink)]/25 bg-[var(--hk-pink)]/5 p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="flex size-9 items-center justify-center rounded-full bg-[var(--hk-pink)]/10 text-[var(--hk-pink)]"><XIcon aria-hidden="true" /></span>
+          <h3 class="text-lg font-semibold text-foreground"><span class="lang-id">Aksi yang tidak diterbitkan</span><span class="lang-en">Actions never issued</span></h3>
+        </div>
+        <ul class="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+          {blocked.map(([id, en]) => <li class="flex gap-2"><XIcon className="mt-0.5 shrink-0 text-[var(--hk-pink)]" aria-hidden="true" /><span class="lang-id">{id}</span><span class="lang-en">{en}</span></li>)}
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>

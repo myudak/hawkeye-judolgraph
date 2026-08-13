@@ -5,6 +5,7 @@ import {
 } from "@phosphor-icons/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { drawOfficialSocialIcon } from "@hawkeye/graph/canvas-icons"
+import { graphMotion } from "@hawkeye/graph/theme"
 import {
   applyMagneticForces,
   releaseWithMomentum,
@@ -606,9 +607,9 @@ export function EvidenceGraph({
       last = time
       physics(delta)
       const camera = cameraRef.current
-      camera.x += (camera.targetX - camera.x) * 0.11
-      camera.y += (camera.targetY - camera.y) * 0.11
-      camera.zoom += (camera.targetZoom - camera.zoom) * 0.11
+      camera.x += (camera.targetX - camera.x) * graphMotion.cameraEase
+      camera.y += (camera.targetY - camera.y) * graphMotion.cameraEase
+      camera.zoom += (camera.targetZoom - camera.zoom) * graphMotion.cameraEase
       const { width, height, dpr } = sizeRef.current
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
       context.clearRect(0, 0, width, height)

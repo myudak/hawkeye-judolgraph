@@ -1,13 +1,30 @@
 ---
 import { Logo } from "@hawkeye/brand";
 import avatar from "../assets/hawkeye-avatar.png";
-interface Props { repositoryUrl: string }
-const { repositoryUrl } = Astro.props;
-const columns = [
-  { title: ["Platform", "Platform"], links: [["Alur bukti", "Evidence workflow", "#evidence"], ["Graph investigasi", "Investigation graph", "#platform"], ["Sistem replay", "Replay system", "#how-it-works"]] },
-  { title: ["Sumber daya", "Resources"], links: [["Dokumentasi", "Documentation", `${repositoryUrl}/tree/main/docs`], ["Protokol evaluasi", "Evaluation protocol", `${repositoryUrl}/blob/main/docs/EVALUATION.md`], ["Model ancaman", "Threat model", `${repositoryUrl}/blob/main/docs/THREAT_MODEL.md`], ["GitHub", "GitHub", repositoryUrl]] },
-  { title: ["Proyek", "Project"], links: [["Lisensi", "License", `${repositoryUrl}/blob/main/LICENSE`], ["Roadmap", "Roadmap", `${repositoryUrl}/blob/main/docs/ROADMAP.md`], ["Status", "Status", `${repositoryUrl}/blob/main/docs/STATUS.md`], ["Kontribusi", "Contributing", `${repositoryUrl}/blob/main/CONTRIBUTING.md`]] },
+
+interface Props {
+  repositoryUrl: string;
+  demoUrl: string;
+  releaseUrl: string;
+}
+
+const { repositoryUrl, demoUrl, releaseUrl } = Astro.props;
+const links = [
+  ["Demo", "Demo", demoUrl],
+  ["GitHub", "GitHub", repositoryUrl],
+  ["Dokumentasi", "Documentation", `${repositoryUrl}/tree/main/docs`],
+  ["Evaluasi", "Evaluation", `${repositoryUrl}/blob/main/docs/EVALUATION.md`],
+  ["Lisensi", "License", `${repositoryUrl}/blob/main/LICENSE`],
+  ["Rilis Windows", "Windows release", releaseUrl],
 ];
 ---
 
-<footer class="site-footer"><div class="shell site-footer__top"><div class="site-footer__brand"><Logo imageSrc={avatar.src} /><p><span class="lang-id">Investigasi web publik berbasis bukti dengan provenance, netralitas, dan tinjauan yang dapat dijelaskan.</span><span class="lang-en">Evidence-driven public web investigation with provenance, neutrality, and explainable review.</span></p></div>{columns.map((column) => <nav aria-label={column.title[0]}><strong><span class="lang-id">{column.title[0]}</span><span class="lang-en">{column.title[1]}</span></strong>{column.links.map(([idLabel, enLabel, href]) => <a href={href}><span class="lang-id">{idLabel}</span><span class="lang-en">{enLabel}</span></a>)}</nav>)}</div><div class="shell site-footer__bottom"><span>© 2026 HAWK-EYE</span><span><span class="lang-id">Sumber terbuka <i>•</i> Berjalan lokal <i>•</i> Berbasis bukti</span><span class="lang-en">Open source <i>•</i> Local-first <i>•</i> Evidence-driven</span></span></div></footer>
+<footer class="border-t border-border bg-card/35">
+  <div class="mx-auto flex w-[min(1240px,calc(100vw-3rem))] flex-col gap-8 py-10 md:flex-row md:items-center md:justify-between">
+    <div class="max-w-sm"><Logo imageSrc={avatar.src} /><p class="mt-4 text-sm leading-6 text-muted-foreground"><span class="lang-id">Mengumpulkan halaman publik, menyimpan artefak, dan menampilkan temuan beserta sumbernya.</span><span class="lang-en">Collects public pages, stores artifacts, and displays observations with their sources.</span></p></div>
+    <nav class="flex max-w-2xl flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground" aria-label="Tautan produk">
+      {links.map(([idLabel, enLabel, href]) => <a class="transition hover:text-foreground" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noreferrer" : undefined}><span class="lang-id">{idLabel}</span><span class="lang-en">{enLabel}</span></a>)}
+    </nav>
+  </div>
+  <div class="border-t border-border"><div class="mx-auto flex w-[min(1240px,calc(100vw-3rem))] flex-wrap justify-between gap-3 py-5 text-xs text-muted-foreground"><span>© 2026 HAWK-EYE</span><span>GEMASTIK XIX · Universitas Diponegoro</span></div></div>
+</footer>

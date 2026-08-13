@@ -8,6 +8,7 @@ import type {
   RunDetails,
 } from "@/api/types"
 import { formatTime, hostnameFrom, titleCase } from "@/lib/format"
+import { graphPalette } from "@hawkeye/graph/theme"
 
 export type VisualKind =
   | "page"
@@ -88,11 +89,11 @@ export const GRAPH_FILTERS: Array<{
   label: string
   color: string
 }> = [
-  { key: "page", label: "Captured pages", color: "#5b91ef" },
-  { key: "contact", label: "Contacts", color: "#3eb7b3" },
+  { key: "page", label: "Captured pages", color: graphPalette.page },
+  { key: "contact", label: "Contacts", color: graphPalette.contact },
   { key: "brand", label: "Claimed brands", color: "#9270e8" },
-  { key: "transaction", label: "Payments", color: "#e4ae3f" },
-  { key: "offer", label: "Offer claims", color: "#ed7a3f" },
+  { key: "transaction", label: "Payments", color: graphPalette.payment },
+  { key: "offer", label: "Offer claims", color: graphPalette.offer },
   { key: "destination", label: "External destinations", color: "#8268d5" },
   { key: "candidate", label: "Pending candidates", color: "#9a8cb8" },
   { key: "other", label: "Other evidence", color: "#8797a6" },
@@ -297,7 +298,7 @@ export function presentationFor(
     return {
       visualKind: "page",
       label: seed ? "Investigated site" : "Captured page",
-      color: seed ? "#ef467f" : "#5b91ef",
+      color: seed ? graphPalette.seed : graphPalette.page,
       icon: seed ? "site" : "page",
     }
   }
@@ -306,7 +307,7 @@ export function presentationFor(
       return {
         visualKind: "contact",
         label: "WhatsApp",
-        color: "#3eb7b3",
+        color: graphPalette.contact,
         icon: "whatsapp",
       }
     }
@@ -314,7 +315,7 @@ export function presentationFor(
       return {
         visualKind: "contact",
         label: "Telegram",
-        color: "#3eb7b3",
+        color: graphPalette.contact,
         icon: "telegram",
       }
     }
@@ -322,7 +323,7 @@ export function presentationFor(
       return {
         visualKind: "contact",
         label: "Email",
-        color: "#3eb7b3",
+        color: graphPalette.contact,
         icon: "email",
       }
     }
@@ -330,14 +331,14 @@ export function presentationFor(
       return {
         visualKind: "contact",
         label: "Phone",
-        color: "#3eb7b3",
+        color: graphPalette.contact,
         icon: "phone",
       }
     }
     return {
       visualKind: "contact",
       label: "Contact",
-      color: "#3eb7b3",
+      color: graphPalette.contact,
       icon: "contact",
     }
   }
@@ -356,7 +357,7 @@ export function presentationFor(
     return {
       visualKind: "transaction",
       label: "Transaction",
-      color: "#e4ae3f",
+      color: graphPalette.payment,
       icon: "payment",
     }
   }
@@ -364,7 +365,7 @@ export function presentationFor(
     return {
       visualKind: "offer",
       label: "Offer",
-      color: "#ed7a3f",
+      color: graphPalette.offer,
       icon: "offer",
     }
   }

@@ -8,16 +8,16 @@ import overviewImage from "../assets/product-overview.png";
 
 interface Props { title: string; description: string; canonical?: string; image?: string }
 const { title, description, canonical = Astro.site?.toString() ?? "https://hawkeye1.myudak.com", image = new URL(overviewImage.src, Astro.site ?? "https://hawkeye1.myudak.com").toString() } = Astro.props;
-const schema = { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "HAWK-EYE", applicationCategory: "SecurityApplication", operatingSystem: "Windows, Linux, macOS", description, url: canonical, codeRepository: "https://github.com/myudak/hawkeye-judolgraph", license: "https://opensource.org/license/mit" };
+const schema = { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "HAWK-EYE", applicationCategory: "SecurityApplication", operatingSystem: "Windows", description, url: canonical, codeRepository: "https://github.com/myudak/hawkeye-judolgraph", license: "https://opensource.org/license/mit" };
 ---
 
 <!doctype html><html lang="id" data-language="id" data-theme="dark"><head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content={description} /><meta name="theme-color" content="#06111c" /><meta name="color-scheme" content="dark light" /><link rel="canonical" href={canonical} /><link rel="icon" href="/favicon.ico" sizes="any" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta property="og:type" content="website" /><meta property="og:locale" content="id_ID" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:url" content={canonical} /><meta property="og:image" content={image} /><meta property="og:image:alt" content="HAWK-EYE evidence investigation workspace" />
+  <meta property="og:type" content="website" /><meta property="og:locale" content="id_ID" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:url" content={canonical} /><meta property="og:image" content={image} /><meta property="og:image:alt" content="Workspace investigasi bukti publik HAWK-EYE" />
   <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content={image} />
   <script is:inline>try{const theme=localStorage.getItem("hawkeye-theme");if(theme)document.documentElement.dataset.theme=theme;const language=localStorage.getItem("hawkeye-language");if(language){document.documentElement.dataset.language=language;document.documentElement.lang=language}}catch{}</script>
   <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)}></script><title>{title}</title>
-</head><body><a class="skip-link" href="#main-content">Skip to main content</a><slot />
+</head><body><a class="skip-link" href="#main-content"><span class="lang-id">Lewati ke konten utama</span><span class="lang-en">Skip to main content</span></a><slot />
 <script>
   const root = document.documentElement;
   const languageButton = document.querySelector<HTMLButtonElement>("[data-language-toggle]");

@@ -1,17 +1,44 @@
 ---
 import { EvidenceGraph } from "@hawkeye/graph";
-import { ArrowUpRightIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon } from "@phosphor-icons/react";
+import type { WindowsRelease } from "../lib/release";
+import { DownloadMenu } from "./DownloadMenu";
 
-interface Props { demoUrl: string; releaseUrl: string; releaseLabel: string }
-const { demoUrl, releaseUrl, releaseLabel } = Astro.props;
+interface Props {
+  demoUrl: string;
+  release: WindowsRelease;
+}
+
+const { demoUrl, release } = Astro.props;
 ---
 
-<section class="hero shell" aria-labelledby="hero-title">
-  <div class="hero__copy">
-    <h1 id="hero-title"><span class="lang-en">Trace the public web.<br /><em>Prove every connection.</em></span><span class="lang-id">Telusuri web publik.<br /><em>Buktikan setiap hubungan.</em></span></h1>
-    <p class="hero__lead"><span class="lang-en">HAWK-EYE preserves what a public page showed, extracts observable facts, and maps every relationship back to evidence. Pending leads remain pending. Uncertainty stays visible.</span><span class="lang-id">HAWK-EYE menyimpan apa yang tampil di halaman publik, mengekstrak fakta yang dapat diamati, dan menghubungkan setiap relasi kembali ke bukti. Lead tetap pending. Ketidakpastian tetap terlihat.</span></p>
-    <div class="hero__actions"><a class="button button--primary" href={releaseUrl} target="_blank" rel="noreferrer"><DownloadSimpleIcon /><span class="lang-id">Unduh untuk Windows</span><span class="lang-en">{releaseLabel}</span></a><a class="button button--secondary" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Coba demo online</span><span class="lang-en">Try online demo</span><ArrowUpRightIcon /></a></div>
-    <ul class="trust-list" aria-label="Kualitas produk"><li>● <span class="lang-id">Berjalan lokal</span><span class="lang-en">Local-first</span></li><li>● <span class="lang-id">Sumber terbuka</span><span class="lang-en">Open source</span></li><li>● <span class="lang-id">Berbasis bukti</span><span class="lang-en">Evidence-backed</span></li></ul>
+<section class="mx-auto grid min-h-[calc(100vh-4.75rem)] w-[min(1240px,calc(100vw-3rem))] items-center gap-12 py-20 lg:grid-cols-[0.82fr_1.18fr] lg:gap-16" aria-labelledby="hero-title">
+  <div>
+    <h1 id="hero-title" class="m-0 max-w-[720px] text-[clamp(3.2rem,6vw,6.2rem)] leading-[0.96] font-[680] tracking-[-0.06em] text-foreground">
+      <span class="lang-id">Telusuri situs judi online <span class="text-primary">dari satu URL.</span></span>
+      <span class="lang-en">Investigate an online gambling site <span class="text-primary">from one URL.</span></span>
+    </h1>
+    <p class="mt-8 max-w-[650px] text-base leading-8 text-muted-foreground sm:text-lg">
+      <span class="lang-id">HAWK-EYE mengumpulkan halaman publik, menyimpan HTML dan tangkapan layar, lalu mencatat kontak, domain, dan temuan lain dalam <em>evidence graph</em>. Setiap temuan tetap terhubung ke halaman sumbernya.</span>
+      <span class="lang-en">HAWK-EYE collects public pages, stores HTML and screenshots, then records contacts, domains, and other observations in an evidence graph. Every observation remains linked to its source page.</span>
+    </p>
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_14px_36px_rgb(237_23_100/0.18)] transition hover:-translate-y-0.5 hover:bg-primary/85" href={demoUrl} target="_blank" rel="noreferrer">
+        <span class="lang-id">Buka HAWK-EYE di browser</span><span class="lang-en">Open HAWK-EYE in your browser</span><ArrowUpRightIcon aria-hidden="true" />
+      </a>
+      <DownloadMenu release={release} client:load />
+    </div>
+    <p class="mt-5 max-w-[620px] text-xs leading-6 text-muted-foreground">
+      <span class="lang-id">Demo menggunakan layanan sementara. Aplikasi Windows berjalan lokal dan tetap dapat digunakan tanpa model melalui fallback deterministik.</span>
+      <span class="lang-en">The demo uses a temporary service. The Windows app runs locally and remains usable without a model through deterministic fallback.</span>
+    </p>
   </div>
-  <div class="hero__graph"><div class="hero__graph-label"><span><span class="lang-id">Graph investigasi</span><span class="lang-en">Investigation graph</span></span><span><span class="lang-id">Contoh terkendali · 7 node</span><span class="lang-en">Controlled example · 7 nodes</span></span></div><EvidenceGraph compact client:load /></div>
+
+  <div class="overflow-hidden rounded-[1.7rem] border border-border bg-card shadow-[0_32px_100px_rgb(0_0_0/0.38)]">
+    <div class="flex items-center justify-between border-b border-border px-5 py-3 text-[0.68rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+      <span><span class="lang-id">Evidence graph interaktif</span><span class="lang-en">Interactive evidence graph</span></span>
+      <span><span class="lang-id">Contoh data terkendali</span><span class="lang-en">Controlled example data</span></span>
+    </div>
+    <div class="hero-graph-stage"><EvidenceGraph compact client:load /></div>
+  </div>
 </section>

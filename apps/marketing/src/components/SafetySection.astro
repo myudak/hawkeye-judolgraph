@@ -1,12 +1,47 @@
 ---
-import { CheckIcon, ShieldWarningIcon } from "@phosphor-icons/react";
-const policies = [
-  ["Perlindungan IP privat", "Private IP protection", "Loopback dan rentang privat ditolak sebelum pengumpulan.", "Loopback and private ranges are rejected before collection."],
-  ["Batas permintaan", "Request budgets", "Batas waktu, halaman, dan interaksi selalu eksplisit.", "Time, page, and interaction limits stay explicit."],
-  ["Validasi ulang DNS", "DNS revalidation", "Tujuan diperiksa kembali sebelum browser membukanya.", "Destinations are checked again before browser use."],
-  ["Kandidat tidak dirayapi otomatis", "No automated candidate crawling", "Kandidat menunggu keputusan manusia yang tercatat.", "Candidates wait for a recorded human decision."],
-  ["Tanpa interaksi login", "No login interaction", "Hanya interaksi publik dan baca-saja.", "Public, read-only interaction only."],
+import { CheckIcon, ProhibitIcon } from "@phosphor-icons/react";
+
+const allowed = [
+  ["Halaman publik", "Public pages"],
+  ["Navigasi baca-saja", "Read-only navigation"],
+  ["Screenshot dan HTML", "Screenshots and HTML"],
+  ["Metadata dan teks terlihat", "Metadata and visible text"],
+];
+const blocked = [
+  ["Login dan pengiriman formulir", "Login and form submission"],
+  ["Unduhan oleh model", "Model-initiated downloads"],
+  ["Bypass CAPTCHA atau pembatasan", "CAPTCHA or restriction bypass"],
+  ["Jaringan privat dan loopback", "Private networks and loopback"],
+  ["Crawl otomatis kandidat", "Automatic candidate crawling"],
 ];
 ---
 
-<section id="safety" class="section shell safety-section" aria-labelledby="safety-title"><div class="safety-copy"><p class="section-label"><span class="lang-id">Batas aman di setiap langkah</span><span class="lang-en">Guardrails at every step</span></p><h2 id="safety-title"><span class="lang-id">Keamanan adalah bagian dari model investigasi.</span><span class="lang-en">Safety is part of the investigation model.</span></h2><p><span class="lang-id">Kebijakan diperiksa sebelum navigasi dan ketika tujuan berubah. Aksi yang diblokir menjadi event yang dapat diaudit—bukan kegagalan diam-diam.</span><span class="lang-en">Policy is evaluated before navigation and again when a destination changes. A blocked action becomes an auditable event—not a silent failure.</span></p><div class="policy-block"><header><span><span class="lang-id">Aksi diblokir</span><span class="lang-en">Blocked action</span></span><strong><span class="lang-id">Event kebijakan</span><span class="lang-en">Policy event</span> · #0048</strong></header><div class="policy-block__body"><span class="shield-mark"><ShieldWarningIcon aria-hidden="true" /></span><div><h3><span class="lang-id">Navigasi eksternal tidak aman</span><span class="lang-en">Unsafe external navigation</span></h3><p><span class="lang-id">Domain kandidat memerlukan persetujuan manusia</span><span class="lang-en">Candidate domain requires human approval</span></p></div></div><footer><span><span class="lang-id">Aksi dicegah</span><span class="lang-en">Action prevented</span></span><code>safe_navigation_required</code></footer></div></div><div class="policy-list">{policies.map(([idTitle, enTitle, idCopy, enCopy], index) => <article><span>{String(index + 1).padStart(2, "0")}</span><i><CheckIcon aria-hidden="true" /></i><h3><span class="lang-id">{idTitle}</span><span class="lang-en">{enTitle}</span></h3><p><span class="lang-id">{idCopy}</span><span class="lang-en">{enCopy}</span></p></article>)}</div></section>
+<section id="safety" class="border-y border-border bg-[color-mix(in_srgb,var(--hk-panel)_56%,transparent)] py-20 sm:py-28" aria-labelledby="safety-title">
+  <div class="mx-auto w-full max-w-[90rem] px-5 sm:px-8">
+    <div class="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(25rem,0.55fr)] lg:items-end">
+      <h2 id="safety-title" class="text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+        <span class="lang-id">Batas pengumpulan</span>
+        <span class="lang-en">Collection limits</span>
+      </h2>
+      <p class="max-w-2xl text-base leading-7 text-muted-foreground lg:justify-self-end">
+        <span class="lang-id">Kebijakan diperiksa sebelum navigasi dan ketika tujuan berubah. Aksi di luar lingkup dihentikan dan dicatat sebagai event.</span>
+        <span class="lang-en">Policy is checked before navigation and whenever a destination changes. Out-of-scope actions are stopped and recorded as events.</span>
+      </p>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <article class="rounded-2xl border border-teal-400/25 bg-card/75 p-6 sm:p-8">
+        <div class="mb-6 flex items-center gap-3"><span class="flex size-10 items-center justify-center rounded-full bg-teal-400/10 text-teal-300"><CheckIcon aria-hidden="true" /></span><h3 class="text-xl font-semibold"><span class="lang-id">Dikumpulkan</span><span class="lang-en">Collected</span></h3></div>
+        <ul class="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">{allowed.map(([id, en]) => <li class="flex gap-2"><CheckIcon className="mt-0.5 shrink-0 text-teal-300" aria-hidden="true" /><span class="lang-id">{id}</span><span class="lang-en">{en}</span></li>)}</ul>
+      </article>
+      <article class="rounded-2xl border border-[var(--hk-pink)]/25 bg-card/75 p-6 sm:p-8">
+        <div class="mb-6 flex items-center gap-3"><span class="flex size-10 items-center justify-center rounded-full bg-[var(--hk-pink)]/10 text-[var(--hk-pink)]"><ProhibitIcon aria-hidden="true" /></span><h3 class="text-xl font-semibold"><span class="lang-id">Tidak dilakukan</span><span class="lang-en">Not performed</span></h3></div>
+        <ul class="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">{blocked.map(([id, en]) => <li class="flex gap-2"><ProhibitIcon className="mt-0.5 shrink-0 text-[var(--hk-pink)]" aria-hidden="true" /><span class="lang-id">{id}</span><span class="lang-en">{en}</span></li>)}</ul>
+      </article>
+    </div>
+    <p class="mt-6 rounded-xl border border-amber-400/25 bg-amber-400/5 px-5 py-4 text-sm leading-6 text-amber-100">
+      <span class="lang-id">Hubungan pada graph merupakan temuan untuk ditinjau, bukan pernyataan kepemilikan atau identitas operator.</span>
+      <span class="lang-en">Graph relationships are findings for review, not statements of ownership or operator identity.</span>
+    </p>
+  </div>
+</section>

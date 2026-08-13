@@ -23,6 +23,13 @@ export {
   DrawerTitle,
   DrawerTrigger,
 } from "./drawer";
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLinkItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
 export { Select } from "./select";
 export { Tab } from "./tabs";
 export { Textarea } from "./textarea";

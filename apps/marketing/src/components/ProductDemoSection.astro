@@ -2,7 +2,32 @@
 import { ProductDemo } from "./ProductDemo";
 ---
 
-<section id="how-it-works" class="section demo-section" aria-labelledby="demo-title"><div class="shell">
-  <div class="section-heading section-heading--split"><div><p class="section-label"><span class="lang-id">Bukti, bukan asumsi</span><span class="lang-en">Evidence, not assertion</span></p><h2 id="demo-title"><span class="lang-id">Lihat investigasi<br />terbentuk sendiri.</span><span class="lang-en">Watch the investigation<br />build itself.</span></h2></div><p><span class="lang-id">Replay adalah proyeksi dari event yang tersimpan. Node hanya muncul ketika observasinya benar-benar ada, dan inspector selalu menunjuk kembali ke bukti yang dipreservasi.</span><span class="lang-en">Replay is a projection of persisted events. Nodes appear only when the underlying observation exists, and the inspector always points back to preserved evidence.</span></p></div>
-  <ProductDemo client:visible />
-</div></section>
+<section
+  id="how-it-works"
+  class="border-y border-border bg-[color-mix(in_srgb,var(--hk-panel)_56%,transparent)] py-20 sm:py-28"
+  aria-labelledby="demo-title"
+>
+  <div class="mx-auto w-full max-w-[90rem] px-5 sm:px-8">
+    <div class="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(25rem,0.55fr)] lg:items-end">
+      <h2 id="demo-title" class="text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
+        <span class="lang-id">Dari satu halaman ke temuan terkait</span>
+        <span class="lang-en">From one page to related findings</span>
+      </h2>
+      <p class="max-w-2xl text-base leading-7 text-muted-foreground lg:justify-self-end">
+        <span class="lang-id">HAWK-EYE mengikuti tautan publik dalam batas pengumpulan yang ditentukan. Kontak, domain, halaman, dan artefak ditambahkan ke kasus yang sama.</span>
+        <span class="lang-en">HAWK-EYE follows public links within a defined collection boundary. Contacts, domains, pages, and artifacts are added to the same case.</span>
+      </p>
+    </div>
+
+    <ProductDemo client:visible />
+
+    <ol class="mt-8 grid overflow-hidden rounded-xl border border-border bg-card/70 sm:grid-cols-5">
+      {["Seed URL", "Capture", "Ekstraksi", "Perbandingan", "Peninjauan"].map((step, index) => (
+        <li class="flex min-h-20 items-center gap-3 border-b border-border px-5 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0">
+          <span class="font-mono text-xs text-[var(--hk-pink)]">{String(index + 1).padStart(2, "0")}</span>
+          <strong class="text-sm font-medium text-foreground">{step}</strong>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

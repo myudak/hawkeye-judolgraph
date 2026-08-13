@@ -3,7 +3,7 @@ export function GraphLegend({ language = "id" }: { language?: "id" | "en" }) {
     <div className="graph-legend" aria-label="Relationship status legend">
       <span>
         <i data-state="verified" />
-        {language === "id" ? "Bukti terverifikasi" : "Verified evidence"}
+        {language === "id" ? "Ditemukan" : "Observed"}
       </span>
       <span>
         <i data-state="pending" />

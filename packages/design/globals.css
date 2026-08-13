@@ -84,6 +84,52 @@ svg {
   max-width: 100%;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.hawk-mark {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--hk-pink) 30%, transparent);
+  border-radius: 0.75rem;
+  background: #08121d;
+  box-shadow: 0 0 1.5rem color-mix(in srgb, var(--hk-pink) 10%, transparent);
+}
+
+.hawk-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brand-lockup > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.brand-lockup strong {
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+}
+
+.brand-lockup small {
+  color: var(--muted-foreground);
+  font-size: 0.48rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
 :focus-visible {
   outline: 3px solid var(--he-blue);
   outline-offset: 3px;

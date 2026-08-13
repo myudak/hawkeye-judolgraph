@@ -1,0 +1,28 @@
+---
+import { ArrowUpRightIcon } from "@phosphor-icons/react";
+
+interface Props { repositoryUrl: string }
+const { repositoryUrl } = Astro.props;
+const metrics = [
+  ["10", "skenario sintetis", "synthetic scenarios"],
+  ["3", "mode yang dibandingkan", "approaches compared"],
+  ["50", "percobaan", "attempts"],
+  ["4", "kontrol terlarang", "prohibited controls"],
+];
+---
+
+<section id="evaluation" class="border-y border-border bg-[color-mix(in_srgb,var(--hk-panel)_56%,transparent)] py-20 sm:py-28" aria-labelledby="evaluation-title">
+  <div class="mx-auto w-full max-w-[90rem] px-5 sm:px-8">
+    <div class="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(25rem,0.55fr)] lg:items-end">
+      <h2 id="evaluation-title" class="text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl"><span class="lang-id">Hasil evaluasi terkendali</span><span class="lang-en">Controlled evaluation results</span></h2>
+      <p class="max-w-2xl text-base leading-7 text-muted-foreground lg:justify-self-end"><span class="lang-id">Angka ini berasal dari fixture sintetis yang tersimpan di repository. Hasilnya tidak mengukur akurasi situs live, kepemilikan, kriminalitas, atau klasifikasi hukum.</span><span class="lang-en">These figures come from synthetic fixtures stored in the repository. They do not measure live-site accuracy, ownership, criminality, or legal classification.</span></p>
+    </div>
+    <div class="grid overflow-hidden rounded-2xl border border-border bg-card/75 sm:grid-cols-2 xl:grid-cols-4">
+      {metrics.map(([value, id, en]) => <div class="border-b border-border p-7 sm:border-r xl:border-b-0 xl:last:border-r-0"><strong class="block text-5xl font-semibold tracking-[-0.05em] text-foreground">{value}</strong><span class="mt-2 block text-sm text-muted-foreground"><span class="lang-id">{id}</span><span class="lang-en">{en}</span></span></div>)}
+    </div>
+    <div class="mt-6 flex flex-wrap gap-5 text-sm">
+      <a class="inline-flex items-center gap-2 font-medium text-[var(--hk-pink)] hover:underline" href={`${repositoryUrl}/blob/main/evaluation/benchmarks/g4-g9-controlled-results/raw-results.json`} target="_blank" rel="noreferrer"><span class="lang-id">Buka hasil mentah</span><span class="lang-en">Open raw results</span><ArrowUpRightIcon aria-hidden="true" /></a>
+      <a class="inline-flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground hover:underline" href={`${repositoryUrl}/blob/main/docs/EVALUATION.md`} target="_blank" rel="noreferrer"><span class="lang-id">Baca metode evaluasi</span><span class="lang-en">Read the evaluation method</span><ArrowUpRightIcon aria-hidden="true" /></a>
+    </div>
+  </div>
+</section>

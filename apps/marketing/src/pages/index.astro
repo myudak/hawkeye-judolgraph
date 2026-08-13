@@ -1,25 +1,63 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import SiteFooter from "../components/SiteFooter.astro";
-import Hero from "../components/Hero.astro";
-import ProductDemoSection from "../components/ProductDemoSection.astro";
-import EvidenceSection from "../components/EvidenceSection.astro";
 import AgentSection from "../components/AgentSection.astro";
-import SafetySection from "../components/SafetySection.astro";
+import ClosingCTA from "../components/ClosingCTA.astro";
 import CompareSection from "../components/CompareSection.astro";
+import EvaluationSection from "../components/EvaluationSection.astro";
+import EvidenceSection from "../components/EvidenceSection.astro";
+import Hero from "../components/Hero.astro";
+import InstitutionStrip from "../components/InstitutionStrip.astro";
+import ProductDemoSection from "../components/ProductDemoSection.astro";
+import SafetySection from "../components/SafetySection.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import TechnologySection from "../components/TechnologySection.astro";
+import { windowsRelease } from "../lib/release";
 
 const repositoryUrl = "https://github.com/myudak/hawkeye-judolgraph";
-const defaultWindowsDownloadUrl = `${repositoryUrl}/releases/download/v1.0.0/HAWK-EYE-Setup-1.0.0-windows-x64.exe`;
 const demoUrl = import.meta.env.PUBLIC_DEMO_URL || "https://hawkeye1.myudak.com";
-const releaseUrl = import.meta.env.PUBLIC_WINDOWS_DOWNLOAD_URL || defaultWindowsDownloadUrl;
-const releaseLabel = "Download for Windows";
-const title = "HAWK-EYE — Evidence-driven public web investigation";
-const description = "Preserve public web evidence, extract observable entities, and map explainable relationships with full provenance.";
+const release = windowsRelease;
+const title = "HAWK-EYE — Investigasi situs judi online dari satu URL";
+const description =
+  "HAWK-EYE mengumpulkan halaman publik, menyimpan HTML dan tangkapan layar, lalu menghubungkan kontak, domain, dan temuan lain ke sumbernya.";
 ---
 
-<BaseLayout {title} {description}><div id="top" class="site"><SiteHeader {demoUrl} {repositoryUrl} {releaseUrl} /><main id="main-content"><Hero {demoUrl} {releaseUrl} {releaseLabel} />
-  <section id="platform" class="principles"><div class="shell principles__grid"><div><span>01</span><strong><span class="lang-id">Preservasi lebih dulu</span><span class="lang-en">Preserve first</span></strong><p><span class="lang-id">Tangkap halaman publik sebelum interpretasi dimulai.</span><span class="lang-en">Capture the public page before interpretation begins.</span></p></div><div><span>02</span><strong><span class="lang-id">Telusuri setiap fakta</span><span class="lang-en">Trace every fact</span></strong><p><span class="lang-id">Setiap observasi terhubung kembali ke artefak sumbernya.</span><span class="lang-en">Every observation resolves to its source artifact.</span></p></div><div><span>03</span><strong><span class="lang-id">Jaga lead tetap netral</span><span class="lang-en">Keep leads neutral</span></strong><p><span class="lang-id">Kandidat tetap pending sampai manusia memutuskan.</span><span class="lang-en">A candidate remains pending until a human decides.</span></p></div></div></section>
-  <ProductDemoSection /><EvidenceSection /><AgentSection /><SafetySection /><CompareSection />
-  <section class="cta-section"><div class="shell cta-card"><div><h2><span class="lang-id">Jalankan HAWK-EYE sesuai kebutuhanmu.</span><span class="lang-en">Run HAWK-EYE your way.</span></h2><p><span class="lang-id">Unduh build Windows lokal atau jelajahi demonstrasi online.</span><span class="lang-en">Download the local Windows build or explore the temporary online demonstration.</span></p></div><div><a class="button button--primary" href={releaseUrl} target="_blank" rel="noreferrer">↓ <span class="lang-id">Unduh</span><span class="lang-en">Download</span></a><a class="button button--secondary" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Coba demo online</span><span class="lang-en">Try online demo</span> ↗</a></div></div></section>
-</main><SiteFooter {repositoryUrl} /></div></BaseLayout>
+<BaseLayout {title} {description}>
+  <div id="top" class="site">
+    <SiteHeader {demoUrl} {repositoryUrl} {release} />
+    <main id="main-content">
+      <Hero {demoUrl} {release} />
+
+      <section id="platform" class="mx-auto w-full max-w-[90rem] px-5 pb-20 sm:px-8 sm:pb-28" aria-label="Keluaran HAWK-EYE">
+        <div class="grid overflow-hidden rounded-2xl border border-border bg-card/70 md:grid-cols-3">
+          <article class="border-b border-border p-6 md:border-r md:border-b-0 sm:p-8">
+            <span class="font-mono text-xs text-[var(--hk-pink)]">01</span>
+            <h2 class="mt-4 text-lg font-semibold text-foreground"><span class="lang-id">Halaman dan artefak</span><span class="lang-en">Pages and artifacts</span></h2>
+            <p class="mt-2 text-sm leading-6 text-muted-foreground"><span class="lang-id">HTML, screenshot, teks terlihat, metadata, waktu capture, dan hash disimpan bersama kasus.</span><span class="lang-en">HTML, screenshots, visible text, metadata, capture time, and hashes are stored with the case.</span></p>
+          </article>
+          <article class="border-b border-border p-6 md:border-r md:border-b-0 sm:p-8">
+            <span class="font-mono text-xs text-[var(--hk-pink)]">02</span>
+            <h2 class="mt-4 text-lg font-semibold text-foreground"><span class="lang-id">Temuan dan graph</span><span class="lang-en">Findings and graph</span></h2>
+            <p class="mt-2 text-sm leading-6 text-muted-foreground"><span class="lang-id">Kontak, domain, brand, transaksi, dan kandidat ditampilkan tanpa melepaskannya dari halaman sumber.</span><span class="lang-en">Contacts, domains, brands, transactions, and candidates are shown without losing their source page.</span></p>
+          </article>
+          <article class="p-6 sm:p-8">
+            <span class="font-mono text-xs text-[var(--hk-pink)]">03</span>
+            <h2 class="mt-4 text-lg font-semibold text-foreground"><span class="lang-id">Replay dan peninjauan</span><span class="lang-en">Replay and review</span></h2>
+            <p class="mt-2 text-sm leading-6 text-muted-foreground"><span class="lang-id">Event append-only membentuk ulang timeline, sedangkan kandidat menunggu keputusan pengguna yang tercatat.</span><span class="lang-en">Append-only events reconstruct the timeline while candidates wait for a recorded user decision.</span></p>
+          </article>
+        </div>
+      </section>
+
+      <ProductDemoSection />
+      <EvidenceSection />
+      <AgentSection />
+      <TechnologySection />
+      <EvaluationSection {repositoryUrl} />
+      <SafetySection />
+      <CompareSection />
+      <InstitutionStrip />
+      <ClosingCTA {demoUrl} {release} />
+    </main>
+    <SiteFooter {repositoryUrl} {demoUrl} releaseUrl={release.releaseUrl} />
+  </div>
+</BaseLayout>

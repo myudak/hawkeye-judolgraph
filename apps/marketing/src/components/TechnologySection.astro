@@ -1,0 +1,25 @@
+---
+import { TechnologyGrid } from "./TechnologyGrid";
+
+const stages = [
+  ["Collector", "Memvalidasi URL, merender halaman, dan menyimpan capture.", "Validates URLs, renders pages, and stores captures."],
+  ["Artefak", "Menyimpan screenshot, HTML, teks, metadata, dan hash.", "Stores screenshots, HTML, text, metadata, and hashes."],
+  ["Ekstraksi", "Mencatat observasi deterministik dari artefak yang tersimpan.", "Records deterministic observations from stored artifacts."],
+  ["Perbandingan", "Membentuk kandidat dari kemiripan yang dapat dijelaskan.", "Forms candidates from explainable similarities."],
+  ["Graph & replay", "Memproyeksikan event tersimpan menjadi graph dan timeline.", "Projects stored events into a graph and timeline."],
+  ["Human review", "Mencatat keputusan tanpa menghapus riwayat sebelumnya.", "Records decisions without deleting prior history."],
+];
+---
+
+<section id="technology" class="mx-auto w-full max-w-[90rem] px-5 py-20 sm:px-8 sm:py-28" aria-labelledby="technology-title">
+  <div class="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(25rem,0.55fr)] lg:items-end">
+    <div>
+      <h2 id="technology-title" class="text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl"><span class="lang-id">Cara kerja dan teknologi</span><span class="lang-en">Workflow and technology</span></h2>
+      <p class="mt-5 max-w-2xl text-base leading-7 text-muted-foreground"><span class="lang-id">Halaman disimpan sebelum dianalisis. Analisis berikutnya menggunakan artefak tersebut tanpa mengubah salinan aslinya.</span><span class="lang-en">Pages are stored before analysis. Later analysis uses those artifacts without changing the original copies.</span></p>
+    </div>
+  </div>
+  <ol class="mb-8 grid overflow-hidden rounded-xl border border-border bg-card/70 md:grid-cols-3 xl:grid-cols-6">
+    {stages.map(([title, id, en], index) => <li class="border-b border-border p-5 md:border-r xl:border-b-0 xl:last:border-r-0"><span class="font-mono text-xs text-[var(--hk-pink)]">{String(index + 1).padStart(2, "0")}</span><strong class="mt-3 block text-sm font-semibold text-foreground">{title}</strong><p class="mt-2 text-xs leading-5 text-muted-foreground"><span class="lang-id">{id}</span><span class="lang-en">{en}</span></p></li>)}
+  </ol>
+  <TechnologyGrid />
+</section>
