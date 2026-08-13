@@ -31,6 +31,6 @@
     "clean:cache": "node -e \"const fs=require('node:fs'); for (const p of ['.mypy_cache','.pytest_cache','.ruff_cache']) fs.rmSync(p,{recursive:true,force:true})\""
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^10.0.4"
   }
 }
