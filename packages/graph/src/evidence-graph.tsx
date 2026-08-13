@@ -74,6 +74,93 @@ function nodeRadius(node: EvidenceNodeData) {
   return 24;
 }
 
+function nodePhase(id: string) {
+  let hash = 0;
+  for (const character of id)
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return (hash / 0xffffffff) * Math.PI * 2;
+}
+
+function drawSocialLogo(
+  context: CanvasRenderingContext2D,
+  kind: "telegram" | "whatsapp",
+  size: number,
+) {
+  const brandColor = kind === "telegram" ? "#229ed9" : "#25d366";
+  context.save();
+  context.shadowColor = rgba(brandColor, 0.5);
+  context.shadowBlur = size * 0.42;
+  context.fillStyle = brandColor;
+  context.beginPath();
+  context.arc(0, 0, size * 0.79, 0, Math.PI * 2);
+  context.fill();
+  context.shadowBlur = 0;
+
+  if (kind === "telegram") {
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.moveTo(-size * 0.57, -size * 0.07);
+    context.lineTo(size * 0.58, -size * 0.52);
+    context.quadraticCurveTo(
+      size * 0.7,
+      -size * 0.57,
+      size * 0.65,
+      -size * 0.4,
+    );
+    context.lineTo(size * 0.3, size * 0.55);
+    context.quadraticCurveTo(
+      size * 0.25,
+      size * 0.68,
+      size * 0.14,
+      size * 0.55,
+    );
+    context.lineTo(-size * 0.08, size * 0.25);
+    context.lineTo(-size * 0.38, size * 0.5);
+    context.lineTo(-size * 0.3, size * 0.12);
+    context.lineTo(size * 0.43, -size * 0.34);
+    context.lineTo(-size * 0.18, size * 0.04);
+    context.lineTo(-size * 0.47, size * 0.01);
+    context.quadraticCurveTo(-size * 0.65, 0, -size * 0.57, -size * 0.07);
+    context.fill();
+  } else {
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = Math.max(1.7, size * 0.14);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    context.arc(0, -size * 0.05, size * 0.49, 0, Math.PI * 2);
+    context.moveTo(-size * 0.32, size * 0.33);
+    context.lineTo(-size * 0.45, size * 0.59);
+    context.lineTo(-size * 0.12, size * 0.48);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(-size * 0.24, -size * 0.3);
+    context.quadraticCurveTo(
+      -size * 0.08,
+      size * 0.21,
+      size * 0.3,
+      size * 0.27,
+    );
+    context.quadraticCurveTo(size * 0.43, size * 0.27, size * 0.36, size * 0.1);
+    context.lineTo(size * 0.19, -size * 0.01);
+    context.quadraticCurveTo(
+      size * 0.1,
+      size * 0.08,
+      -size * 0.03,
+      -size * 0.04,
+    );
+    context.lineTo(-size * 0.14, -size * 0.2);
+    context.quadraticCurveTo(
+      -size * 0.19,
+      -size * 0.34,
+      -size * 0.24,
+      -size * 0.3,
+    );
+    context.stroke();
+  }
+  context.restore();
+}
+
 function drawIcon(
   context: CanvasRenderingContext2D,
   kind: EvidenceKind,
@@ -90,6 +177,11 @@ function drawIcon(
   context.lineCap = "round";
   context.lineJoin = "round";
   context.beginPath();
+  if (kind === "telegram" || kind === "whatsapp") {
+    drawSocialLogo(context, kind, s);
+    context.restore();
+    return;
+  }
   if (kind === "domain") {
     context.arc(0, 0, s * 0.68, 0, Math.PI * 2);
     context.moveTo(-s * 0.66, 0);
@@ -111,23 +203,6 @@ function drawIcon(
       context.moveTo(-s * 0.3, offset * s);
       context.lineTo(s * 0.28, offset * s);
     }
-  } else if (kind === "telegram") {
-    context.moveTo(-s * 0.7, -s * 0.08);
-    context.lineTo(s * 0.7, -s * 0.58);
-    context.lineTo(s * 0.28, s * 0.65);
-    context.lineTo(-s * 0.04, s * 0.2);
-    context.lineTo(-s * 0.31, s * 0.48);
-    context.lineTo(-s * 0.24, s * 0.08);
-    context.closePath();
-    context.moveTo(-s * 0.22, s * 0.07);
-    context.lineTo(s * 0.46, -s * 0.35);
-  } else if (kind === "whatsapp") {
-    context.arc(0, -s * 0.04, s * 0.62, 0, Math.PI * 2);
-    context.moveTo(-s * 0.43, s * 0.42);
-    context.lineTo(-s * 0.58, s * 0.7);
-    context.lineTo(-s * 0.18, s * 0.57);
-    context.moveTo(-s * 0.3, -s * 0.28);
-    context.quadraticCurveTo(-s * 0.05, s * 0.28, s * 0.33, s * 0.29);
   } else {
     context.moveTo(-s * 0.5, -s * 0.55);
     context.quadraticCurveTo(-s * 0.68, -s * 0.38, -s * 0.46, s * 0.04);
@@ -338,8 +413,17 @@ export function EvidenceGraph({
       const values = [...sim.values()];
       for (const node of values) {
         if (node.pinned) continue;
-        node.vx = (node.vx + (node.tx - node.x) * 0.028) * 0.83;
-        node.vy = (node.vy + (node.ty - node.y) * 0.028) * 0.83;
+        const phase = nodePhase(node.id);
+        const orbit = reducedMotionRef.current
+          ? 0
+          : node.id === "seed"
+            ? 4
+            : 15;
+        const magneticX = node.tx + Math.cos(time * 0.00078 + phase) * orbit;
+        const magneticY =
+          node.ty + Math.sin(time * 0.00066 + phase * 1.17) * orbit;
+        node.vx = (node.vx + (magneticX - node.x) * 0.021) * 0.86;
+        node.vy = (node.vy + (magneticY - node.y) * 0.021) * 0.86;
         node.x += node.vx;
         node.y += node.vy;
       }
@@ -361,6 +445,28 @@ export function EvidenceGraph({
             b.vx += (dx / distance) * push;
             b.vy += (dy / distance) * push;
           }
+        }
+      }
+
+      for (const edge of edges) {
+        const source = sim.get(edge.source);
+        const target = sim.get(edge.target);
+        if (!source || !target) continue;
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const distance = Math.max(1, Math.hypot(dx, dy));
+        const restingDistance = Math.max(
+          108,
+          Math.hypot(target.tx - source.tx, target.ty - source.ty),
+        );
+        const spring = (distance - restingDistance) * 0.0022;
+        if (!source.pinned) {
+          source.vx += (dx / distance) * spring;
+          source.vy += (dy / distance) * spring;
+        }
+        if (!target.pinned) {
+          target.vx -= (dx / distance) * spring;
+          target.vy -= (dy / distance) * spring;
         }
       }
 
@@ -496,7 +602,13 @@ export function EvidenceGraph({
           node.kind,
           point.x,
           point.y,
-          Math.max(10, radius * 0.42),
+          Math.max(
+            10,
+            radius *
+              (node.kind === "telegram" || node.kind === "whatsapp"
+                ? 0.84
+                : 0.42),
+          ),
           color,
         );
         context.textAlign = "center";
@@ -741,7 +853,10 @@ export function EvidenceGraph({
     const pointer = pointerRef.current;
     if (pointer?.dragId) {
       const node = simulationRef.current.get(pointer.dragId);
-      if (node && !pointer.moved) selectNode(node);
+      if (node) {
+        node.pinned = false;
+        if (!pointer.moved) selectNode(node);
+      }
     }
     pointerRef.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
@@ -778,9 +893,7 @@ export function EvidenceGraph({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={() => {
-            pointerRef.current = null;
-          }}
+          onPointerCancel={onPointerUp}
           onPointerLeave={() => {
             if (!pointerRef.current) {
               hoveredRef.current = null;

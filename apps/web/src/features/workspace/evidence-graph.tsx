@@ -86,6 +86,70 @@ function boundedForFit(value: number, target: number): number {
   return Math.max(target - 110, Math.min(target + 110, value))
 }
 
+function drawSocialLogo(
+  context: CanvasRenderingContext2D,
+  kind: "telegram" | "whatsapp",
+  size: number
+) {
+  const brandColor = kind === "telegram" ? "#229ed9" : "#25d366"
+  context.save()
+  context.shadowColor = rgba(brandColor, 0.5)
+  context.shadowBlur = size * 0.42
+  context.fillStyle = brandColor
+  circle(context, 0, 0, size * 0.79)
+  context.fill()
+  context.shadowBlur = 0
+
+  if (kind === "telegram") {
+    context.fillStyle = "#ffffff"
+    context.beginPath()
+    context.moveTo(-size * 0.57, -size * 0.07)
+    context.lineTo(size * 0.58, -size * 0.52)
+    context.quadraticCurveTo(size * 0.7, -size * 0.57, size * 0.65, -size * 0.4)
+    context.lineTo(size * 0.3, size * 0.55)
+    context.quadraticCurveTo(size * 0.25, size * 0.68, size * 0.14, size * 0.55)
+    context.lineTo(-size * 0.08, size * 0.25)
+    context.lineTo(-size * 0.38, size * 0.5)
+    context.lineTo(-size * 0.3, size * 0.12)
+    context.lineTo(size * 0.43, -size * 0.34)
+    context.lineTo(-size * 0.18, size * 0.04)
+    context.lineTo(-size * 0.47, size * 0.01)
+    context.quadraticCurveTo(-size * 0.65, 0, -size * 0.57, -size * 0.07)
+    context.fill()
+  } else {
+    context.strokeStyle = "#ffffff"
+    context.lineWidth = Math.max(1.7, size * 0.14)
+    context.lineCap = "round"
+    context.lineJoin = "round"
+    context.beginPath()
+    context.arc(0, -size * 0.05, size * 0.49, 0, Math.PI * 2)
+    context.moveTo(-size * 0.32, size * 0.33)
+    context.lineTo(-size * 0.45, size * 0.59)
+    context.lineTo(-size * 0.12, size * 0.48)
+    context.stroke()
+    context.beginPath()
+    context.moveTo(-size * 0.24, -size * 0.3)
+    context.quadraticCurveTo(-size * 0.08, size * 0.21, size * 0.3, size * 0.27)
+    context.quadraticCurveTo(size * 0.43, size * 0.27, size * 0.36, size * 0.1)
+    context.lineTo(size * 0.19, -size * 0.01)
+    context.quadraticCurveTo(
+      size * 0.1,
+      size * 0.08,
+      -size * 0.03,
+      -size * 0.04
+    )
+    context.lineTo(-size * 0.14, -size * 0.2)
+    context.quadraticCurveTo(
+      -size * 0.19,
+      -size * 0.34,
+      -size * 0.24,
+      -size * 0.3
+    )
+    context.stroke()
+  }
+  context.restore()
+}
+
 function drawGraphIcon(
   context: CanvasRenderingContext2D,
   kind: GraphIconKind,
@@ -103,6 +167,12 @@ function drawGraphIcon(
   context.lineCap = "round"
   context.lineJoin = "round"
   context.beginPath()
+
+  if (kind === "telegram" || kind === "whatsapp") {
+    drawSocialLogo(context, kind, s)
+    context.restore()
+    return
+  }
 
   if (kind === "site") {
     context.arc(0, 0, s * 0.67, 0, Math.PI * 2)
@@ -132,28 +202,6 @@ function drawGraphIcon(
     context.moveTo(-s * 0.64, -s * 0.38)
     context.lineTo(0, s * 0.08)
     context.lineTo(s * 0.64, -s * 0.38)
-  } else if (kind === "telegram") {
-    context.moveTo(-s * 0.7, -s * 0.08)
-    context.lineTo(s * 0.7, -s * 0.58)
-    context.lineTo(s * 0.28, s * 0.65)
-    context.lineTo(-s * 0.05, s * 0.22)
-    context.lineTo(-s * 0.31, s * 0.48)
-    context.lineTo(-s * 0.25, s * 0.08)
-    context.closePath()
-    context.moveTo(-s * 0.23, s * 0.07)
-    context.lineTo(s * 0.46, -s * 0.35)
-  } else if (kind === "whatsapp") {
-    context.arc(0, -s * 0.04, s * 0.62, 0, Math.PI * 2)
-    context.moveTo(-s * 0.43, s * 0.42)
-    context.lineTo(-s * 0.58, s * 0.7)
-    context.lineTo(-s * 0.18, s * 0.57)
-    context.moveTo(-s * 0.3, -s * 0.28)
-    context.quadraticCurveTo(-s * 0.05, s * 0.28, s * 0.33, s * 0.29)
-    context.quadraticCurveTo(s * 0.48, s * 0.22, s * 0.3, s * 0.04)
-    context.lineTo(s * 0.13, -s * 0.05)
-    context.quadraticCurveTo(0, s * 0.05, -s * 0.11, -s * 0.12)
-    context.lineTo(-s * 0.18, -s * 0.3)
-    context.quadraticCurveTo(-s * 0.24, -s * 0.42, -s * 0.3, -s * 0.28)
   } else if (kind === "phone") {
     context.moveTo(-s * 0.5, -s * 0.55)
     context.quadraticCurveTo(-s * 0.68, -s * 0.38, -s * 0.46, s * 0.04)
@@ -853,7 +901,14 @@ export function EvidenceGraph({
           node.presentation.icon,
           point.x,
           point.y,
-          Math.max(7, drawRadius * 0.43),
+          Math.max(
+            7,
+            drawRadius *
+              (node.presentation.icon === "telegram" ||
+              node.presentation.icon === "whatsapp"
+                ? 0.82
+                : 0.43)
+          ),
           selected || node.primary ? "#f7fbff" : node.presentation.color
         )
 

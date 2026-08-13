@@ -7,6 +7,9 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ["react", "react/jsx-runtime", "react-dom", "react-dom/client"],
+    },
   },
   site: process.env.PUBLIC_SITE_URL || "https://hawkeye1.myudak.com",
   build: {
