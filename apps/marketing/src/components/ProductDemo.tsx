@@ -6,35 +6,49 @@ import {
   PlayIcon,
 } from "@phosphor-icons/react";
 import { useEffect, useState, type ChangeEvent } from "react";
+import { localize, useMarketingLanguage } from "../lib/language";
 
 const events = [
   {
     step: 1,
     time: "00:04",
-    title: "Capture preserved",
-    detail: "Rendered /Contact and its immutable screenshot were stored.",
+    title: { id: "Tangkapan dipreservasi", en: "Capture preserved" },
+    detail: {
+      id: "Halaman /Contact dan screenshot yang tidak dapat diubah telah disimpan.",
+      en: "Rendered /Contact and its immutable screenshot were stored.",
+    },
   },
   {
     step: 2,
     time: "00:08",
-    title: "Entities extracted",
-    detail: "Telegram, phone, and WhatsApp identifiers were observed.",
+    title: { id: "Entitas diekstrak", en: "Entities extracted" },
+    detail: {
+      id: "Identitas Telegram, telepon, dan WhatsApp ditemukan.",
+      en: "Telegram, phone, and WhatsApp identifiers were observed.",
+    },
   },
   {
     step: 3,
     time: "00:11",
-    title: "Relationship verified",
-    detail: "Observed entities were linked back to the captured page.",
+    title: { id: "Relasi terverifikasi", en: "Relationship verified" },
+    detail: {
+      id: "Entitas yang ditemukan ditautkan kembali ke halaman sumber.",
+      en: "Observed entities were linked back to the captured page.",
+    },
   },
   {
     step: 4,
     time: "00:14",
-    title: "Candidate proposed",
-    detail: "qq101uok.net remains a pending lead for human review.",
+    title: { id: "Kandidat diajukan", en: "Candidate proposed" },
+    detail: {
+      id: "qq101uok.net tetap menjadi lead tertunda untuk ditinjau manusia.",
+      en: "qq101uok.net remains a pending lead for human review.",
+    },
   },
 ];
 
 export function ProductDemo() {
+  const language = useMarketingLanguage();
   const [step, setStep] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -59,34 +73,45 @@ export function ProductDemo() {
               setStep(1);
               setPlaying(true);
             }}
-            aria-label="Replay investigation"
+            aria-label={localize(language, {
+              id: "Ulangi investigasi",
+              en: "Replay investigation",
+            })}
           >
-            <ArrowCounterClockwiseIcon /> Replay
+            <ArrowCounterClockwiseIcon />{" "}
+            {localize(language, { id: "Ulangi", en: "Replay" })}
           </Button>
           <Button
             variant="ghost"
             onClick={() => setPlaying((value) => !value)}
-            aria-label={playing ? "Pause replay" : "Play replay"}
+            aria-label={
+              playing
+                ? localize(language, { id: "Jeda replay", en: "Pause replay" })
+                : localize(language, { id: "Putar replay", en: "Play replay" })
+            }
           >
             {playing ? (
               <>
-                <PauseIcon /> Pause
+                <PauseIcon /> {localize(language, { id: "Jeda", en: "Pause" })}
               </>
             ) : (
               <>
-                <PlayIcon /> Play
+                <PlayIcon /> {localize(language, { id: "Putar", en: "Play" })}
               </>
             )}
           </Button>
           <label>
-            Speed
+            {localize(language, { id: "Kecepatan", en: "Speed" })}
             <select
               className="he-select"
               value={speed}
               onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                 setSpeed(Number(event.target.value))
               }
-              aria-label="Replay speed"
+              aria-label={localize(language, {
+                id: "Kecepatan replay",
+                en: "Replay speed",
+              })}
             >
               <option value="0.5">0.5×</option>
               <option value="1">1×</option>
@@ -97,8 +122,8 @@ export function ProductDemo() {
         <div className="replay-console__event" aria-live="polite">
           <span>{current.time}</span>
           <div>
-            <strong>{current.title}</strong>
-            <p>{current.detail}</p>
+            <strong>{localize(language, current.title)}</strong>
+            <p>{localize(language, current.detail)}</p>
           </div>
         </div>
         <input
@@ -111,7 +136,10 @@ export function ProductDemo() {
             setPlaying(false);
             setStep(Number(event.target.value));
           }}
-          aria-label="Investigation timeline"
+          aria-label={localize(language, {
+            id: "Timeline investigasi",
+            en: "Investigation timeline",
+          })}
         />
         <ol className="replay-steps">
           {events.map((event) => (
@@ -122,10 +150,10 @@ export function ProductDemo() {
                   setPlaying(false);
                   setStep(event.step);
                 }}
-                aria-label={`Go to ${event.title}`}
+                aria-label={`${localize(language, { id: "Buka", en: "Go to" })} ${localize(language, event.title)}`}
               >
                 <i />
-                {event.title}
+                {localize(language, event.title)}
               </button>
             </li>
           ))}

@@ -13,38 +13,49 @@ import {
   FingerprintIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { localize, useMarketingLanguage } from "../lib/language";
 
 const artifacts = [
   {
     id: "screenshot",
     index: "01",
-    title: "Screenshot evidence",
+    title: { id: "Bukti screenshot", en: "Screenshot evidence" },
     file: "screenshot-contact-full.png",
     hash: "sha256: 7b8f…9a1c",
     icon: <FileImageIcon />,
-    summary: "Full-page visual record of the public contact route.",
+    summary: {
+      id: "Rekaman visual halaman penuh dari rute kontak publik.",
+      en: "Full-page visual record of the public contact route.",
+    },
   },
   {
     id: "html",
     index: "02",
-    title: "HTML snapshot",
+    title: { id: "Snapshot HTML", en: "HTML snapshot" },
     file: "rendered-contact.html",
     hash: "sha256: 2e40…d7af",
     icon: <CodeIcon />,
-    summary: "Bounded rendered markup preserved before extraction.",
+    summary: {
+      id: "Markup hasil render dipreservasi sebelum ekstraksi.",
+      en: "Bounded rendered markup preserved before extraction.",
+    },
   },
   {
     id: "observation",
     index: "03",
-    title: "Extracted observation",
+    title: { id: "Observasi terekstrak", en: "Extracted observation" },
     file: "observation-00042.json",
     hash: "sha256: a6d9…42bc",
     icon: <FingerprintIcon />,
-    summary: "Normalized public identifier with explicit source references.",
+    summary: {
+      id: "Identitas publik ternormalisasi dengan referensi sumber yang jelas.",
+      en: "Normalized public identifier with explicit source references.",
+    },
   },
 ];
 
 export function ArtifactGallery({ screenshot }: { screenshot: string }) {
+  const language = useMarketingLanguage();
   const [selected, setSelected] = useState<(typeof artifacts)[number] | null>(
     null,
   );
@@ -57,31 +68,45 @@ export function ArtifactGallery({ screenshot }: { screenshot: string }) {
               <span>{artifact.index}</span>
               <i>{artifact.icon}</i>
             </div>
-            <h3>{artifact.title}</h3>
-            <p>{artifact.summary}</p>
+            <h3>{localize(language, artifact.title)}</h3>
+            <p>{localize(language, artifact.summary)}</p>
             <dl>
               <div>
-                <dt>File hash</dt>
+                <dt>
+                  {localize(language, { id: "Hash file", en: "File hash" })}
+                </dt>
                 <dd>{artifact.hash}</dd>
               </div>
               <div>
-                <dt>Timestamp</dt>
+                <dt>
+                  {localize(language, { id: "Waktu tangkap", en: "Timestamp" })}
+                </dt>
                 <dd>12 Aug 2026 · 07:03:13 WIB</dd>
               </div>
               <div>
-                <dt>Source URL</dt>
+                <dt>
+                  {localize(language, { id: "URL sumber", en: "Source URL" })}
+                </dt>
                 <dd>qq101uok.com/Contact</dd>
               </div>
             </dl>
             <Badge variant="outline">
-              <CheckCircleIcon data-icon="inline-start" /> Fixture verified
+              <CheckCircleIcon data-icon="inline-start" />{" "}
+              {localize(language, {
+                id: "Fixture terverifikasi",
+                en: "Fixture verified",
+              })}
             </Badge>
             <button
               className="artifact-card__button"
               type="button"
               onClick={() => setSelected(artifact)}
             >
-              Inspect artifact <span>↗</span>
+              {localize(language, {
+                id: "Periksa artefak",
+                en: "Inspect artifact",
+              })}{" "}
+              <span>↗</span>
             </button>
           </article>
         ))}
@@ -92,16 +117,26 @@ export function ArtifactGallery({ screenshot }: { screenshot: string }) {
       >
         <DialogContent className="artifact-dialog max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selected?.title ?? "Artifact"}</DialogTitle>
+            <DialogTitle>
+              {selected
+                ? localize(language, selected.title)
+                : localize(language, { id: "Artefak", en: "Artifact" })}
+            </DialogTitle>
             <DialogDescription>
-              Preserved source material with a stable integrity reference.
+              {localize(language, {
+                id: "Materi sumber yang dipreservasi dengan referensi integritas stabil.",
+                en: "Preserved source material with a stable integrity reference.",
+              })}
             </DialogDescription>
           </DialogHeader>
           {selected?.id === "screenshot" ? (
             <img
               className="artifact-preview"
               src={screenshot}
-              alt="Controlled HAWK-EYE screenshot artifact preview"
+              alt={localize(language, {
+                id: "Pratinjau artefak screenshot HAWK-EYE terkendali",
+                en: "Controlled HAWK-EYE screenshot artifact preview",
+              })}
             />
           ) : (
             <pre className="artifact-code">
@@ -112,16 +147,23 @@ export function ArtifactGallery({ screenshot }: { screenshot: string }) {
           )}
           <dl className="artifact-dialog-meta">
             <div>
-              <dt>Artifact</dt>
+              <dt>{localize(language, { id: "Artefak", en: "Artifact" })}</dt>
               <dd>{selected?.file}</dd>
             </div>
             <div>
-              <dt>Integrity</dt>
+              <dt>
+                {localize(language, { id: "Integritas", en: "Integrity" })}
+              </dt>
               <dd>{selected?.hash}</dd>
             </div>
             <div>
-              <dt>Scope</dt>
-              <dd>Controlled demonstration fixture</dd>
+              <dt>{localize(language, { id: "Lingkup", en: "Scope" })}</dt>
+              <dd>
+                {localize(language, {
+                  id: "Fixture demonstrasi terkendali",
+                  en: "Controlled demonstration fixture",
+                })}
+              </dd>
             </div>
           </dl>
         </DialogContent>

@@ -80,12 +80,18 @@ export function AgentBrowserDemo() {
       </div>
       <div className="agent-browser__viewport">
         <div className="agent-browser__site-nav">
-          <strong>PUBLIC SITE</strong>
-          <button type="button">Home</button>
+          <strong>
+            {localize(language, { id: "SITUS PUBLIK", en: "PUBLIC SITE" })}
+          </strong>
+          <button type="button">
+            {localize(language, { id: "Beranda", en: "Home" })}
+          </button>
           <button type="button" data-agent-element="contact">
             {localize(language, { id: "Hubungi kami", en: "Contact us" })}
           </button>
-          <button type="button">FAQ</button>
+          <button type="button">
+            {localize(language, { id: "Tanya jawab", en: "FAQ" })}
+          </button>
         </div>
         <div className="agent-browser__mock-copy">
           <span />
@@ -122,7 +128,9 @@ export function AgentBrowserDemo() {
         </div>
         <div className="agent-browser__cursor" aria-hidden="true">
           <CursorClickIcon weight="fill" />
-          <span>HAWK-EYE AGENT</span>
+          <span>
+            {localize(language, { id: "AGEN HAWK-EYE", en: "HAWK-EYE AGENT" })}
+          </span>
         </div>
         <div className="agent-browser__scan" aria-hidden="true" />
       </div>

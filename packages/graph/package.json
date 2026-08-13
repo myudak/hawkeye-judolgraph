@@ -12,6 +12,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./canvas-icons": "./src/canvas-icons.tsx",
+    "./force-simulation": "./src/force-simulation.tsx",
     "./*": "./src/*.tsx"
   }
 }

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent,
   type WheelEvent,
 } from "react";
@@ -14,6 +15,8 @@ import {
   MagnifyingGlassPlusIcon,
 } from "@phosphor-icons/react";
 import { GraphLegend } from "./graph-legend";
+import { drawOfficialSocialIcon } from "./canvas-icons";
+import { applyMagneticForces, releaseWithMomentum } from "./force-simulation";
 import type { EvidenceKind, EvidenceNodeData } from "./types";
 
 interface SimNode extends EvidenceNodeData {
@@ -25,6 +28,8 @@ interface SimNode extends EvidenceNodeData {
   vy: number;
   pinned: boolean;
   bornAt: number;
+  radius: number;
+  primary: boolean;
 }
 
 interface Camera {
@@ -54,6 +59,50 @@ const colors: Record<string, string> = {
   rejected: "#9b687c",
 };
 
+type GraphLanguage = "id" | "en";
+
+function readLanguage(): GraphLanguage {
+  if (typeof document === "undefined") return "id";
+  return document.documentElement.dataset.language === "en" ? "en" : "id";
+}
+
+function subscribeLanguage(onChange: () => void) {
+  if (typeof document === "undefined") return () => undefined;
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-language"],
+  });
+  return () => observer.disconnect();
+}
+
+function localizedNode(node: EvidenceNodeData, language: GraphLanguage) {
+  if (language === "en") return node;
+  const detail: Record<EvidenceNodeData["id"], string> = {
+    seed: "Domain publik yang diselidiki",
+    contact: "Halaman yang dipreservasi",
+    telegram: "Akun Telegram",
+    phone: "Nomor telepon publik",
+    whatsapp: "Identitas WhatsApp",
+    candidate: "Domain kandidat",
+    rejected: "Relasi ditolak",
+  };
+  const source: Record<EvidenceNodeData["id"], string> = {
+    seed: node.source,
+    contact: node.source,
+    telegram: "Teks terlihat pada /Contact",
+    phone: "Teks terlihat pada /Contact",
+    whatsapp: "Rute kontak publik",
+    candidate: "Identitas publik yang sama",
+    rejected: "Keputusan tinjauan manusia",
+  };
+  return {
+    ...node,
+    detail: detail[node.id] ?? node.detail,
+    source: source[node.id] ?? node.source,
+  };
+}
+
 function rgba(hex: string, alpha: number) {
   const clean = hex.replace("#", "");
   const value = Number.parseInt(clean, 16);
@@ -74,93 +123,6 @@ function nodeRadius(node: EvidenceNodeData) {
   return 24;
 }
 
-function nodePhase(id: string) {
-  let hash = 0;
-  for (const character of id)
-    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
-  return (hash / 0xffffffff) * Math.PI * 2;
-}
-
-function drawSocialLogo(
-  context: CanvasRenderingContext2D,
-  kind: "telegram" | "whatsapp",
-  size: number,
-) {
-  const brandColor = kind === "telegram" ? "#229ed9" : "#25d366";
-  context.save();
-  context.shadowColor = rgba(brandColor, 0.5);
-  context.shadowBlur = size * 0.42;
-  context.fillStyle = brandColor;
-  context.beginPath();
-  context.arc(0, 0, size * 0.79, 0, Math.PI * 2);
-  context.fill();
-  context.shadowBlur = 0;
-
-  if (kind === "telegram") {
-    context.fillStyle = "#ffffff";
-    context.beginPath();
-    context.moveTo(-size * 0.57, -size * 0.07);
-    context.lineTo(size * 0.58, -size * 0.52);
-    context.quadraticCurveTo(
-      size * 0.7,
-      -size * 0.57,
-      size * 0.65,
-      -size * 0.4,
-    );
-    context.lineTo(size * 0.3, size * 0.55);
-    context.quadraticCurveTo(
-      size * 0.25,
-      size * 0.68,
-      size * 0.14,
-      size * 0.55,
-    );
-    context.lineTo(-size * 0.08, size * 0.25);
-    context.lineTo(-size * 0.38, size * 0.5);
-    context.lineTo(-size * 0.3, size * 0.12);
-    context.lineTo(size * 0.43, -size * 0.34);
-    context.lineTo(-size * 0.18, size * 0.04);
-    context.lineTo(-size * 0.47, size * 0.01);
-    context.quadraticCurveTo(-size * 0.65, 0, -size * 0.57, -size * 0.07);
-    context.fill();
-  } else {
-    context.strokeStyle = "#ffffff";
-    context.lineWidth = Math.max(1.7, size * 0.14);
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.beginPath();
-    context.arc(0, -size * 0.05, size * 0.49, 0, Math.PI * 2);
-    context.moveTo(-size * 0.32, size * 0.33);
-    context.lineTo(-size * 0.45, size * 0.59);
-    context.lineTo(-size * 0.12, size * 0.48);
-    context.stroke();
-    context.beginPath();
-    context.moveTo(-size * 0.24, -size * 0.3);
-    context.quadraticCurveTo(
-      -size * 0.08,
-      size * 0.21,
-      size * 0.3,
-      size * 0.27,
-    );
-    context.quadraticCurveTo(size * 0.43, size * 0.27, size * 0.36, size * 0.1);
-    context.lineTo(size * 0.19, -size * 0.01);
-    context.quadraticCurveTo(
-      size * 0.1,
-      size * 0.08,
-      -size * 0.03,
-      -size * 0.04,
-    );
-    context.lineTo(-size * 0.14, -size * 0.2);
-    context.quadraticCurveTo(
-      -size * 0.19,
-      -size * 0.34,
-      -size * 0.24,
-      -size * 0.3,
-    );
-    context.stroke();
-  }
-  context.restore();
-}
-
 function drawIcon(
   context: CanvasRenderingContext2D,
   kind: EvidenceKind,
@@ -170,6 +132,10 @@ function drawIcon(
   color: string,
 ) {
   const s = size;
+  if (kind === "telegram" || kind === "whatsapp") {
+    drawOfficialSocialIcon(context, kind, x, y, s * 2);
+    return;
+  }
   context.save();
   context.translate(x, y);
   context.strokeStyle = color;
@@ -177,11 +143,6 @@ function drawIcon(
   context.lineCap = "round";
   context.lineJoin = "round";
   context.beginPath();
-  if (kind === "telegram" || kind === "whatsapp") {
-    drawSocialLogo(context, kind, s);
-    context.restore();
-    return;
-  }
   if (kind === "domain") {
     context.arc(0, 0, s * 0.68, 0, Math.PI * 2);
     context.moveTo(-s * 0.66, 0);
@@ -258,6 +219,8 @@ function createSimulation(nodes: EvidenceNodeData[]) {
           vy: 0,
           pinned: false,
           bornAt: now + index * 65,
+          radius: nodeRadius(node),
+          primary: node.id === "seed",
         } satisfies SimNode,
       ];
     }),
@@ -293,6 +256,11 @@ export function EvidenceGraph({
   const selectedRef = useRef(controlledSelected ?? "seed");
   const reducedMotionRef = useRef(false);
   const [selected, setSelected] = useState(controlledSelected ?? "seed");
+  const language = useSyncExternalStore(
+    subscribeLanguage,
+    readLanguage,
+    () => "id",
+  );
   const [hovered, setHovered] = useState<{
     node: EvidenceNodeData;
     x: number;
@@ -400,8 +368,11 @@ export function EvidenceGraph({
     const mini = minimap.getContext("2d", { alpha: true });
     if (!context || !mini) return;
     let frame = 0;
+    let last = performance.now();
 
     const paint = (time: number) => {
+      const delta = Math.min(32, Math.max(1, time - last));
+      last = time;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const { width, height } = sizeRef.current;
       const camera = cameraRef.current;
@@ -411,64 +382,14 @@ export function EvidenceGraph({
       camera.zoom += (camera.targetZoom - camera.zoom) * 0.12;
 
       const values = [...sim.values()];
-      for (const node of values) {
-        if (node.pinned) continue;
-        const phase = nodePhase(node.id);
-        const orbit = reducedMotionRef.current
-          ? 0
-          : node.id === "seed"
-            ? 4
-            : 15;
-        const magneticX = node.tx + Math.cos(time * 0.00078 + phase) * orbit;
-        const magneticY =
-          node.ty + Math.sin(time * 0.00066 + phase * 1.17) * orbit;
-        node.vx = (node.vx + (magneticX - node.x) * 0.021) * 0.86;
-        node.vy = (node.vy + (magneticY - node.y) * 0.021) * 0.86;
-        node.x += node.vx;
-        node.y += node.vy;
-      }
-      for (let left = 0; left < values.length; left += 1) {
-        for (let right = left + 1; right < values.length; right += 1) {
-          const a = values[left];
-          const b = values[right];
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const distance = Math.max(1, Math.hypot(dx, dy));
-          const minimum = nodeRadius(a) + nodeRadius(b) + 48;
-          if (distance >= minimum) continue;
-          const push = (minimum - distance) * 0.018;
-          if (!a.pinned) {
-            a.vx -= (dx / distance) * push;
-            a.vy -= (dy / distance) * push;
-          }
-          if (!b.pinned) {
-            b.vx += (dx / distance) * push;
-            b.vy += (dy / distance) * push;
-          }
-        }
-      }
-
-      for (const edge of edges) {
-        const source = sim.get(edge.source);
-        const target = sim.get(edge.target);
-        if (!source || !target) continue;
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const distance = Math.max(1, Math.hypot(dx, dy));
-        const restingDistance = Math.max(
-          108,
-          Math.hypot(target.tx - source.tx, target.ty - source.ty),
-        );
-        const spring = (distance - restingDistance) * 0.0022;
-        if (!source.pinned) {
-          source.vx += (dx / distance) * spring;
-          source.vy += (dy / distance) * spring;
-        }
-        if (!target.pinned) {
-          target.vx -= (dx / distance) * spring;
-          target.vy -= (dy / distance) * spring;
-        }
-      }
+      applyMagneticForces({
+        nodes: values,
+        edges,
+        time,
+        delta,
+        reducedMotion: reducedMotionRef.current,
+        nodeById: (id) => sim.get(id),
+      });
 
       const screen = (node: SimNode) => ({
         x: (node.x - camera.x) * camera.zoom + width / 2,
@@ -630,7 +551,11 @@ export function EvidenceGraph({
         if (camera.zoom > 0.63) {
           context.font = `500 ${Math.max(9, 10 * camera.zoom)}px "Geist Variable", sans-serif`;
           context.fillStyle = "#8fa3b5";
-          context.fillText(node.detail, point.x, point.y + radius + 43);
+          context.fillText(
+            localizedNode(node, language).detail,
+            point.x,
+            point.y + radius + 43,
+          );
         }
       }
 
@@ -718,7 +643,11 @@ export function EvidenceGraph({
           context.textAlign = "left";
           context.textBaseline = "middle";
           context.font = '700 9px "Geist Variable", sans-serif';
-          context.fillText("AGENT · INSPECTING", labelX + 9, labelY - 1);
+          context.fillText(
+            language === "id" ? "AGEN · MEMERIKSA" : "AGENT · INSPECTING",
+            labelX + 9,
+            labelY - 1,
+          );
         }
       }
 
@@ -777,7 +706,7 @@ export function EvidenceGraph({
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [edges]);
+  }, [edges, language]);
 
   const screenNodeAt = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -825,8 +754,8 @@ export function EvidenceGraph({
         if (node) {
           node.x += event.movementX / cameraRef.current.zoom;
           node.y += event.movementY / cameraRef.current.zoom;
-          node.tx = node.x;
-          node.ty = node.y;
+          node.vx = event.movementX / cameraRef.current.zoom;
+          node.vy = event.movementY / cameraRef.current.zoom;
         }
       } else {
         cameraRef.current.targetX =
@@ -854,7 +783,7 @@ export function EvidenceGraph({
     if (pointer?.dragId) {
       const node = simulationRef.current.get(pointer.dragId);
       if (node) {
-        node.pinned = false;
+        releaseWithMomentum(node);
         if (!pointer.moved) selectNode(node);
       }
     }
@@ -882,13 +811,21 @@ export function EvidenceGraph({
   return (
     <section
       className={`canvas-graph ${compact ? "canvas-graph--compact" : ""}`}
-      aria-label="Interactive evidence graph"
+      aria-label={
+        language === "id"
+          ? "Graph bukti interaktif"
+          : "Interactive evidence graph"
+      }
     >
       <div className="canvas-graph__stage" ref={containerRef}>
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label="Interactive graph of captured pages, public contact observations, and pending candidates"
+          aria-label={
+            language === "id"
+              ? "Graph interaktif berisi halaman tersimpan, observasi kontak publik, dan kandidat tertunda"
+              : "Interactive graph of captured pages, public contact observations, and pending candidates"
+          }
           tabIndex={0}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -936,25 +873,41 @@ export function EvidenceGraph({
           className="canvas-graph__minimap"
           aria-hidden="true"
         />
-        <GraphLegend />
+        <GraphLegend language={language} />
         {hovered && (
           <div
             className="canvas-graph__tooltip"
             style={{ left: hovered.x, top: hovered.y }}
           >
             <strong>{hovered.node.label}</strong>
-            <span>{hovered.node.detail}</span>
-            <small>Click to inspect · drag to move</small>
+            <span>{localizedNode(hovered.node, language).detail}</span>
+            <small>
+              {language === "id"
+                ? "Klik untuk periksa · tarik untuk gerakkan"
+                : "Click to inspect · drag to move"}
+            </small>
           </div>
         )}
         <div className="canvas-graph__activity" aria-hidden="true">
           <i />
-          <span>Agent exploring public evidence</span>
+          <span>
+            {language === "id"
+              ? "Agen menelusuri bukti publik"
+              : "Agent exploring public evidence"}
+          </span>
         </div>
         <div className="canvas-graph__agent-status" aria-hidden="true">
-          <span>MODEL-ASSISTED</span>
-          <strong>Safe browser action selected</strong>
-          <small>Normalized context · server-issued references only</small>
+          <span>{language === "id" ? "DIBANTU MODEL" : "MODEL-ASSISTED"}</span>
+          <strong>
+            {language === "id"
+              ? "Aksi browser aman dipilih"
+              : "Safe browser action selected"}
+          </strong>
+          <small>
+            {language === "id"
+              ? "Konteks ternormalisasi · referensi dari server saja"
+              : "Normalized context · server-issued references only"}
+          </small>
         </div>
       </div>
       {!compact && active && (
@@ -962,44 +915,57 @@ export function EvidenceGraph({
           <span className="graph-inspector__state" data-state={active.state}>
             {active.state}
           </span>
-          <p className="graph-inspector__kind">Selected {active.kind}</p>
+          <p className="graph-inspector__kind">
+            {language === "id" ? "Dipilih" : "Selected"} {active.kind}
+          </p>
           <h3>{active.label}</h3>
-          <p>{active.detail}</p>
+          <p>{localizedNode(active, language).detail}</p>
           <dl>
             <div>
-              <dt>Source</dt>
-              <dd>{active.source}</dd>
+              <dt>{language === "id" ? "Sumber" : "Source"}</dt>
+              <dd>{localizedNode(active, language).source}</dd>
             </div>
             <div>
-              <dt>First seen</dt>
+              <dt>{language === "id" ? "Pertama terlihat" : "First seen"}</dt>
               <dd>12 Aug 2026 · 07:03 WIB</dd>
             </div>
             <div>
-              <dt>Review</dt>
+              <dt>{language === "id" ? "Tinjauan" : "Review"}</dt>
               <dd>
                 {active.state === "pending"
-                  ? "Human review required"
+                  ? language === "id"
+                    ? "Perlu tinjauan manusia"
+                    : "Human review required"
                   : active.state === "rejected"
-                    ? "Rejected by reviewer"
-                    : "Evidence verified"}
+                    ? language === "id"
+                      ? "Ditolak peninjau"
+                      : "Rejected by reviewer"
+                    : language === "id"
+                      ? "Bukti terverifikasi"
+                      : "Evidence verified"}
               </dd>
             </div>
           </dl>
           <p className="graph-inspector__note">
-            Observation only. This view does not establish ownership or operator
-            identity.
+            {language === "id"
+              ? "Hanya observasi. Tampilan ini tidak menetapkan kepemilikan atau identitas operator."
+              : "Observation only. This view does not establish ownership or operator identity."}
           </p>
         </aside>
       )}
       <details className="graph-fallback">
-        <summary>Accessible graph table</summary>
+        <summary>
+          {language === "id"
+            ? "Tabel graph aksesibel"
+            : "Accessible graph table"}
+        </summary>
         <table>
           <thead>
             <tr>
-              <th>Entity</th>
-              <th>Type</th>
+              <th>{language === "id" ? "Entitas" : "Entity"}</th>
+              <th>{language === "id" ? "Jenis" : "Type"}</th>
               <th>Status</th>
-              <th>Source</th>
+              <th>{language === "id" ? "Sumber" : "Source"}</th>
             </tr>
           </thead>
           <tbody>
@@ -1008,7 +974,7 @@ export function EvidenceGraph({
                 <td>{node.label}</td>
                 <td>{node.kind}</td>
                 <td>{node.state}</td>
-                <td>{node.source}</td>
+                <td>{localizedNode(node, language).source}</td>
               </tr>
             ))}
           </tbody>

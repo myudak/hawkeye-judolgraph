@@ -4,6 +4,11 @@ import {
   MagnifyingGlassPlus,
 } from "@phosphor-icons/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { drawOfficialSocialIcon } from "@hawkeye/graph/canvas-icons"
+import {
+  applyMagneticForces,
+  releaseWithMomentum,
+} from "@hawkeye/graph/force-simulation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -86,70 +91,6 @@ function boundedForFit(value: number, target: number): number {
   return Math.max(target - 110, Math.min(target + 110, value))
 }
 
-function drawSocialLogo(
-  context: CanvasRenderingContext2D,
-  kind: "telegram" | "whatsapp",
-  size: number
-) {
-  const brandColor = kind === "telegram" ? "#229ed9" : "#25d366"
-  context.save()
-  context.shadowColor = rgba(brandColor, 0.5)
-  context.shadowBlur = size * 0.42
-  context.fillStyle = brandColor
-  circle(context, 0, 0, size * 0.79)
-  context.fill()
-  context.shadowBlur = 0
-
-  if (kind === "telegram") {
-    context.fillStyle = "#ffffff"
-    context.beginPath()
-    context.moveTo(-size * 0.57, -size * 0.07)
-    context.lineTo(size * 0.58, -size * 0.52)
-    context.quadraticCurveTo(size * 0.7, -size * 0.57, size * 0.65, -size * 0.4)
-    context.lineTo(size * 0.3, size * 0.55)
-    context.quadraticCurveTo(size * 0.25, size * 0.68, size * 0.14, size * 0.55)
-    context.lineTo(-size * 0.08, size * 0.25)
-    context.lineTo(-size * 0.38, size * 0.5)
-    context.lineTo(-size * 0.3, size * 0.12)
-    context.lineTo(size * 0.43, -size * 0.34)
-    context.lineTo(-size * 0.18, size * 0.04)
-    context.lineTo(-size * 0.47, size * 0.01)
-    context.quadraticCurveTo(-size * 0.65, 0, -size * 0.57, -size * 0.07)
-    context.fill()
-  } else {
-    context.strokeStyle = "#ffffff"
-    context.lineWidth = Math.max(1.7, size * 0.14)
-    context.lineCap = "round"
-    context.lineJoin = "round"
-    context.beginPath()
-    context.arc(0, -size * 0.05, size * 0.49, 0, Math.PI * 2)
-    context.moveTo(-size * 0.32, size * 0.33)
-    context.lineTo(-size * 0.45, size * 0.59)
-    context.lineTo(-size * 0.12, size * 0.48)
-    context.stroke()
-    context.beginPath()
-    context.moveTo(-size * 0.24, -size * 0.3)
-    context.quadraticCurveTo(-size * 0.08, size * 0.21, size * 0.3, size * 0.27)
-    context.quadraticCurveTo(size * 0.43, size * 0.27, size * 0.36, size * 0.1)
-    context.lineTo(size * 0.19, -size * 0.01)
-    context.quadraticCurveTo(
-      size * 0.1,
-      size * 0.08,
-      -size * 0.03,
-      -size * 0.04
-    )
-    context.lineTo(-size * 0.14, -size * 0.2)
-    context.quadraticCurveTo(
-      -size * 0.19,
-      -size * 0.34,
-      -size * 0.24,
-      -size * 0.3
-    )
-    context.stroke()
-  }
-  context.restore()
-}
-
 function drawGraphIcon(
   context: CanvasRenderingContext2D,
   kind: GraphIconKind,
@@ -159,6 +100,10 @@ function drawGraphIcon(
   color: string
 ) {
   const s = size
+  if (kind === "telegram" || kind === "whatsapp") {
+    drawOfficialSocialIcon(context, kind, x, y, s * 2)
+    return
+  }
   context.save()
   context.translate(x, y)
   context.strokeStyle = color
@@ -167,12 +112,6 @@ function drawGraphIcon(
   context.lineCap = "round"
   context.lineJoin = "round"
   context.beginPath()
-
-  if (kind === "telegram" || kind === "whatsapp") {
-    drawSocialLogo(context, kind, s)
-    context.restore()
-    return
-  }
 
   if (kind === "site") {
     context.arc(0, 0, s * 0.67, 0, Math.PI * 2)
@@ -548,68 +487,14 @@ export function EvidenceGraph({
     const physics = (delta: number) => {
       const nodes = [...simulationRef.current.values()].filter(isVisible)
       const edges = visibleEdges(nodes)
-      for (const node of nodes) {
-        if (node.pinned) continue
-        node.vx += (node.tx - node.x) * 0.00048 * delta
-        node.vy += (node.ty - node.y) * 0.00048 * delta
-      }
-      for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
-        const left = nodes[leftIndex]
-        for (
-          let rightIndex = leftIndex + 1;
-          rightIndex < nodes.length;
-          rightIndex += 1
-        ) {
-          const right = nodes[rightIndex]
-          let dx = right.x - left.x
-          let dy = right.y - left.y
-          const distanceSquared = Math.max(240, dx * dx + dy * dy)
-          const distance = Math.sqrt(distanceSquared)
-          const minimum = left.radius + right.radius + 50
-          const overlap = Math.max(0, minimum - distance)
-          const force =
-            (Math.min(0.24, 320 / distanceSquared) + overlap * 0.0014) * delta
-          dx /= distance
-          dy /= distance
-          if (!left.pinned) {
-            left.vx -= dx * force
-            left.vy -= dy * force
-          }
-          if (!right.pinned) {
-            right.vx += dx * force
-            right.vy += dy * force
-          }
-        }
-      }
-      for (const edge of edges) {
-        const source = simulationRef.current.get(edge.source)
-        const target = simulationRef.current.get(edge.target)
-        if (!source || !target) continue
-        const dx = target.x - source.x
-        const dy = target.y - source.y
-        const distance = Math.max(1, Math.hypot(dx, dy))
-        const desired = source.primary || target.primary ? 175 : 132
-        const force = (distance - desired) * 0.00012 * delta
-        if (!source.pinned && !source.primary) {
-          source.vx += (dx / distance) * force
-          source.vy += (dy / distance) * force
-        }
-        if (!target.pinned && !target.primary) {
-          target.vx -= (dx / distance) * force
-          target.vy -= (dy / distance) * force
-        }
-      }
-      for (const node of nodes) {
-        if (node.pinned) continue
-        if (node.primary) {
-          node.x *= 0.92
-          node.y *= 0.92
-        }
-        node.vx *= 0.87
-        node.vy *= 0.87
-        node.x += node.vx * Math.min(1.5, delta / 16)
-        node.y += node.vy * Math.min(1.5, delta / 16)
-      }
+      applyMagneticForces({
+        nodes,
+        edges,
+        time: performance.now(),
+        delta,
+        reducedMotion: reduceMotion,
+        nodeById: (id) => simulationRef.current.get(id),
+      })
     }
 
     const drawMinimap = (nodes: SimNode[], edges: GraphEdge[]) => {
@@ -1024,10 +909,8 @@ export function EvidenceGraph({
           const world = screenToWorld(point.x, point.y)
           node.x = world.x
           node.y = world.y
-          node.tx = world.x
-          node.ty = world.y
-          node.vx = 0
-          node.vy = 0
+          node.vx = event.movementX / cameraRef.current.zoom
+          node.vy = event.movementY / cameraRef.current.zoom
         }
       } else {
         const camera = cameraRef.current
@@ -1057,7 +940,7 @@ export function EvidenceGraph({
     if (pointer.dragId) {
       const node = simulationRef.current.get(pointer.dragId)
       if (node) {
-        node.pinned = false
+        releaseWithMomentum(node)
         if (!pointer.moved) onSelect(node)
       }
     }
