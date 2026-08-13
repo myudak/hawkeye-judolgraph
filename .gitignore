@@ -21,5 +21,7 @@ verification-output/
 evaluation/live-cases/
 evaluation/reports/
 tmp/
-gemastik-2026/*.docx
-gemastik-2026/*.pdf
+competition/gemastik-2026/*.docx
+competition/gemastik-2026/*.pdf
+competition/gemastik-2026/deliverables/*.pdf
+competition/gemastik-2026/source-material/legacy-docx/*.docx

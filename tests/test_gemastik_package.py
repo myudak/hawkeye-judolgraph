@@ -13,7 +13,7 @@ from types import ModuleType
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
-VERIFIER_PATH = REPOSITORY_ROOT / "scripts" / "verify_gemastik_demo.py"
+VERIFIER_PATH = REPOSITORY_ROOT / "tools" / "verification" / "verify_gemastik_demo.py"
 
 
 def _load_verifier() -> ModuleType:
@@ -101,8 +101,8 @@ def test_g3_docs_are_portable_and_the_frozen_tags_stay_immutable() -> None:
         REPOSITORY_ROOT / "docs" / "evaluator" / "README.md",
         REPOSITORY_ROOT / "docs" / "evaluator" / "JUDGE-GUIDE.md",
         REPOSITORY_ROOT / "docs" / "evaluator" / "JUDGING-CHECKLIST.md",
-        REPOSITORY_ROOT / "docs" / "THREAT-MODEL.md",
-        REPOSITORY_ROOT / "docs" / "PRESENTATION-STORYBOARD.md",
+        REPOSITORY_ROOT / "docs" / "security" / "THREAT-MODEL.md",
+        REPOSITORY_ROOT / "docs" / "guides" / "PRESENTATION-STORYBOARD.md",
     ]
     joined = "\n".join(document.read_text(encoding="utf-8") for document in documents)
 

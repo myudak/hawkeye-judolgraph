@@ -6,33 +6,32 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE = ROOT / "gemastik-2026"
+PACKAGE = ROOT / "competition" / "gemastik-2026"
 
 
 def test_required_markdown_package_and_asset_directories_exist() -> None:
     required = {
         "README.md",
-        "PROPOSAL.md",
-        "TECHNICAL_DOCUMENT.md",
-        "VIDEO_SCRIPT_3_MINUTES.md",
-        "SUBMISSION_CHECKLIST.md",
-        "IMPLEMENTATION_STATUS.md",
-        "CLAIM_EVIDENCE_MATRIX.md",
-        "LIBRARIES_AND_LICENSES.md",
-        "ORIGINALITY_STATEMENT_DRAFT.md",
-        "RESEARCH_AND_CITATIONS.md",
-        "FIGURE_INDEX.md",
-        "BENCHMARK_RESULTS.md",
+        "proposal/PROPOSAL.md",
+        "proposal/RESEARCH_AND_CITATIONS.md",
+        "technical/TECHNICAL_DOCUMENT.md",
+        "technical/IMPLEMENTATION_STATUS.md",
+        "technical/CLAIM_EVIDENCE_MATRIX.md",
+        "technical/LIBRARIES_AND_LICENSES.md",
+        "technical/BENCHMARK_RESULTS.md",
+        "submission/VIDEO_SCRIPT_3_MINUTES.md",
+        "submission/SUBMISSION_CHECKLIST.md",
+        "submission/ORIGINALITY_STATEMENT_DRAFT.md",
+        "submission/FIGURE_INDEX.md",
     }
-    # Supplemental proposal chapters may be added without weakening the required submission set.
-    assert required <= {path.name for path in PACKAGE.glob("*.md")}
+    assert all((PACKAGE / path).is_file() for path in required)
     for name in ("proposal", "technical", "video"):
         assert (PACKAGE / "assets" / name / "README.md").is_file()
     assert not list(PACKAGE.rglob("*.pdf"))
 
 
 def test_proposal_uses_official_section_order_and_public_name_placeholder() -> None:
-    proposal = (PACKAGE / "PROPOSAL.md").read_text(encoding="utf-8")
+    proposal = (PACKAGE / "proposal" / "PROPOSAL.md").read_text(encoding="utf-8")
     headings = [line for line in proposal.splitlines() if line.startswith("## ")]
     assert headings == [
         "## 1. Judul/Nama Perangkat Lunak",
@@ -56,7 +55,7 @@ def test_benchmark_claims_match_checked_in_raw_results() -> None:
             encoding="utf-8"
         )
     )
-    claims = (PACKAGE / "BENCHMARK_RESULTS.md").read_text(encoding="utf-8")
+    claims = (PACKAGE / "technical" / "BENCHMARK_RESULTS.md").read_text(encoding="utf-8")
     assert raw["fixture_count"] == 10
     assert raw["policy_safety"]["unsafe_action_block_rate"] == 1.0
     for row in raw["approach_comparison"]:
@@ -66,13 +65,13 @@ def test_benchmark_claims_match_checked_in_raw_results() -> None:
 
 
 def test_status_table_uses_only_allowed_statuses_and_todos_are_explicit() -> None:
-    status = (PACKAGE / "IMPLEMENTATION_STATUS.md").read_text(encoding="utf-8")
+    status = (PACKAGE / "technical" / "IMPLEMENTATION_STATUS.md").read_text(encoding="utf-8")
     allowed = {"implemented", "partially implemented", "planned", "deferred"}
     rows = [line for line in status.splitlines() if line.startswith("|")][2:]
     for row in rows:
         cells = [cell.strip() for cell in row.strip("|").split("|")]
         assert cells[1] in allowed
-    combined = "\n".join(path.read_text(encoding="utf-8") for path in PACKAGE.glob("*.md"))
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in PACKAGE.rglob("*.md"))
     assert "TODO — requires human confirmation" in combined
     assert "TODO — requires external source" in combined
     assert "TODO — requires completed test" in combined

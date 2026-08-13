@@ -102,7 +102,7 @@ attachment. Optional comparison documents are displayed only when their case man
 references, and entity references verify against the configured local cases root; invalid documents
 surface an integrity warning.
 
-The reproducible judge walkthrough is documented in `docs/DEMO.md`. Build it with `python -m
+The reproducible judge walkthrough is documented in `docs/guides/DEMO.md`. Build it with `python -m
 hawkeye demo --output <new-directory>`, then serve its `cases/` and `comparisons/` subdirectories
 through the existing loopback-only console. The fixture uses reserved `.invalid` labels and generic
 static images. It is a local demonstration input, not live availability or competition truth.
@@ -119,7 +119,7 @@ diagnostic, and an invalid provenance-companion warning. Live observations are e
 Run the fail-closed offline verifier with a new output directory:
 
 ```powershell
-python scripts/verify_gemastik_demo.py --output verification-output/gemastik-g3
+python tools/verification/verify_gemastik_demo.py --output verification-output/gemastik-g3
 ```
 
 The command verifies the frozen tag and runtime tree, blocks normal DNS/socket connection primitives

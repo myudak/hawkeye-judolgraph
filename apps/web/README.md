@@ -6,7 +6,7 @@ HAWK-EYE investigator console.
 The frontend consumes the existing same-origin FastAPI endpoints. It does not define collection,
 evidence, graph, candidate, assertion, or review truth. `npm run build` writes a deterministic
 entry and content-hashed lazy route chunks to `apps/api/src/hawkeye/review_app/static/`, which the loopback-only
-FastAPI server continues to serve. See `../docs/FRONTEND.md` for the truth/projection boundary.
+FastAPI server continues to serve. See `../../docs/architecture/FRONTEND.md` for the truth/projection boundary.
 
 ```powershell
 npm ci

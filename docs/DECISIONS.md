@@ -458,3 +458,21 @@ against its actual contents and preserve applicable upstream licenses/notices. A
 lockfile, Chromium, desktop toolchain, fonts, or optional OCR invalidates the snapshot until the
 audit is regenerated. License adoption changes distribution permissions only; it does not change
 the localhost, public-read-only, policy, evidence-interpretation, or human-review boundaries.
+
+## ADR-039 — Repository navigation follows product, evaluation, distribution, and competition boundaries
+
+**Status:** accepted.
+
+Runtime applications remain under `apps/`; reusable frontend code remains under `packages/`; and
+the Python engine stays a domain-oriented modular monolith in `apps/api/src/hawkeye`. Splitting the
+engine into independently published packages is deferred until a real deployment or ownership
+boundary requires it. Root `tests/` and `evaluation/` retain their names and historical fixture
+paths so benchmark identities, package data, and pytest node IDs remain stable.
+
+GEMASTIK material lives under `competition/gemastik-2026`, Windows definitions under
+`distribution/windows`, and purpose-specific commands under `tools/{dev,verification,release,
+gemastik}`. Durable context documents stay directly under `docs`; supporting documents are grouped
+under `docs/{architecture,security,operations,guides}`. Docker and Vercel entry files remain at the
+repository root to preserve one-command operator workflows. This is a source-navigation change
+only and does not alter evidence schemas, case packages, review history, evaluation truth, or
+runtime safety policy.

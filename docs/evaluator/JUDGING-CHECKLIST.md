@@ -18,7 +18,7 @@ Use this checklist against observable behavior, artifacts, and local commands—
 | □ Restricted capture stays clean | `demo-restricted` | Artifact evidence remains available but no target-content entities or leads appear. |
 | □ Human review remains required | Header and final workflow step | Console says human review is required and stores no conclusion. |
 | □ Security headers and local restrictions remain | `tests/test_review_app.py` and verifier | CSP, COOP, CORP, referrer policy, no CORS, Trusted Host, and loopback bind tests pass. |
-| □ Verification suite succeeds | `python scripts/verify_gemastik_demo.py --output <new-dir>` | Report contains `PASS` for baseline, labels, integrity, pytest, ruff, mypy, and `git diff --check`. |
+| □ Verification suite succeeds | `python tools/verification/verify_gemastik_demo.py --output <new-dir>` | Report contains `PASS` for baseline, labels, integrity, pytest, ruff, mypy, and `git diff --check`. |
 
 Do not award evidence credit for claims such as “confirmed mirror,” “same owner,” “criminal network,”
 or an ownership probability: those interpretations are deliberately prohibited by the benchmark

@@ -68,12 +68,12 @@ jobs:
         run: |
           pnpm build
           choco install innosetup --no-progress -y
-          uv run python scripts/build_windows.py --version '${{ steps.version.outputs.value }}' --skip-browser-install --installer
+          uv run python tools/release/build_windows.py --version '${{ steps.version.outputs.value }}' --skip-browser-install --installer
       - name: Verify frozen application
-        run: uv run python scripts/verify_windows_bundle.py dist/windows/HAWK-EYE/HAWK-EYE.exe
+        run: uv run python tools/release/verify_windows_bundle.py dist/windows/HAWK-EYE/HAWK-EYE.exe
       - name: Verify installer round trip
         shell: pwsh
-        run: scripts/verify_windows_installer.ps1 dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe
+        run: tools/release/verify_windows_installer.ps1 dist/HAWK-EYE-Setup-${{ steps.version.outputs.value }}-windows-x64.exe
       - name: Attest release assets
         uses: actions/attest@v4
         with:

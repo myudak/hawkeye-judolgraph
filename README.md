@@ -108,16 +108,15 @@ The interface is organized around a single evidence trail:
 ## Architecture
 
 ```text
-apps/
-├── api/
-│   └── src/hawkeye/       FastAPI, collector, policy, model adapter, storage
-└── web/                    React, Vite, Tailwind CSS, shadcn-style components
-
-tests/                      Backend, UI contract, security, and regression tests
+apps/                       API, investigator app, and static marketing site
+packages/                   Shared brand, design, graph, and UI packages
+competition/gemastik-2026/  Proposal, technical sources, submission material, and assets
+distribution/windows/       PyInstaller and installer definitions
 evaluation/                 Controlled fixtures and benchmark inputs
-docs/                       Architecture, decisions, deployment, status, and evaluation
-gemastik-2026/              Competition proposal and supporting material
-infra/docker/               Entrypoint, Chromium seccomp, and container guidance
+infra/docker/               Chromium seccomp and container guidance
+tools/                      Development, verification, release, and GEMASTIK tooling
+docs/                       Durable context plus architecture, security, operations, and guides
+tests/                      Cross-system regression and acceptance tests
 data/                       Local cases and SQLite workspace (ignored)
 ```
 
@@ -298,10 +297,10 @@ controlled local fixtures.
 - [Architecture decisions](docs/DECISIONS.md)
 - [Current verification status](docs/STATUS.md)
 - [Evaluation protocol](docs/EVALUATION.md)
-- [Deployment and backup guide](docs/DEPLOYMENT.md)
-- [Windows application and release guide](docs/WINDOWS_DISTRIBUTION.md)
+- [Deployment and backup guide](docs/operations/DEPLOYMENT.md)
+- [Windows application and release guide](docs/operations/WINDOWS_DISTRIBUTION.md)
 - [Docker runtime notes](infra/docker/README.md)
-- [GEMASTIK 2026 package](gemastik-2026/README.md)
+- [GEMASTIK 2026 package](competition/gemastik-2026/README.md)
 
 ## Project story
 

@@ -121,7 +121,7 @@ unsafe-action block rate.
 
 Completed evidence: proposal in the required nine-section order, technical document, three-minute
 video script, claim/evidence and implementation matrices, benchmark interpretation, license and
-originality drafts, figure index, and submission checklist under `gemastik-2026/`. No final PDF,
+originality drafts, figure index, and submission checklist under `competition/gemastik-2026/`. No final PDF,
 video, team identity, signatures, or publication declaration is fabricated. Six actual sanitized
 post-gate screenshots are hash-indexed; final document-layout diagrams, external citation review,
 and the remaining declarations remain explicit human-owned tasks.

@@ -44,7 +44,7 @@ becomes an integrity warning instead of a result.
 The collector limits public seed navigation to safe HTTP(S) destinations and a small same-site crawl.
 The console itself is bound only to `127.0.0.1`; it permits only loopback Host headers, has no CORS,
 no write API, no proxy route, no remote fonts/assets/previews, and strict CSP/COOP/CORP/referrer
-headers. See [the implemented threat model](../THREAT-MODEL.md) for mitigations and residual DNS
+headers. See [the implemented threat model](../security/THREAT-MODEL.md) for mitigations and residual DNS
 TOCTOU risk.
 
 ## Start the fully offline demo
@@ -91,7 +91,7 @@ does not call a remote source. The comparison policy shown by the demo is
 Use a new directory every time:
 
 ```powershell
-python scripts/verify_gemastik_demo.py --output verification-output/gemastik-g3
+python tools/verification/verify_gemastik_demo.py --output verification-output/gemastik-g3
 ```
 
 Successful output has `PASS` results for the frozen `gemastik-g2` target, sanitized-demo manifest,

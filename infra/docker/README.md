@@ -40,4 +40,4 @@ optional; with both auth variables empty, the demo is intentionally unauthentica
 do not authenticate direct clients, and this exception must not be described as production-ready.
 
 Remote single-investigator access is supported through an SSH tunnel while the published port stays
-on host loopback. See `docs/DEPLOYMENT.md`.
+on host loopback. See `docs/operations/DEPLOYMENT.md`.

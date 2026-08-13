@@ -14,13 +14,13 @@ Start here:
 
 1. [Judge guide](JUDGE-GUIDE.md) — the 5–8 minute primary walkthrough.
 2. [Judging checklist](JUDGING-CHECKLIST.md) — observable claims and where to verify each one.
-3. [Threat model](../THREAT-MODEL.md) — implemented boundaries, mitigations, and residual risks.
-4. [Presentation storyboard](../PRESENTATION-STORYBOARD.md) — a concise, evidence-led narrative.
+3. [Threat model](../security/THREAT-MODEL.md) — implemented boundaries, mitigations, and residual risks.
+4. [Presentation storyboard](../guides/PRESENTATION-STORYBOARD.md) — a concise, evidence-led narrative.
 
 Run the package verifier from the repository root using a **new** output directory:
 
 ```powershell
-python scripts/verify_gemastik_demo.py --output verification-output/gemastik-g3
+python tools/verification/verify_gemastik_demo.py --output verification-output/gemastik-g3
 ```
 
 The verifier creates the sanitized demo through the frozen G2 builder, checks its manifest and

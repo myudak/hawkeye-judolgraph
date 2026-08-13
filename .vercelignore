@@ -19,10 +19,10 @@ data/
 dist/
 docs/
 evaluation/
-gemastik-2026/
+competition/gemastik-2026/
 infra/
-packaging/
-scripts/
+distribution/
+tools/
 tests/
 tmp/
 verification-output/

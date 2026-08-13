@@ -10,7 +10,7 @@
 - Six Gemastik technical-document figures were recaptured from the current React application at
   1440×1000 using only `hawkeye demo` and controlled `.invalid` scenarios. Their timestamp,
   source commit, workspace IDs, dimensions, and SHA-256 values are recorded in
-  `gemastik-2026/assets/technical-current/screenshot-manifest.json`.
+  `competition/gemastik-2026/assets/technical-current/screenshot-manifest.json`.
 - The three Word deliverables render to 19, 5, and 3 pages respectively; every rendered page was
   visually inspected and all three accessibility audits report zero high/medium/low findings.
   Frontend formatting/lint/typecheck, five Vitest tests, production Vite build, Astro diagnostics,
@@ -203,7 +203,7 @@ Progressive evidence-preview refresh implemented on 2026-08-10 (Asia/Jakarta):
 - Final name, team/institution/category/advisor, external citations, publication/originality
   confirmations, dependency-license legal review, official formatting, video,
   signatures, PDF export, and upload require authorized humans. They are tracked in
-  `gemastik-2026/SUBMISSION_CHECKLIST.md`.
+  `competition/gemastik-2026/submission/SUBMISSION_CHECKLIST.md`.
 
 ## Local implementation commits
 

@@ -13,8 +13,7 @@ verification-output
 evaluation/live-cases
 evaluation/reports
 tmp
-gemastik-2026/*.docx
-gemastik-2026/*.pdf
+competition/
 .env
 .env.*
 !.env.example
