@@ -11,7 +11,7 @@ export default defineConfig({
       include: ["react", "react/jsx-runtime", "react-dom", "react-dom/client"],
     },
   },
-  site: process.env.PUBLIC_SITE_URL || "https://hawkeye1.myudak.com",
+  site: process.env.PUBLIC_SITE_URL || "https://hawkeye.myudak.com",
   build: {
     assets: "assets",
   },
