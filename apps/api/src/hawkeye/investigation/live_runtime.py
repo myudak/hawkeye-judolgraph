@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
@@ -66,6 +67,28 @@ _CONTACT_OBSERVATION_TYPES = {
 
 LiveProgressCallback = Callable[[str, dict[str, object]], None]
 
+_ELEMENT_RESOLUTION_JS = r"""
+elements => elements.slice(0, 400).map((element, index) => {
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
+  return {
+    index,
+    tag: element.tagName.toLowerCase(),
+    text: text.slice(0, 200),
+    aria: (element.getAttribute("aria-label") || "").trim().slice(0, 200),
+    href: element instanceof HTMLAnchorElement && element.href ? element.href : null,
+    action: element.getAttribute("formaction"),
+    visible:
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      Number(style.opacity || "1") > 0 &&
+      rect.width > 0 &&
+      rect.height > 0,
+  };
+})
+"""
+
 
 @dataclass(frozen=True)
 class _LiveExpansionResult:
@@ -74,6 +97,13 @@ class _LiveExpansionResult:
     agent_mode: str
     stop_reason: str
     stopped_event_id: str
+
+
+@dataclass(frozen=True)
+class _ResolvedLiveReference:
+    locator: Any
+    strategy: str
+    diagnostics: dict[str, object]
 
 
 def run_live_investigation(
@@ -1160,14 +1190,16 @@ def _execute_live_interaction(
             page.on("download", lambda download: download.cancel())
             page.goto(source_url, wait_until="domcontentloaded", timeout=30_000)
             page.wait_for_timeout(5_000)
-            locator = page.locator(reference.dom_path)
-            if locator.count() != 1:
+            resolved, resolution = _wait_for_live_reference(page, reference)
+            if resolved is None:
                 browser.close()
                 return {
                     "status": "stale_reference",
-                    "reason": "selector_not_unique",
+                    "reason": str(resolution.get("reason", "reference_not_resolved")),
                     "executed": False,
+                    "resolution": resolution,
                 }
+            locator = resolved.locator
             observed_label = re.sub(r"\s+", " ", locator.inner_text(timeout=2_000)).strip()[:200]
             if reference.visible_text and not _reference_label_matches(
                 reference.visible_text, observed_label
@@ -1177,6 +1209,7 @@ def _execute_live_interaction(
                     "status": "stale_reference",
                     "reason": "visible_text_changed",
                     "executed": False,
+                    "resolution": resolved.diagnostics,
                 }
             locator.scroll_into_view_if_needed(timeout=3_000)
             target_bbox = locator.bounding_box(timeout=3_000)
@@ -1245,6 +1278,7 @@ def _execute_live_interaction(
                 "html_artifact": html_name,
                 "visible_text_artifact": visible_text_name,
                 "selected_element": reference.model_dump(mode="json"),
+                "element_resolution": resolved.diagnostics,
                 "target_bbox": target_bbox,
                 "viewport": viewport,
                 "before_screenshot_artifact": before_screenshot_name,
@@ -1275,6 +1309,7 @@ def _execute_live_interaction(
         "target_bbox": target_bbox,
         "viewport": viewport,
         "screenshot_sha256": hashlib.sha256(screenshot).hexdigest(),
+        "resolution": resolved.diagnostics,
         "_html": html,
     }
 
@@ -1306,6 +1341,127 @@ def _reference_label_matches(expected: str, observed: str) -> bool:
     if expected == observed:
         return True
     return bool(_CONTACT_REVEAL.search(expected) and _CONTACT_REVEAL.search(observed))
+
+
+def _wait_for_live_reference(
+    page: Any,
+    reference: StableElementReference,
+    *,
+    attempts: int = 6,
+    retry_delay_ms: int = 500,
+) -> tuple[_ResolvedLiveReference | None, dict[str, object]]:
+    """Resolve one issued reference after a dynamic page render, without guessing a target."""
+
+    last_diagnostics: dict[str, object] = {"reason": "reference_not_resolved"}
+    for attempt in range(1, attempts + 1):
+        resolved, diagnostics = _resolve_live_reference(page, reference)
+        diagnostics["attempt"] = attempt
+        diagnostics["max_attempts"] = attempts
+        if resolved is not None:
+            resolved.diagnostics.update({"attempt": attempt, "max_attempts": attempts})
+            return resolved, resolved.diagnostics
+        last_diagnostics = diagnostics
+        if attempt < attempts:
+            page.wait_for_timeout(retry_delay_ms)
+    return None, last_diagnostics
+
+
+def _resolve_live_reference(
+    page: Any, reference: StableElementReference
+) -> tuple[_ResolvedLiveReference | None, dict[str, object]]:
+    """Re-bind a server-issued reference to exactly one visible, semantically matching node.
+
+    Dynamic sites commonly render duplicate desktop/mobile controls or rebuild their component
+    tree between capture and execution. The original CSS path remains the first strategy, while
+    role/name and bounded tag scans may recover the same issued reference. Every strategy verifies
+    tag, visible/accessibility label, href, and action before returning a locator. Ambiguous visible
+    matches always fail closed.
+    """
+
+    strategies: list[tuple[str, Any]] = [("css_path", page.locator(reference.dom_path))]
+    if reference.role in {"link", "button"} and reference.accessible_name:
+        strategies.append(
+            (
+                "role_and_accessible_name",
+                page.get_by_role(reference.role, name=reference.accessible_name, exact=True),
+            )
+        )
+    strategies.append(("tag_and_reference", page.locator(reference.tag)))
+
+    attempts: list[dict[str, object]] = []
+    ambiguous = False
+    for strategy, locator in strategies:
+        try:
+            raw_candidates = locator.evaluate_all(_ELEMENT_RESOLUTION_JS)
+        except Exception as error:
+            attempts.append(
+                {
+                    "strategy": strategy,
+                    "candidate_count": 0,
+                    "matching_visible_count": 0,
+                    "error": type(error).__name__,
+                }
+            )
+            continue
+        candidates = raw_candidates if isinstance(raw_candidates, list) else []
+        matching_indices = [
+            int(item["index"])
+            for item in candidates
+            if isinstance(item, dict)
+            and isinstance(item.get("index"), int)
+            and _live_candidate_matches(item, reference)
+        ]
+        attempt = {
+            "strategy": strategy,
+            "candidate_count": len(candidates),
+            "matching_visible_count": len(matching_indices),
+        }
+        attempts.append(attempt)
+        if len(matching_indices) == 1:
+            diagnostics: dict[str, object] = {
+                "strategy": strategy,
+                "candidate_count": len(candidates),
+                "matching_visible_count": 1,
+                "attempts": attempts,
+                "reason": "reference_resolved",
+            }
+            return (
+                _ResolvedLiveReference(
+                    locator=locator.nth(matching_indices[0]),
+                    strategy=strategy,
+                    diagnostics=diagnostics,
+                ),
+                diagnostics,
+            )
+        ambiguous = ambiguous or len(matching_indices) > 1
+
+    return None, {
+        "reason": "reference_ambiguous" if ambiguous else "reference_not_found",
+        "attempts": attempts,
+    }
+
+
+def _live_candidate_matches(
+    candidate: dict[str, object], reference: StableElementReference
+) -> bool:
+    if candidate.get("visible") is not True or candidate.get("tag") != reference.tag:
+        return False
+    text = str(candidate.get("text") or "")
+    aria = str(candidate.get("aria") or "")
+    observed_label = aria or text
+    expected_labels = [reference.accessible_name, reference.visible_text]
+    if not any(
+        expected and _reference_label_matches(expected, observed_label)
+        for expected in expected_labels
+    ):
+        return False
+    observed_href = str(candidate.get("href") or "") or None
+    if reference.href is not None and _comparable_url(observed_href or "") != _comparable_url(
+        reference.href
+    ):
+        return False
+    observed_action = str(candidate.get("action") or "") or None
+    return reference.action is None or observed_action == reference.action
 
 
 def _selector_for(tag: Tag) -> str:

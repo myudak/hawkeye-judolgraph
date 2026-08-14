@@ -174,6 +174,31 @@ def fixture_server_url() -> Iterator[str]:
                     "Timeout root",
                     '<a href="/aaa-slow">Slow child</a><a href="/crawl-child">Normal child</a>',
                 )
+            elif path == "/interaction-reference-hidden-duplicate":
+                body = _html(
+                    "Dynamic duplicate controls",
+                    """
+                    <main>
+                      <section style="display:none"><a href="#">Contact Us</a></section>
+                      <section><a href="#">Contact Us</a></section>
+                    </main>
+                    """,
+                )
+            elif path == "/interaction-reference-locale-change":
+                body = _html(
+                    "Locale changed control",
+                    '<main><a id="live-contact" href="#">Hubungi Kami</a></main>',
+                )
+            elif path == "/interaction-reference-ambiguous":
+                body = _html(
+                    "Ambiguous visible controls",
+                    """
+                    <main>
+                      <section><a href="#">Hubungi Kami</a></section>
+                      <section><a href="#">Hubungi Kami</a></section>
+                    </main>
+                    """,
+                )
             elif path == "/aaa-slow":
                 time.sleep(1.0)
                 body = _html("Slow child", "<p>Slow content.</p>")

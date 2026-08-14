@@ -304,6 +304,83 @@ def test_contact_route_fallback_is_same_origin_and_contact_only() -> None:
     assert _reference_label_matches("Promotion", "Hubungi Kami") is False
 
 
+def test_live_reference_resolution_recovers_dynamic_duplicates_and_locale_change(
+    fixture_server_url: str,
+) -> None:
+    from playwright.sync_api import sync_playwright
+
+    from hawkeye.browser import launch_chromium
+    from hawkeye.interaction.models import StableElementReference
+    from hawkeye.investigation.live_runtime import _resolve_live_reference
+
+    def reference(dom_path: str) -> StableElementReference:
+        return StableElementReference(
+            reference_id="ref-contact-snapshot-test",
+            discovery_snapshot_id="snapshot-test",
+            element_id="live-contact",
+            dom_path=dom_path,
+            role="link",
+            tag="a",
+            accessible_name="Contact Us",
+            visible_text="Contact Us",
+            element_fingerprint="f" * 64,
+        )
+
+    with sync_playwright() as playwright:
+        browser = launch_chromium(playwright.chromium, headless=True)
+        page = browser.new_page(viewport={"width": 1280, "height": 720})
+
+        page.goto(f"{fixture_server_url}interaction-reference-hidden-duplicate")
+        resolved, diagnostics = _resolve_live_reference(page, reference("main > section > a"))
+        assert resolved is not None
+        assert resolved.strategy == "css_path"
+        assert resolved.locator.inner_text() == "Contact Us"
+        assert diagnostics["candidate_count"] == 2
+        assert diagnostics["matching_visible_count"] == 1
+
+        page.goto(f"{fixture_server_url}interaction-reference-locale-change")
+        resolved, diagnostics = _resolve_live_reference(page, reference("a#captured-contact"))
+        assert resolved is not None
+        assert resolved.strategy == "tag_and_reference"
+        assert resolved.locator.inner_text() == "Hubungi Kami"
+        assert diagnostics["reason"] == "reference_resolved"
+
+        browser.close()
+
+
+def test_live_reference_resolution_fails_closed_for_two_visible_matches(
+    fixture_server_url: str,
+) -> None:
+    from playwright.sync_api import sync_playwright
+
+    from hawkeye.browser import launch_chromium
+    from hawkeye.interaction.models import StableElementReference
+    from hawkeye.investigation.live_runtime import _resolve_live_reference
+
+    reference = StableElementReference(
+        reference_id="ref-contact-snapshot-test",
+        discovery_snapshot_id="snapshot-test",
+        element_id="live-contact",
+        dom_path="main > section > a",
+        role="link",
+        tag="a",
+        accessible_name="Contact Us",
+        visible_text="Contact Us",
+        element_fingerprint="f" * 64,
+    )
+    with sync_playwright() as playwright:
+        browser = launch_chromium(playwright.chromium, headless=True)
+        page = browser.new_page(viewport={"width": 1280, "height": 720})
+        page.goto(f"{fixture_server_url}interaction-reference-ambiguous")
+
+        resolved, diagnostics = _resolve_live_reference(page, reference)
+
+        browser.close()
+    assert resolved is None
+    assert diagnostics["reason"] == "reference_ambiguous"
+    assert any(item["matching_visible_count"] == 2 for item in diagnostics["attempts"])
+
+
 def test_live_contact_action_persists_route_screenshot_and_contact_observations(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
