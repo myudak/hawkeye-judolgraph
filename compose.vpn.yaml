@@ -12,6 +12,8 @@ services:
       OPENVPN_CUSTOM_CONFIG: /gluetun/custom.conf
       OPENVPN_USER: "${PROTON_OPENVPN_USER:?PROTON_OPENVPN_USER must be set in .env}"
       OPENVPN_PASSWORD: "${PROTON_OPENVPN_PASSWORD:?PROTON_OPENVPN_PASSWORD must be set in .env}"
+      OPENVPN_ENDPOINT_PORT: "${PROTON_OPENVPN_PORT:-51820}"
+      LOG_LEVEL: "${GLUETUN_LOG_LEVEL:-warning}"
       TZ: "${TZ:-Asia/Jakarta}"
     volumes:
       - "${PROTON_OPENVPN_CONFIG_PATH:-./data/vpn/ca-free-15.protonvpn.udp.ovpn}:/gluetun/custom.conf:ro"

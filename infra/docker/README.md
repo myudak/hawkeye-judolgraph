@@ -64,6 +64,11 @@ preparation tool rejects private or unresolved endpoints, embedded client creden
 certificate files, routes, plugins, and scripts. It preserves inline CA/TLS material and chooses
 one explicit public UDP endpoint so the runtime behavior is auditable.
 
+`PROTON_OPENVPN_PORT` defaults to `51820` and overrides the first remote port in the supplied
+configuration. For the checked Canada profile, operator-approved alternatives are `80`, `5060`,
+`1194`, and `4569`. Keep `GLUETUN_LOG_LEVEL=warning` in normal operation so the settings summary
+does not expose even a masked fragment of the OpenVPN password.
+
 Gluetun is the only service receiving `NET_ADMIN` and `/dev/net/tun`. HAWK-EYE retains the base
 non-root, read-only, capability-minimized boundary. If the VPN fails, Gluetun's firewall blocks
 egress instead of falling back to the VPS route. A region restriction page remains a valid capture
