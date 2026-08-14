@@ -1,0 +1,28 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.1
+    init: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: openvpn
+      OPENVPN_CUSTOM_CONFIG: /gluetun/custom.conf
+      OPENVPN_USER: "${PROTON_OPENVPN_USER:?PROTON_OPENVPN_USER must be set in .env}"
+      OPENVPN_PASSWORD: "${PROTON_OPENVPN_PASSWORD:?PROTON_OPENVPN_PASSWORD must be set in .env}"
+      TZ: "${TZ:-Asia/Jakarta}"
+    volumes:
+      - "${PROTON_OPENVPN_CONFIG_PATH:-./data/vpn/ca-free-15.protonvpn.udp.ovpn}:/gluetun/custom.conf:ro"
+    ports:
+      - "127.0.0.1:${HAWKEYE_PORT:-8760}:8760"
+    restart: unless-stopped
+
+  hawkeye:
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    ports: !reset []

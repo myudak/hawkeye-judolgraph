@@ -11,6 +11,8 @@ __pycache__/
 build/
 dist/
 *.spec.bak
+*.ovpn
+vpn-secrets/
 ~$*.docx
 node_modules/
 .vercel/

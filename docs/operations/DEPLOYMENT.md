@@ -73,6 +73,77 @@ pnpm verify:docker
 Script menggunakan project Compose dan data directory sementara, lalu membersihkan container test.
 Ia tidak menyentuh `./data` produksi.
 
+## Egress VPN hanya untuk HAWK-EYE
+
+Gunakan overlay ini bila investigator perlu satu lokasi egress yang dicatat secara eksplisit tanpa
+mengubah default route host. SSH, Git, Docker, dan `cloudflared` tetap keluar melalui IP VPS;
+request HTTP, Chromium, dan provider LLM dari container HAWK-EYE keluar melalui OpenVPN.
+
+Prasyarat Linux:
+
+```bash
+test -c /dev/net/tun
+```
+
+Simpan file sumber `.ovpn` di mesin operator dan siapkan salinan runtime yang telah divalidasi:
+
+```bash
+uv run python tools/deployment/prepare_openvpn_config.py \
+  ca-free-15.protonvpn.udp.ovpn \
+  data/vpn/ca-free-15.protonvpn.udp.ovpn
+```
+
+Masukkan credential OpenVPN khusus Proton—bukan password akun—ke `.env` dengan permission `0600`:
+
+```dotenv
+PROTON_OPENVPN_USER=isi-di-mesin-deployment
+PROTON_OPENVPN_PASSWORD=isi-di-mesin-deployment
+PROTON_OPENVPN_CONFIG_PATH=./data/vpn/ca-free-15.protonvpn.udp.ovpn
+```
+
+Validasi dan start:
+
+```bash
+docker compose -f compose.yaml -f compose.vpn.yaml config --quiet
+docker compose -f compose.yaml -f compose.vpn.yaml up -d --build
+docker compose -f compose.yaml -f compose.vpn.yaml ps
+docker compose -f compose.yaml -f compose.vpn.yaml logs --tail 100 gluetun
+```
+
+Port aplikasi dipublikasikan oleh Gluetun tetapi tetap hanya pada host loopback. HAWK-EYE tidak
+mendapat `NET_ADMIN`; ia hanya berbagi network namespace sidecar. Seluruh egress monolithic service,
+termasuk request ke OpenRouter, melewati VPN dan tetap dilindungi TLS aplikasi.
+
+Verifikasi host dan container memakai IP berbeda:
+
+```bash
+curl -4 https://api.ipify.org
+docker compose -f compose.yaml -f compose.vpn.yaml exec -T hawkeye \
+  python -c "import urllib.request; print(urllib.request.urlopen('https://api.ipify.org').read().decode())"
+```
+
+Jangan menilai keberhasilan VPN dari satu situs live. Geo-restriction tetap dapat berlaku walaupun
+tunnel sehat. Capture restriction page apa adanya dan pertahankan fixture terkendali sebagai test
+truth. VPN tidak boleh dipakai untuk login, CAPTCHA, bypass restriction, atau automatic candidate
+crawl.
+
+### Rotasi dan rollback
+
+Setelah mengganti credential atau config, recreate kedua service:
+
+```bash
+docker compose -f compose.yaml -f compose.vpn.yaml up -d --force-recreate
+```
+
+Rollback ke egress VPS langsung tanpa menghapus data:
+
+```bash
+docker compose -f compose.yaml -f compose.vpn.yaml down
+docker compose -f compose.yaml up -d
+```
+
+Jangan memakai `down -v`; evidence tetap berada pada bind mount `data/`.
+
 ## Exception demo sementara
 
 Owner mengizinkan satu demo sementara melalui Cloudflare Tunnel. Siapkan `.env` tanpa mengubah atau

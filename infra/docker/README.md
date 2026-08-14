@@ -42,3 +42,29 @@ and this exception must not be described as production-ready.
 
 Remote single-investigator access is supported through an SSH tunnel while the published port stays
 on host loopback. See `docs/operations/DEPLOYMENT.md`.
+
+## Optional collector-only VPN egress
+
+`compose.vpn.yaml` routes the HAWK-EYE container through a Gluetun/OpenVPN sidecar without changing
+the VPS host route. SSH and a host-managed Cloudflare Tunnel therefore continue to use the VPS IP.
+The sidecar owns the loopback port publication because HAWK-EYE shares its network namespace.
+
+Prepare an operator-supplied config before starting the overlay:
+
+```bash
+uv run python tools/deployment/prepare_openvpn_config.py \
+  ca-free-15.protonvpn.udp.ovpn \
+  data/vpn/ca-free-15.protonvpn.udp.ovpn
+docker compose -f compose.yaml -f compose.vpn.yaml config --quiet
+docker compose -f compose.yaml -f compose.vpn.yaml up -d --build
+```
+
+Keep the source `.ovpn` and `PROTON_OPENVPN_USER`/`PROTON_OPENVPN_PASSWORD` outside Git. The
+preparation tool rejects private or unresolved endpoints, embedded client credentials, external
+certificate files, routes, plugins, and scripts. It preserves inline CA/TLS material and chooses
+one explicit public UDP endpoint so the runtime behavior is auditable.
+
+Gluetun is the only service receiving `NET_ADMIN` and `/dev/net/tun`. HAWK-EYE retains the base
+non-root, read-only, capability-minimized boundary. If the VPN fails, Gluetun's firewall blocks
+egress instead of falling back to the VPS route. A region restriction page remains a valid capture
+outcome; this overlay does not authorize bypassing login, CAPTCHA, or access controls.
