@@ -1186,7 +1186,13 @@ def _execute_live_interaction(
                 route.continue_()  # type: ignore[attr-defined]
 
             context.route("**/*", route_request)
-            page.on("popup", lambda popup: popup.close())
+            popup_pages: list[Any] = []
+
+            def record_popup(popup: Any) -> None:
+                popup_pages.append(popup)
+                popup.on("download", lambda download: download.cancel())
+
+            page.on("popup", record_popup)
             page.on("download", lambda download: download.cancel())
             page.goto(source_url, wait_until="domcontentloaded", timeout=30_000)
             page.wait_for_timeout(5_000)
@@ -1232,6 +1238,7 @@ def _execute_live_interaction(
                 sha256=hashlib.sha256(before_screenshot).hexdigest(),
             )
             before_url = page.url
+            navigation_surface = "same_page"
             direct_destination = element.destination_url or element.href
             if element.declared_behavior == "open_public_link" and direct_destination:
                 destination_host = _hostname(direct_destination)
@@ -1246,16 +1253,30 @@ def _execute_live_interaction(
                     raise RuntimeError(f"public route returned HTTP {response.status}")
             else:
                 locator.click(timeout=5_000)
-            page.wait_for_timeout(3_000)
+                page.wait_for_timeout(750)
+                if len(popup_pages) > 1:
+                    for popup in popup_pages:
+                        popup.close()
+                    raise RuntimeError("interaction opened multiple popup pages")
+                if popup_pages:
+                    popup = popup_pages[0]
+                    popup.wait_for_load_state("domcontentloaded", timeout=30_000)
+                    popup_target = safety_policy.validate_crawl_url(popup.url, refresh_dns=True)
+                    if popup_target.hostname.removeprefix("www.") != source_host:
+                        popup.close()
+                        raise UnsafeUrlError("interaction popup left the approved host")
+                    page = popup
+                    navigation_surface = "same_origin_popup"
             route_fallback: str | None = None
-            if page.url == before_url:
+            if navigation_surface == "same_page" and page.url == before_url:
                 route_fallback = _contact_route_fallback(source_url, reference.accessible_name)
             if route_fallback is not None:
                 safety_policy.validate_crawl_url(route_fallback, refresh_dns=True)
                 response = page.goto(route_fallback, wait_until="domcontentloaded", timeout=30_000)
                 if response is not None and response.status >= 400:
                     raise RuntimeError(f"contact route returned HTTP {response.status}")
-                page.wait_for_timeout(3_000)
+                navigation_surface = "same_origin_fallback"
+            render_readiness = _wait_for_interaction_render(page)
             final_url = page.url
             screenshot = page.screenshot(full_page=False, timeout=5_000)
             html = page.content()
@@ -1283,6 +1304,8 @@ def _execute_live_interaction(
                 "viewport": viewport,
                 "before_screenshot_artifact": before_screenshot_name,
                 "navigation_fallback": route_fallback,
+                "navigation_surface": navigation_surface,
+                "render_readiness": render_readiness,
             }
             (artifacts / state_name).write_text(
                 json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -1310,7 +1333,53 @@ def _execute_live_interaction(
         "viewport": viewport,
         "screenshot_sha256": hashlib.sha256(screenshot).hexdigest(),
         "resolution": resolved.diagnostics,
+        "navigation_surface": navigation_surface,
+        "render_readiness": render_readiness,
         "_html": html,
+    }
+
+
+def _wait_for_interaction_render(
+    page: Any,
+    *,
+    attempts: int = 12,
+    retry_delay_ms: int = 750,
+) -> dict[str, object]:
+    """Wait for bounded visible-text stability after a same-page or popup interaction."""
+
+    previous_signature: str | None = None
+    stable_samples = 0
+    visible_text_chars = 0
+    for attempt in range(1, attempts + 1):
+        try:
+            visible_text = re.sub(
+                r"\s+", " ", page.locator("body").inner_text(timeout=3_000)
+            ).strip()
+        except Exception:
+            visible_text = ""
+        visible_text_chars = len(visible_text)
+        signature = hashlib.sha256(visible_text.encode()).hexdigest() if visible_text else None
+        if signature is not None and signature == previous_signature:
+            stable_samples += 1
+        else:
+            stable_samples = 0
+        previous_signature = signature
+        if attempt >= 4 and visible_text_chars >= 40 and stable_samples >= 2:
+            return {
+                "status": "ready",
+                "attempt": attempt,
+                "max_attempts": attempts,
+                "visible_text_chars": visible_text_chars,
+                "stable_samples": stable_samples,
+            }
+        if attempt < attempts:
+            page.wait_for_timeout(retry_delay_ms)
+    return {
+        "status": "limited",
+        "attempt": attempts,
+        "max_attempts": attempts,
+        "visible_text_chars": visible_text_chars,
+        "stable_samples": stable_samples,
     }
 
 

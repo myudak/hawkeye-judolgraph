@@ -199,6 +199,29 @@ def fixture_server_url() -> Iterator[str]:
                     </main>
                     """,
                 )
+            elif path == "/interaction-popup-contact":
+                body = _html(
+                    "Popup contact control",
+                    """
+                    <main>
+                      <a id="contact-popup"
+                         onclick="window.open('/interaction-popup-destination', '_blank')">
+                        Contact Us
+                      </a>
+                    </main>
+                    """,
+                )
+            elif path == "/interaction-popup-destination":
+                body = _html(
+                    "Public contact destination",
+                    """
+                    <main>
+                      <h1>Hubungi Kami</h1>
+                      <p>WhatsApp +639543355092</p>
+                      <p>Telegram +639157800101</p>
+                    </main>
+                    """,
+                )
             elif path == "/aaa-slow":
                 time.sleep(1.0)
                 body = _html("Slow child", "<p>Slow content.</p>")

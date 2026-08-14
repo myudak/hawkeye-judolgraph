@@ -381,6 +381,55 @@ def test_live_reference_resolution_fails_closed_for_two_visible_matches(
     assert any(item["matching_visible_count"] == 2 for item in diagnostics["attempts"])
 
 
+def test_live_interaction_preserves_one_safe_same_origin_popup(
+    tmp_path: Path, fixture_server_url: str
+) -> None:
+    from hawkeye.interaction.models import InteractiveElement, StableElementReference
+    from hawkeye.investigation.live_runtime import _execute_live_interaction
+
+    source_url = f"{fixture_server_url}interaction-popup-contact"
+    reference = StableElementReference(
+        reference_id="ref-popup-contact",
+        discovery_snapshot_id="snapshot-popup-contact",
+        element_id="popup-contact",
+        dom_path="a#contact-popup",
+        role="link",
+        tag="a",
+        accessible_name="Contact Us",
+        visible_text="Contact Us",
+        element_fingerprint="f" * 64,
+    )
+    element = InteractiveElement(
+        element_id="popup-contact",
+        dom_path=reference.dom_path,
+        role="link",
+        tag="a",
+        accessible_name="Contact Us",
+        visible_text="Contact Us",
+        declared_behavior="reveal_tab",
+    )
+
+    result = _execute_live_interaction(
+        source_url,
+        element,
+        reference,
+        safety_policy=SafetyPolicy(allow_loopback_for_testing=True),
+        artifacts=tmp_path,
+        interaction_index=1,
+        workspace_id="workspace-popup-test",
+        tool_name="page_click_read_only",
+        progress_callback=None,
+    )
+
+    assert result["status"] == "completed"
+    assert result["url"] == f"{fixture_server_url}interaction-popup-destination"
+    assert result["navigation_surface"] == "same_origin_popup"
+    assert result["render_readiness"]["status"] == "ready"
+    visible_text = (tmp_path / "interaction-001.txt").read_text(encoding="utf-8")
+    assert "+639543355092" in visible_text
+    assert "+639157800101" in visible_text
+
+
 def test_live_contact_action_persists_route_screenshot_and_contact_observations(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
