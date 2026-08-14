@@ -25,4 +25,5 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
+    extra_hosts: !reset []
     ports: !reset []
