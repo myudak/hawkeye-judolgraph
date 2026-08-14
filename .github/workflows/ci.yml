@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: 22.13.0
           cache: pnpm
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v9.0.0
@@ -74,7 +74,7 @@ jobs:
         with:
           version: 11.3.0
           run_install: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v9.0.0
