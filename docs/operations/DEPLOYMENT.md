@@ -100,7 +100,7 @@ PROTON_OPENVPN_USER=isi-di-mesin-deployment
 PROTON_OPENVPN_PASSWORD=isi-di-mesin-deployment
 PROTON_OPENVPN_CONFIG_PATH=./data/vpn/ca-free-15.protonvpn.udp.ovpn
 PROTON_OPENVPN_PORT=51820
-GLUETUN_LOG_LEVEL=warning
+GLUETUN_LOG_LEVEL=warn
 ```
 
 Validasi dan start:

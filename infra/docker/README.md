@@ -66,7 +66,7 @@ one explicit public UDP endpoint so the runtime behavior is auditable.
 
 `PROTON_OPENVPN_PORT` defaults to `51820` and overrides the first remote port in the supplied
 configuration. For the checked Canada profile, operator-approved alternatives are `80`, `5060`,
-`1194`, and `4569`. Keep `GLUETUN_LOG_LEVEL=warning` in normal operation so the settings summary
+`1194`, and `4569`. Keep `GLUETUN_LOG_LEVEL=warn` in normal operation so the settings summary
 does not expose even a masked fragment of the OpenVPN password.
 
 Gluetun is the only service receiving `NET_ADMIN` and `/dev/net/tun`. HAWK-EYE retains the base
