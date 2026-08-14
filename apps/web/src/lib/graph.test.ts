@@ -222,8 +222,8 @@ describe("graph drag physics", () => {
     releaseWithMomentum(node)
 
     expect(node.pinned).toBe(false)
-    expect(node.tx).toBeCloseTo(176)
-    expect(node.ty).toBeCloseTo(105.6)
+    expect(node.tx).toBeCloseTo(120)
+    expect(node.ty).toBeCloseTo(72)
     expect(node.vx).toBeCloseTo(5.44)
     expect(node.vy).toBeCloseTo(-2.72)
 
@@ -238,7 +238,7 @@ describe("graph drag physics", () => {
       })
     }
 
-    expect(node.x).toBeGreaterThan(140)
-    expect(node.y).toBeGreaterThan(80)
+    expect(node.x).toBeGreaterThan(90)
+    expect(node.y).toBeGreaterThan(50)
   })
 })

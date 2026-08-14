@@ -19,7 +19,7 @@ export interface ForceEdge {
 const PRIMARY_ANCHOR_PULL = 0.012;
 const NODE_ANCHOR_PULL = 0.0045;
 const EDGE_SPRING = 0.01;
-const DROP_ANCHOR_RETENTION = 0.88;
+const DROP_ANCHOR_RETENTION = 0.6;
 const RELEASE_MOMENTUM_RETENTION = 0.68;
 
 function phaseFor(id: string) {

@@ -74,7 +74,7 @@ def main() -> int:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", default="1.0.0")
+    parser.add_argument("--version", default="1.0.1")
     parser.add_argument("--installer", action="store_true")
     parser.add_argument("--skip-browser-install", action="store_true")
     parser.add_argument("--iscc", type=Path, default=None)
