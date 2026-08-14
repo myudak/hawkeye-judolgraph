@@ -27,6 +27,7 @@ def _crawl(
     *,
     policy: SafetyPolicy | None = None,
     timeout_seconds: float = 15.0,
+    case_timeout_seconds: float = 30.0,
     max_pages: int = 5,
     max_depth: int = 1,
     **extra: int,
@@ -35,7 +36,7 @@ def _crawl(
         url,
         output=output,
         timeout_seconds=timeout_seconds,
-        case_timeout_seconds=30.0,
+        case_timeout_seconds=case_timeout_seconds,
         max_pages=max_pages,
         max_depth=max_depth,
         safety_policy=policy or _loopback_policy(),
@@ -143,7 +144,14 @@ def test_canonical_final_url_prevents_fragment_only_self_links_from_being_crawle
 def test_enforces_five_page_budget_in_sorted_bfs_order(
     fixture_server_url: str, tmp_path: Path
 ) -> None:
-    result = _crawl(f"{fixture_server_url}crawl-budget", tmp_path / "cases")
+    # This fixture intentionally captures five rendered pages. Keep the wall-clock budget above
+    # the sum of those deterministic capture windows so parallel CI load tests page ordering,
+    # rather than accidentally testing host scheduling speed.
+    result = _crawl(
+        f"{fixture_server_url}crawl-budget",
+        tmp_path / "cases",
+        case_timeout_seconds=90.0,
+    )
 
     assert result.case.page_count == 5
     assert [page.normalized_url.rsplit("/", maxsplit=1)[-1] for page in result.pages[1:]] == [

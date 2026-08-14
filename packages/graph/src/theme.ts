@@ -90,7 +90,7 @@ export function subscribeGraphTheme(onChange: () => void) {
 
 export const graphMotion = {
   cameraEase: 0.12,
-  magneticPull: 0.058,
+  magneticPull: 0.024,
   dragDamping: 0.86,
   releaseDamping: 0.92,
 } as const;

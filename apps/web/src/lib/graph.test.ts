@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest"
 
 import type { CaseDetails, RunDetails } from "@/api/types"
 import {
+  applyMagneticForces,
+  releaseWithMomentum,
+  type ForceNode,
+} from "@hawkeye/graph/force-simulation"
+import {
   buildCaseProjection,
   buildRunProjection,
   graphLensAllows,
@@ -198,5 +203,42 @@ describe("graph projections", () => {
       "Investigation completed",
     ])
     expect(projection.timeline[1].detail).toBe("2 evidence-backed observations")
+  })
+})
+
+describe("graph drag physics", () => {
+  it("keeps a dragged node near its drop point instead of its initial layout", () => {
+    const node: ForceNode = {
+      id: "contact:whatsapp",
+      x: 200,
+      y: 120,
+      tx: 0,
+      ty: 0,
+      vx: 8,
+      vy: -4,
+      pinned: true,
+    }
+
+    releaseWithMomentum(node)
+
+    expect(node.pinned).toBe(false)
+    expect(node.tx).toBeCloseTo(176)
+    expect(node.ty).toBeCloseTo(105.6)
+    expect(node.vx).toBeCloseTo(5.44)
+    expect(node.vy).toBeCloseTo(-2.72)
+
+    for (let frame = 0; frame < 180; frame += 1) {
+      applyMagneticForces({
+        nodes: [node],
+        edges: [],
+        time: frame * 16.667,
+        delta: 16.667,
+        reducedMotion: true,
+        nodeById: () => node,
+      })
+    }
+
+    expect(node.x).toBeGreaterThan(140)
+    expect(node.y).toBeGreaterThan(80)
   })
 })

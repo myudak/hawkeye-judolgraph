@@ -64,3 +64,23 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check presentation website
         run: pnpm check:marketing
+
+  windows-release-preflight:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+          run_install: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - name: Install locked Windows release dependencies
+        run: uv sync --locked --extra dev --extra desktop
+      - name: Check Windows desktop and release surfaces
+        run: pnpm check:release

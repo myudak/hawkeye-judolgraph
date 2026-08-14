@@ -105,6 +105,18 @@ class CollectionError(RuntimeError):
         self.blocked_download_count = blocked_download_count
 
 
+def _is_main_frame_navigation(request: Request) -> bool:
+    if not request.is_navigation_request():
+        return False
+    try:
+        return request.frame.parent_frame is None
+    except PlaywrightError:
+        # A newly-created popup can emit its first navigation request before Playwright exposes
+        # the frame. The context-level popup guard closes it; it must not crash the route handler
+        # or be promoted to the collected page's main navigation.
+        return False
+
+
 @dataclass
 class _RequestGuard:
     """Blocks unsafe browser traffic before dispatch and limits navigation redirects."""
@@ -125,7 +137,7 @@ class _RequestGuard:
         # Playwright also calls ``is_navigation_request`` true for iframe documents.  Only the
         # main frame changes the page being collected; treating a public third-party iframe as a
         # crawl navigation can incorrectly fail an otherwise valid capture.
-        is_navigation = request.is_navigation_request() and request.frame.parent_frame is None
+        is_navigation = _is_main_frame_navigation(request)
         if not self.budget.consume_request():
             self._blocked(
                 request,

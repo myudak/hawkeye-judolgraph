@@ -16,6 +16,12 @@ export interface ForceEdge {
   target: string;
 }
 
+const PRIMARY_ANCHOR_PULL = 0.012;
+const NODE_ANCHOR_PULL = 0.0045;
+const EDGE_SPRING = 0.01;
+const DROP_ANCHOR_RETENTION = 0.88;
+const RELEASE_MOMENTUM_RETENTION = 0.68;
+
 function phaseFor(id: string) {
   let hash = 2166136261;
   for (const character of id) {
@@ -42,8 +48,9 @@ export function applyMagneticForces<TNode extends ForceNode>(options: {
     const ambient = reducedMotion ? 0 : node.primary ? 4 : 19;
     const anchorX = node.tx + Math.cos(time * 0.00072 + phase) * ambient;
     const anchorY = node.ty + Math.sin(time * 0.00061 + phase * 1.31) * ambient;
-    node.vx += (anchorX - node.x) * (node.primary ? 0.024 : 0.0085) * step;
-    node.vy += (anchorY - node.y) * (node.primary ? 0.024 : 0.0085) * step;
+    const anchorPull = node.primary ? PRIMARY_ANCHOR_PULL : NODE_ANCHOR_PULL;
+    node.vx += (anchorX - node.x) * anchorPull * step;
+    node.vy += (anchorY - node.y) * anchorPull * step;
   }
 
   for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
@@ -84,7 +91,7 @@ export function applyMagneticForces<TNode extends ForceNode>(options: {
       Math.hypot(target.tx - source.tx, target.ty - source.ty),
     );
     const extension = distance - anchorDistance;
-    const spring = extension * 0.018 * step;
+    const spring = extension * EDGE_SPRING * step;
     if (!source.pinned && !source.primary) {
       source.vx += (dx / distance) * spring;
       source.vy += (dy / distance) * spring;
@@ -110,7 +117,11 @@ export function applyMagneticForces<TNode extends ForceNode>(options: {
 }
 
 export function releaseWithMomentum(node: ForceNode) {
+  // A drag is an intentional layout edit. Move most of the resting anchor to the drop point so
+  // the graph still settles as a connected system without snapping back to its initial layout.
+  node.tx += (node.x - node.tx) * DROP_ANCHOR_RETENTION;
+  node.ty += (node.y - node.ty) * DROP_ANCHOR_RETENTION;
   node.pinned = false;
-  node.vx += (node.tx - node.x) * 0.11;
-  node.vy += (node.ty - node.y) * 0.11;
+  node.vx *= RELEASE_MOMENTUM_RETENTION;
+  node.vy *= RELEASE_MOMENTUM_RETENTION;
 }

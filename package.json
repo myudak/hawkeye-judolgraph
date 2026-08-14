@@ -20,6 +20,7 @@
     "check:api:static": "uv run ruff format --check . && uv run ruff check . && uv run mypy apps/api/src/hawkeye",
     "test:api": "uv run pytest -q -n auto",
     "test:release": "uv run pytest -q tests/test_desktop.py tests/test_llm_provider.py",
+    "check:release": "pnpm check:api:static && pnpm test:release",
     "check:api": "pnpm check:api:static && pnpm test:api",
     "check:core": "pnpm check:web && pnpm build && pnpm check:api && git diff --check",
     "check": "pnpm check:core && pnpm check:marketing",
