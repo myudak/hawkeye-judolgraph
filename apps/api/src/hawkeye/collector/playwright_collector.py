@@ -119,7 +119,10 @@ class _RequestGuard:
 
     def handle(self, route: Route) -> None:
         request = route.request
-        is_navigation = request.is_navigation_request()
+        # Playwright also calls ``is_navigation_request`` true for iframe documents.  Only the
+        # main frame changes the page being collected; treating a public third-party iframe as a
+        # crawl navigation can incorrectly fail an otherwise valid capture.
+        is_navigation = request.is_navigation_request() and request.frame.parent_frame is None
         if not self.budget.consume_request():
             self._blocked(
                 request,
@@ -137,7 +140,12 @@ class _RequestGuard:
             validated = (
                 self.safety.validate_crawl_url(request.url, refresh_dns=True)
                 if is_navigation
-                else self.safety.validate_url(request.url, refresh_dns=True)
+                # The first request to each subresource authority resolves and validates every
+                # address.  Later requests reuse that case-local result, matching Chromium's own
+                # bounded browser-context DNS cache without serializing hundreds of identical DNS
+                # lookups on resource-heavy pages.  Every main-frame navigation is still
+                # re-resolved immediately before dispatch.
+                else self.safety.validate_url(request.url)
             )
         except UnsafeUrlError as error:
             self._blocked(

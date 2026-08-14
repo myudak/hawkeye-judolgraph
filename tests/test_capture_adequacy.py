@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
+from hawkeye.collector.playwright_collector import BrowserCollector
 from hawkeye.collector.safety import SafetyPolicy
 from hawkeye.models import AccessOutcome, CaptureAdequacy, PublicCaptureStatus
 from hawkeye.pipeline import investigate
@@ -25,6 +27,30 @@ def _capture(fixture_server_url: str, tmp_path: Path, path: str) -> tuple[object
     )
     assert result.case.status == "completed", result.case.error
     return result, Path(result.case_directory)
+
+
+def test_subresources_reuse_case_dns_and_cross_host_iframe_is_not_top_level_navigation(
+    fixture_server_url: str,
+) -> None:
+    resolver_calls: list[tuple[str, int]] = []
+
+    def resolver(hostname: str, port: int) -> list[str]:
+        resolver_calls.append((hostname, port))
+        return ["127.0.0.1"]
+
+    seed_host = urlsplit(fixture_server_url).hostname
+    assert seed_host is not None
+    collected = BrowserCollector(
+        safety=SafetyPolicy(resolver=resolver, allow_loopback_for_testing=True),
+        timeout_seconds=15,
+        allowed_navigation_hosts={seed_host},
+    ).collect(fixture_server_url)
+
+    assert collected.final_url == fixture_server_url
+    # Seed preflight, top-level dispatch, and final canonical validation deliberately refresh.
+    # CSS, script, image, and iframe requests sharing an authority reuse the case-local answer.
+    assert resolver_calls.count((seed_host, urlsplit(fixture_server_url).port or 80)) == 3
+    assert sum(hostname == "localhost" for hostname, _port in resolver_calls) == 1
 
 
 def test_delayed_render_uses_final_canonical_state_and_preserves_initial(

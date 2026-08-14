@@ -92,10 +92,11 @@ class SafetyPolicy:
     def validate_url(self, raw_url: str, *, refresh_dns: bool = False) -> ValidatedUrl:
         """Normalize an HTTP(S) URL and fail if any DNS answer is non-public.
 
-        Request interception passes ``refresh_dns=True`` so a hostname is checked again at
-        dispatch time instead of trusting a prior answer for the rest of the case. This keeps the
-        normal cache useful for deterministic application-level work while failing closed against
-        DNS changes during browser collection.
+        Main-frame request interception passes ``refresh_dns=True`` so every browser navigation is
+        checked again at dispatch time. Subresources resolve once per authority in the isolated,
+        bounded browser context and then reuse this case-local cache; this avoids serializing
+        hundreds of identical resolver calls while preserving the public-address check before the
+        first dispatch to each authority.
         """
 
         parsed = self._parse_and_normalize(raw_url)

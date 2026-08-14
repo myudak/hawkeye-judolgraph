@@ -69,6 +69,11 @@ configuration. For the checked Canada profile, operator-approved alternatives ar
 `1194`, and `4569`. Keep `GLUETUN_LOG_LEVEL=warn` in normal operation so the settings summary
 does not expose even a masked fragment of the OpenVPN password.
 
+The overlay defaults to encrypted DNS-over-HTTPS through Cloudflare and Google. Gluetun's
+malicious-domain blocklist is disabled for this investigator profile so it does not silently turn a
+public target into a false DNS failure; HAWK-EYE still rejects private/non-public destinations and
+keeps the browser read-only and bounded.
+
 Gluetun is the only service receiving `NET_ADMIN` and `/dev/net/tun`. HAWK-EYE retains the base
 non-root, read-only, capability-minimized boundary. If the VPN fails, Gluetun's firewall blocks
 egress instead of falling back to the VPS route. A region restriction page remains a valid capture
