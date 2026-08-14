@@ -110,6 +110,18 @@ svg {
   object-fit: cover;
 }
 
+.theme-asset-light {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-asset-dark {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-asset-light {
+  display: block;
+}
+
 .brand-lockup > span:last-child {
   display: grid;
   min-width: 0;

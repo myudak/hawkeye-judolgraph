@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./tokens.css": "./tokens.css",
-    "./globals.css": "./globals.css"
+    "./globals.css": "./globals.css",
+    "./theme": "./theme.ts"
   }
 }

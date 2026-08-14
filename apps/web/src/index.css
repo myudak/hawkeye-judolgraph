@@ -3,10 +3,11 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/public-sans";
+@import "@hawkeye/design/tokens.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *));
 
-:root {
+:root[data-theme="light"] {
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);
   --card: oklch(1 0 0);
@@ -41,7 +42,8 @@
   --sidebar-ring: oklch(0.723 0.014 214.4);
 }
 
-.dark {
+:root,
+:root[data-theme="dark"] {
   --background: oklch(0.145 0.018 238);
   --foreground: oklch(0.965 0.006 210);
   --card: oklch(0.19 0.022 236);
@@ -138,8 +140,8 @@
         oklch(0.5 0.2 4 / 8%),
         transparent 32rem
       ),
-      linear-gradient(oklch(0.19 0.02 235 / 22%) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(0.19 0.02 235 / 22%) 1px, transparent 1px);
+      linear-gradient(var(--instrument-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--instrument-grid) 1px, transparent 1px);
     background-size:
       auto,
       auto,
@@ -190,14 +192,6 @@
   --signal-gold: #f5cb5c;
   --signal-green: #39d98a;
   --signal-red: #ff6577;
-  --instrument-bg: #06111c;
-  --instrument-panel: rgba(8, 23, 36, 0.88);
-  --instrument-panel-solid: #081724;
-  --instrument-panel-raised: #0b1d2c;
-  --instrument-line: rgba(135, 170, 195, 0.17);
-  --instrument-line-strong: rgba(135, 170, 195, 0.28);
-  --instrument-muted: #8fa3b5;
-  --instrument-quiet: #5e7283;
 }
 
 button,
@@ -250,8 +244,8 @@ button:disabled {
   gap: 18px;
   padding: 10px clamp(16px, 2vw, 34px);
   border-bottom: 1px solid var(--instrument-line);
-  background: rgba(4, 13, 22, 0.86);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+  background: var(--instrument-header);
+  box-shadow: var(--instrument-shadow);
   backdrop-filter: blur(22px) saturate(130%);
 }
 .brand-button {
@@ -289,6 +283,15 @@ button:disabled {
   border-radius: 14px;
   object-fit: cover;
   filter: drop-shadow(0 0 12px rgba(239, 39, 111, 0.32));
+}
+.theme-asset-light {
+  display: none;
+}
+:root[data-theme="light"] .theme-asset-dark {
+  display: none;
+}
+:root[data-theme="light"] .theme-asset-light {
+  display: block;
 }
 .hawk-mark {
   position: relative;
@@ -328,7 +331,7 @@ button:disabled {
   width: 100%;
   border: 1px solid var(--instrument-line);
   border-radius: 11px;
-  background: rgba(9, 25, 39, 0.8);
+  background: var(--instrument-panel);
   font-family: var(--font-sans);
 }
 .header-actions {
@@ -341,12 +344,12 @@ button:disabled {
   min-width: 66px;
   border-radius: 11px;
   color: var(--instrument-muted);
-  background: rgba(9, 25, 39, 0.72);
+  background: var(--instrument-panel);
 }
 .header-settings {
   border-radius: 11px;
   color: var(--instrument-muted);
-  background: rgba(9, 25, 39, 0.72);
+  background: var(--instrument-panel);
 }
 .header-settings:hover {
   color: var(--signal-pink);
@@ -483,7 +486,7 @@ button:disabled {
   padding: 9px 12px;
   border: 1px solid var(--instrument-line);
   border-radius: 11px;
-  background: rgba(3, 12, 21, 0.46);
+  background: var(--instrument-panel-faint);
 }
 .settings-provider-state > span {
   width: 7px;
@@ -533,7 +536,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 13px;
   color: var(--instrument-text);
-  background: rgba(5, 16, 27, 0.5);
+  background: var(--instrument-panel-soft);
   text-align: left;
   transition:
     border-color 140ms ease,
@@ -624,7 +627,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
   color: var(--instrument-text);
-  background: rgba(3, 12, 21, 0.7);
+  background: var(--instrument-control-surface);
 }
 .settings-input-shell,
 .settings-key-shell {
@@ -764,12 +767,8 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line-strong);
   border-radius: 22px;
-  background: linear-gradient(
-    135deg,
-    rgba(9, 27, 42, 0.95),
-    rgba(6, 18, 29, 0.88)
-  );
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.28);
+  background: var(--instrument-hero-surface);
+  box-shadow: var(--instrument-shadow);
 }
 .launch-section::before {
   position: absolute;
@@ -846,10 +845,41 @@ button:disabled {
 .input-shell {
   height: 50px;
 }
+.seed-example-trigger {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--instrument-line);
+  border-radius: 8px;
+  color: var(--instrument-muted);
+  background: var(--instrument-control-surface);
+  font: 650 0.58rem var(--font-sans);
+  white-space: nowrap;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.seed-example-trigger:hover,
+.seed-example-trigger[aria-expanded="true"] {
+  color: var(--signal-pink);
+  border-color: color-mix(in srgb, var(--signal-pink) 38%, transparent);
+  background: color-mix(in srgb, var(--signal-pink) 7%, var(--instrument-panel));
+}
+.seed-example-trigger svg {
+  width: 13px;
+  height: 13px;
+}
+.seed-example-menu [data-slot="dropdown-menu-item"] span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .field-stack > input {
   border-color: var(--instrument-line);
   border-radius: 11px;
-  background: rgba(3, 13, 22, 0.58);
+  background: var(--instrument-panel-soft);
   padding: 0 15px;
   font-size: 0.82rem;
 }
@@ -862,7 +892,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 11px;
   color: var(--instrument-muted);
-  background: rgba(3, 13, 22, 0.58);
+  background: var(--instrument-panel-soft);
 }
 .input-shell input {
   height: 48px;
@@ -914,7 +944,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 999px;
   color: var(--instrument-muted);
-  background: rgba(4, 15, 24, 0.64);
+  background: var(--instrument-control-surface);
   font: 650 0.58rem var(--font-sans);
   white-space: nowrap;
 }
@@ -980,7 +1010,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
   color: var(--instrument-muted);
-  background: rgba(5, 17, 27, 0.75);
+  background: var(--instrument-panel);
 }
 .search-shell input {
   height: 38px;
@@ -994,7 +1024,7 @@ button:disabled {
   width: 142px;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(5, 17, 27, 0.75);
+  background: var(--instrument-panel);
   font-size: 0.66rem;
 }
 .case-filters {
@@ -1004,7 +1034,7 @@ button:disabled {
   padding: 3px;
   border: 1px solid var(--instrument-line);
   border-radius: 999px;
-  background: rgba(4, 15, 24, 0.64);
+  background: var(--instrument-panel-soft);
 }
 .case-filters button {
   border-radius: 999px;
@@ -1036,9 +1066,7 @@ button:disabled {
   border: 1px solid rgba(126, 158, 181, 0.22);
   border-radius: 20px;
   color: var(--foreground);
-  background:
-    radial-gradient(circle at 0 0, rgba(239, 39, 111, 0.12), transparent 42%),
-    linear-gradient(145deg, rgba(10, 28, 43, 0.98), rgba(5, 16, 27, 0.94) 72%);
+  background: var(--instrument-card-surface);
   text-align: left;
   box-shadow:
     0 22px 48px rgba(0, 0, 0, 0.2),
@@ -1052,22 +1080,13 @@ button:disabled {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 0.035),
-    transparent 30%,
-    transparent 72%,
-    rgba(58, 191, 240, 0.025)
-  );
+  background: var(--instrument-card-sheen);
   content: "";
   pointer-events: none;
 }
 .case-card:hover {
   border-color: rgba(239, 39, 111, 0.48);
-  box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.32),
-    0 0 0 1px rgba(239, 39, 111, 0.08),
-    0 0 42px rgba(239, 39, 111, 0.06);
+  box-shadow: var(--instrument-hover-shadow);
   transform: translateY(-4px);
 }
 .case-card-accent {
@@ -1241,7 +1260,7 @@ button:disabled {
   border: 1px solid rgba(126, 158, 181, 0.22);
   border-radius: 12px;
   color: var(--instrument-muted);
-  background: rgba(4, 14, 23, 0.48);
+  background: var(--instrument-panel-faint);
   opacity: 0.72;
   transition:
     opacity 180ms ease,
@@ -1309,7 +1328,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 12px;
   color: var(--instrument-muted);
-  background: rgba(7, 20, 31, 0.68);
+  background: var(--instrument-panel-soft);
   font-size: 0.6rem;
 }
 .landing-principles svg {
@@ -1334,11 +1353,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid rgba(239, 39, 111, 0.45);
   border-radius: 22px;
-  background: linear-gradient(
-    135deg,
-    rgba(8, 24, 38, 0.98),
-    rgba(5, 17, 28, 0.94)
-  );
+  background: var(--instrument-hero-surface);
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.32),
     0 0 60px rgba(239, 39, 111, 0.05);
@@ -1581,7 +1596,7 @@ button:disabled {
   background: linear-gradient(
     110deg,
     rgba(58, 191, 240, 0.055),
-    rgba(4, 15, 24, 0.65)
+    var(--instrument-control-surface)
   );
 }
 .agent-focus-card > span {
@@ -1781,7 +1796,7 @@ button:disabled {
   place-items: center;
   border: 1px solid rgba(239, 39, 111, 0.5);
   border-radius: 50%;
-  background: rgba(5, 16, 26, 0.95);
+  background: var(--instrument-panel-solid);
   box-shadow: 0 0 42px rgba(239, 39, 111, 0.15);
 }
 .radar-core .hawk-mark {
@@ -1848,7 +1863,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
   color: var(--signal-pink);
-  background: rgba(4, 14, 24, 0.7);
+  background: var(--instrument-control-surface);
   font: 650 0.67rem var(--font-sans);
   white-space: nowrap;
 }
@@ -1866,7 +1881,7 @@ button:disabled {
   padding: 15px;
   border: 1px solid var(--instrument-line);
   border-radius: 13px;
-  background: rgba(7, 21, 33, 0.84);
+  background: var(--instrument-panel);
 }
 .scan-metrics article > span {
   grid-row: 1 / 4;
@@ -1919,7 +1934,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 13px;
   color: var(--instrument-quiet);
-  background: rgba(6, 18, 29, 0.68);
+  background: var(--instrument-panel-soft);
   text-align: center;
 }
 .pipeline-stages li:not(:last-child)::after {
@@ -1985,7 +2000,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line);
   border-radius: 15px;
-  background: rgba(7, 21, 33, 0.92);
+  background: var(--instrument-panel);
 }
 .activity-console > header {
   display: flex;
@@ -2062,7 +2077,7 @@ button:disabled {
   padding: 8px 14px;
   border: 1px solid var(--instrument-line);
   border-radius: 12px;
-  background: rgba(7, 21, 33, 0.86);
+  background: var(--instrument-panel);
 }
 .technical-label {
   display: flex;
@@ -2181,7 +2196,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 11px;
   color: var(--instrument-muted);
-  background: rgba(6, 19, 30, 0.78);
+  background: var(--instrument-panel);
 }
 .workspace-url span {
   overflow: hidden;
@@ -2251,7 +2266,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line-strong);
   border-radius: 15px;
-  background: rgba(6, 18, 29, 0.94);
+  background: var(--instrument-panel-solid);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.15);
 }
 .case-summary-scroll {
@@ -2312,7 +2327,7 @@ button:disabled {
   padding: 9px;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(9, 27, 41, 0.65);
+  background: var(--instrument-inset-surface);
 }
 .summary-metric svg {
   grid-row: 1 / 3;
@@ -2403,7 +2418,7 @@ button:disabled {
 .graph-panel {
   position: relative;
   min-width: 0;
-  background-color: rgba(3, 12, 20, 0.96);
+  background-color: var(--graph-canvas);
   background-image: radial-gradient(
     rgba(129, 164, 190, 0.17) 0.75px,
     transparent 0.75px
@@ -2423,7 +2438,7 @@ button:disabled {
   padding: 8px 9px;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(6, 18, 29, 0.9);
+  background: var(--instrument-panel);
   backdrop-filter: blur(14px);
 }
 .graph-toolbar-meta {
@@ -2446,7 +2461,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line);
   border-radius: 8px;
-  background: rgba(2, 10, 17, 0.62);
+  background: var(--instrument-panel-faint);
 }
 .graph-lens-control button {
   min-height: 28px;
@@ -2514,7 +2529,7 @@ button:disabled {
   height: 76px;
   border: 1px solid var(--instrument-line-strong);
   border-radius: 10px;
-  background: rgba(4, 13, 23, 0.94);
+  background: var(--graph-minimap);
   opacity: 0.84;
   pointer-events: none;
 }
@@ -2527,7 +2542,8 @@ button:disabled {
   padding: 8px 9px;
   border: 1px solid var(--instrument-line-strong);
   border-radius: 8px;
-  background: rgba(3, 11, 19, 0.96);
+  color: var(--graph-label);
+  background: var(--graph-tooltip);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
   pointer-events: none;
 }
@@ -2575,7 +2591,7 @@ button:disabled {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 7px;
   padding: 9px 10px;
-  background: rgba(6, 18, 29, 0.96);
+  background: var(--instrument-panel-solid);
 }
 .timeline-topline {
   display: grid;
@@ -2663,7 +2679,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 9px;
   color: var(--foreground);
-  background: rgba(8, 24, 37, 0.8);
+  background: var(--instrument-panel);
   text-align: left;
   transition:
     border-color 160ms ease,
@@ -2790,7 +2806,7 @@ button:disabled {
   height: 36px;
   border-color: var(--instrument-line);
   border-radius: 8px;
-  background: rgba(3, 13, 22, 0.55);
+  background: var(--instrument-panel-soft);
   font-size: 0.61rem;
 }
 .inspector-search + .inspector-scroll {
@@ -2893,7 +2909,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(4, 15, 25, 0.54);
+  background: var(--instrument-panel-soft);
 }
 .quick-evidence-group > header {
   display: flex;
@@ -3025,7 +3041,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(8, 24, 37, 0.78);
+  background: var(--instrument-panel);
   transition:
     border-color 150ms ease,
     background 150ms ease,
@@ -3034,7 +3050,7 @@ button:disabled {
 .evidence-card:hover,
 .evidence-card-expanded {
   border-color: color-mix(in srgb, var(--evidence-color) 50%, transparent);
-  background: rgba(10, 30, 45, 0.92);
+  background: var(--instrument-panel-raised);
   transform: translateX(2px);
 }
 .evidence-kind-contact {
@@ -3144,7 +3160,7 @@ button:disabled {
   width: 100%;
   border-color: var(--instrument-line);
   border-radius: 8px;
-  background: rgba(3, 13, 22, 0.6);
+  background: var(--instrument-panel-soft);
   font-size: 0.59rem;
 }
 .artifact-link-list {
@@ -3160,7 +3176,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 9px;
   color: var(--instrument-muted);
-  background: rgba(8, 24, 37, 0.78);
+  background: var(--instrument-panel-soft);
   font-size: 0.55rem;
   text-decoration: none;
 }
@@ -3242,11 +3258,7 @@ button:disabled {
   padding: 17px;
   border: 1px solid var(--instrument-line-strong);
   border-radius: 16px;
-  background: linear-gradient(
-    140deg,
-    rgba(9, 27, 42, 0.95),
-    rgba(6, 18, 29, 0.9)
-  );
+  background: var(--instrument-hero-surface);
 }
 .report-metric-grid {
   display: grid;
@@ -3262,7 +3274,7 @@ button:disabled {
   padding: 12px;
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
-  background: rgba(5, 17, 28, 0.65);
+  background: var(--instrument-inset-surface);
 }
 .report-metric svg {
   grid-row: 1 / 3;
@@ -3311,7 +3323,7 @@ button:disabled {
 .report-card {
   border-color: var(--instrument-line-strong);
   border-radius: 14px;
-  background: rgba(7, 21, 33, 0.93);
+  background: var(--instrument-panel);
   box-shadow: none;
 }
 .report-card [data-slot="card-header"] {
@@ -3387,7 +3399,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 10px;
   color: var(--foreground);
-  background: rgba(5, 17, 28, 0.65);
+  background: var(--instrument-inset-surface);
   font-size: 0.61rem;
   text-decoration: none;
   transition:
@@ -3959,6 +3971,61 @@ button:disabled {
   .export-actions {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+:root[data-theme="light"] body {
+  background-image:
+    radial-gradient(
+      circle at 15% -10%,
+      rgb(104 145 172 / 12%),
+      transparent 34rem
+    ),
+    radial-gradient(circle at 90% 10%, rgb(213 22 91 / 6%), transparent 32rem),
+    linear-gradient(var(--instrument-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--instrument-grid) 1px, transparent 1px);
+}
+
+:root[data-theme="light"] .brand-hero-banner,
+:root[data-theme="light"] .scan-console,
+:root[data-theme="light"] .workspace-shell,
+:root[data-theme="light"] .summary-shell {
+  box-shadow: var(--instrument-shadow);
+}
+
+:root[data-theme="light"] .brand-hero-banner {
+  background: #ffffff;
+}
+
+:root[data-theme="light"] .graph-panel {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgb(213 22 91 / 3.5%), transparent 36%),
+    radial-gradient(
+      circle at center,
+      rgb(55 91 115 / 8%) 0.75px,
+      transparent 0.75px
+    );
+}
+
+:root[data-theme="light"] .graph-canvas-wrap {
+  background: var(--graph-canvas);
+}
+
+:root[data-theme="light"] .workspace-display-controls button:hover,
+:root[data-theme="light"] .graph-lens-control button:hover,
+:root[data-theme="light"] .graph-filter-row:hover {
+  background: rgb(47 78 99 / 6%);
+}
+
+:root[data-theme="light"] .settings-key-shell button:hover {
+  background: rgb(47 78 99 / 8%);
+}
+
+/* Screenshot pixels and captured page previews are immutable evidence and stay unthemed. */
+:root[data-theme="light"] .preview-viewport,
+:root[data-theme="light"] .preview-thumbnails img,
+:root[data-theme="light"] .screenshot-gallery,
+:root[data-theme="light"] .evidence-card-detail > img {
+  background: #02070b;
 }
 
 @media print {

@@ -5,4 +5,4 @@ services:
       HAWKEYE_LLM_API_KEY: "${OPENROUTER_APIKEY:?OPENROUTER_APIKEY must be set in .env}"
       HAWKEYE_LLM_MODEL: "${OPENROUTER_MODEL:-openai/gpt-5.6-luna}"
       HAWKEYE_LLM_API_STYLE: "chat_completions"
-      HAWKEYE_PUBLIC_DEMO_ORIGIN: "https://hawkeye.myudak.com"
+      HAWKEYE_PUBLIC_DEMO_ORIGIN: "${HAWKEYE_PUBLIC_DEMO_ORIGIN:-}"

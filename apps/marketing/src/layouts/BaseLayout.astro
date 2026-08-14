@@ -38,11 +38,11 @@ const schema = {
 };
 ---
 
-<!doctype html><html lang="id" data-language="id" data-theme="dark"><head>
+<!doctype html><html lang="id" data-language="id" data-theme="dark" data-theme-preference="system"><head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content={description} /><meta name="robots" content={robots} /><meta name="theme-color" content="#06111c" /><meta name="color-scheme" content="dark light" /><link rel="canonical" href={canonical} /><link rel="icon" href="/favicon.ico" sizes="any" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta property="og:type" content="website" /><meta property="og:site_name" content="HAWK-EYE" /><meta property="og:locale" content="id_ID" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:url" content={canonical} /><meta property="og:image" content={image} /><meta property="og:image:secure_url" content={image} /><meta property="og:image:type" content="image/png" /><meta property="og:image:width" content="1672" /><meta property="og:image:height" content="941" /><meta property="og:image:alt" content="Workspace investigasi bukti publik HAWK-EYE" />
   <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content={image} /><meta name="twitter:image:alt" content="Workspace investigasi bukti publik HAWK-EYE" />
-  <script is:inline>try{const theme=localStorage.getItem("hawkeye-theme");if(theme)document.documentElement.dataset.theme=theme;const language=localStorage.getItem("hawkeye-language");if(language){document.documentElement.dataset.language=language;document.documentElement.lang=language}}catch{}</script>
+  <script is:inline src="/theme-bootstrap.js"></script>
   <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)}></script><title>{title}</title>
 </head><body><a class="skip-link" href="#main-content"><span class="lang-id">Lewati ke konten utama</span><span class="lang-en">Skip to main content</span></a><slot />
 <script>
@@ -52,7 +52,11 @@ const schema = {
   const syncLanguage = () => { if (languageLabel) languageLabel.textContent = root.dataset.language === "id" ? "EN" : "ID"; };
   syncLanguage();
   languageButton?.addEventListener("click", () => { const next = root.dataset.language === "id" ? "en" : "id"; root.dataset.language = next; root.lang = next; localStorage.setItem("hawkeye-language", next); syncLanguage(); });
-  document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => { const next = root.dataset.theme === "dark" ? "light" : "dark"; root.dataset.theme = next; localStorage.setItem("hawkeye-theme", next); });
+  const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const applyTheme = (preference: string, persist = true) => { const resolved = preference === "system" ? systemTheme() : preference; root.dataset.theme = resolved; root.dataset.themePreference = preference; root.classList.remove("light", "dark"); root.classList.add(resolved); document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolved === "dark" ? "#06111c" : "#f3f6f8"); if (persist) localStorage.setItem("hawkeye-theme", preference); document.querySelectorAll<HTMLElement>("[data-theme-icon]").forEach((icon) => icon.dataset.themeIcon = resolved); };
+  document.querySelectorAll("[data-theme-toggle]").forEach((button) => button.addEventListener("click", () => { const current = root.dataset.themePreference ?? "system"; applyTheme(current === "dark" ? "light" : current === "light" ? "system" : "dark"); }));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (root.dataset.themePreference === "system") applyTheme("system", false); });
+  applyTheme(root.dataset.themePreference ?? "system", false);
   const header = document.querySelector<HTMLElement>("[data-header]");
   const syncHeader = () => header?.toggleAttribute("data-scrolled", window.scrollY > 8);
   syncHeader(); window.addEventListener("scroll", syncHeader, { passive: true });

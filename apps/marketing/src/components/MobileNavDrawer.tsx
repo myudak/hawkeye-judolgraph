@@ -13,21 +13,48 @@ import {
   ArrowUpRightIcon,
   DownloadSimpleIcon,
   ListIcon,
+  MoonStarsIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import type { WindowsRelease } from "../lib/release";
 
 export function MobileNavDrawer({
   avatar,
+  lightAvatar,
   demoUrl,
   repositoryUrl,
   release,
 }: {
   avatar: string;
+  lightAvatar: string;
   demoUrl: string;
   repositoryUrl: string;
   release: WindowsRelease;
 }) {
+  const cycleTheme = () => {
+    const root = document.documentElement;
+    const preference = root.dataset.themePreference ?? "system";
+    const next =
+      preference === "dark"
+        ? "light"
+        : preference === "light"
+          ? "system"
+          : "dark";
+    const resolved =
+      next === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : next;
+    root.dataset.themePreference = next;
+    root.dataset.theme = resolved;
+    root.classList.remove("dark", "light");
+    root.classList.add(resolved);
+    localStorage.setItem("hawkeye-theme", next);
+    document
+      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute("content", resolved === "dark" ? "#06111c" : "#f3f6f8");
+  };
   const navigation = [
     { id: "Produk", en: "Product", href: "#platform" },
     { id: "Cara kerja", en: "How it works", href: "#how-it-works" },
@@ -47,7 +74,7 @@ export function MobileNavDrawer({
       <DrawerContent className="flex flex-col gap-7 bg-[var(--hk-panel)]">
         <DrawerHeader className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border pb-5">
           <div className="flex items-center gap-3">
-            <Logo compact imageSrc={avatar} />
+            <Logo compact imageSrc={avatar} lightImageSrc={lightAvatar} />
             <div>
               <DrawerTitle>HAWK-EYE</DrawerTitle>
               <DrawerDescription>
@@ -82,6 +109,11 @@ export function MobileNavDrawer({
         </nav>
 
         <div className="mt-auto grid gap-3">
+          <Button variant="outline" onClick={cycleTheme}>
+            <MoonStarsIcon aria-hidden="true" />
+            <span className="lang-id">Ganti tema</span>
+            <span className="lang-en">Change theme</span>
+          </Button>
           <DrawerClose
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--hk-pink)] px-4 text-sm font-semibold text-white hover:brightness-110"
             render={<a href={demoUrl} target="_blank" rel="noreferrer" />}

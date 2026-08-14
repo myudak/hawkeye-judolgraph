@@ -52,7 +52,10 @@ _PUBLIC_STATIC_MEDIA_TYPES = {
     "favicon-96x96.png": "image/png",
     "favicon.ico": "image/x-icon",
     "hawkeye-avatar.png": "image/png",
+    "hawkeye-avatar-light.jpg": "image/jpeg",
     "hawkeye-banner.png": "image/png",
+    "hawkeye-banner-light.jpg": "image/jpeg",
+    "hawkeye-radar-light.jpg": "image/jpeg",
     "maskable-icon-192x192.png": "image/png",
     "maskable-icon-512x512.png": "image/png",
     "mstile-150x150.png": "image/png",
@@ -70,7 +73,9 @@ _CONTENT_SECURITY_POLICY = (
     "media-src 'none'; "
     "object-src 'none'; "
     "script-src 'self'; "
-    "style-src 'self'; "
+    # React and Base UI use bounded inline style attributes for canvas overlays and
+    # floating-element geometry. Scripts remain restricted to same-origin files.
+    "style-src 'self' 'unsafe-inline'; "
     "worker-src 'none'"
 )
 

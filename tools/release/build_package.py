@@ -30,8 +30,9 @@ def main() -> int:
         detail = ", ".join(missing) if missing else "JavaScript chunks"
         raise SystemExit(f"Frontend production build is incomplete: missing {detail}")
     distribution_root = REPOSITORY_ROOT / "dist"
-    if distribution_root.exists():
-        shutil.rmtree(distribution_root)
+    for generated_root in (REPOSITORY_ROOT / "build", distribution_root):
+        if generated_root.exists():
+            shutil.rmtree(generated_root)
     subprocess.run(
         ["uv", "build", "--wheel", "--out-dir", str(distribution_root)],
         cwd=REPOSITORY_ROOT,

@@ -1,6 +1,7 @@
 ---
 import { Logo } from "@hawkeye/brand";
 import avatar from "../assets/hawkeye-avatar.png";
+import lightAvatar from "../assets/hawkeye-avatar-light.jpg";
 
 interface Props {
   repositoryUrl: string;
@@ -21,7 +22,7 @@ const links = [
 
 <footer class="border-t border-border bg-card/35">
   <div class="mx-auto flex w-[min(1240px,calc(100vw-3rem))] flex-col gap-8 py-10 md:flex-row md:items-center md:justify-between">
-    <div class="max-w-sm"><Logo imageSrc={avatar.src} /><p class="mt-4 text-sm leading-6 text-muted-foreground"><span class="lang-id">Mengumpulkan halaman publik, menyimpan artefak, dan menampilkan temuan beserta sumbernya.</span><span class="lang-en">Collects public pages, stores artifacts, and displays observations with their sources.</span></p></div>
+    <div class="max-w-sm"><Logo imageSrc={avatar.src} lightImageSrc={lightAvatar.src} /><p class="mt-4 text-sm leading-6 text-muted-foreground"><span class="lang-id">Mengumpulkan halaman publik, menyimpan artefak, dan menampilkan temuan beserta sumbernya.</span><span class="lang-en">Collects public pages, stores artifacts, and displays observations with their sources.</span></p></div>
     <nav class="flex max-w-2xl flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground" aria-label="Tautan produk">
       {links.map(([idLabel, enLabel, href]) => <a class="transition hover:text-foreground" href={href} target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noreferrer" : undefined}><span class="lang-id">{idLabel}</span><span class="lang-en">{enLabel}</span></a>)}
     </nav>

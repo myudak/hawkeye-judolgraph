@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Binoculars,
   CardsThree,
+  CaretDown,
   CheckCircle,
   ClockCounterClockwise,
   Database,
@@ -31,6 +32,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -43,6 +52,24 @@ import { formatTime, hostnameFrom, titleCase } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const hawkeyeBanner = "/assets/hawkeye-banner.png"
+const hawkeyeBannerLight = "/assets/hawkeye-banner-light.jpg"
+
+const exampleSites = [
+  "https://888.com",
+  "https://888casino.com",
+  "https://888poker.com",
+  "https://888sport.com",
+  "https://betfair.com",
+  "https://paddypower.com",
+  "https://skybet.com",
+  "https://skyvegas.com",
+  "https://bet365.com",
+  "https://williamhill.com",
+  "https://qq101xfw.com/",
+  "https://qq888bet4cv.com/",
+] as const
+
+const controlSite = "https://myudak.com"
 
 type CaseFilter = "all" | "active" | "complete" | "review" | "error"
 type CaseLayout = "grid" | "list"
@@ -160,6 +187,10 @@ const landingCopy = {
       "Preserve first. Extract deterministically. Review every relationship.",
     seedLabel: "Public seed URL",
     seedPlaceholder: "Enter a public web address",
+    exampleSites: "Example sites",
+    chooseExample: "Choose an example site",
+    knownSites: "Public examples",
+    controlSite: "Non-gambling control",
     nameLabel: "Investigation name",
     optional: "optional",
     namePlaceholder: "e.g. Public contact and related-site review",
@@ -203,6 +234,10 @@ const landingCopy = {
       "Simpan lebih dulu. Ekstrak secara deterministik. Tinjau setiap relasi.",
     seedLabel: "URL publik awal",
     seedPlaceholder: "Masukkan alamat web publik",
+    exampleSites: "Contoh situs",
+    chooseExample: "Pilih contoh situs",
+    knownSites: "Contoh publik",
+    controlSite: "Kontrol non-judol",
     nameLabel: "Nama investigasi",
     optional: "opsional",
     namePlaceholder: "contoh: Penelusuran kontak dan situs terkait",
@@ -435,7 +470,16 @@ export function LandingPage() {
       />
       <main className="landing-main">
         <figure className="brand-hero-banner">
-          <img src={hawkeyeBanner} alt="HAWK-EYE investigation banner" />
+          <img
+            className="theme-asset-dark"
+            src={hawkeyeBanner}
+            alt="HAWK-EYE investigation banner"
+          />
+          <img
+            className="theme-asset-light"
+            src={hawkeyeBannerLight}
+            alt="HAWK-EYE investigation banner in light mode"
+          />
         </figure>
         <section className="launch-section" aria-labelledby="launch-title">
           <div className="launch-orbit" aria-hidden="true">
@@ -467,7 +511,51 @@ export function LandingPage() {
                   placeholder={copy.seedPlaceholder}
                   autoComplete="url"
                 />
-                <CheckCircle className="input-valid" weight="fill" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        className="seed-example-trigger"
+                        type="button"
+                        aria-label={copy.chooseExample}
+                        title={copy.chooseExample}
+                      >
+                        <span>{copy.exampleSites}</span>
+                        <CaretDown weight="bold" />
+                      </button>
+                    }
+                  />
+                  <DropdownMenuContent
+                    align="end"
+                    className="seed-example-menu w-72"
+                  >
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>{copy.knownSites}</DropdownMenuLabel>
+                      {exampleSites.map((site) => (
+                        <DropdownMenuItem
+                          key={site}
+                          onClick={() => setSeedUrl(site)}
+                        >
+                          <GlobeHemisphereWest />
+                          <span>{hostnameFrom(site)}</span>
+                          {seedUrl === site ? (
+                            <CheckCircle className="ml-auto" weight="fill" />
+                          ) : null}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>{copy.controlSite}</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => setSeedUrl(controlSite)}>
+                        <ShieldCheck />
+                        <span>{hostnameFrom(controlSite)}</span>
+                        {seedUrl === controlSite ? (
+                          <CheckCircle className="ml-auto" weight="fill" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </span>
             </div>
             <div className="field-stack">

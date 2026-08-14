@@ -1,7 +1,8 @@
 ---
 import { Logo } from "@hawkeye/brand";
-import { MoonStarsIcon } from "@phosphor-icons/react";
+import { MoonStarsIcon, SunIcon } from "@phosphor-icons/react";
 import avatar from "../assets/hawkeye-avatar.png";
+import lightAvatar from "../assets/hawkeye-avatar-light.jpg";
 import type { WindowsRelease } from "../lib/release";
 import { DownloadMenu } from "./DownloadMenu";
 import { MobileNavDrawer } from "./MobileNavDrawer";
@@ -17,7 +18,7 @@ const { demoUrl, repositoryUrl, release } = Astro.props;
 
 <header class="sticky top-0 z-60 border-b border-transparent bg-background/88 backdrop-blur-xl transition data-[scrolled]:border-border data-[scrolled]:shadow-xl" data-header>
   <div class="mx-auto grid min-h-[76px] w-[min(1240px,calc(100vw-3rem))] grid-cols-[1fr_auto] items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
-    <a href="#top" class="w-fit" aria-label="Beranda HAWK-EYE"><Logo imageSrc={avatar.src} /></a>
+    <a href="#top" class="w-fit" aria-label="Beranda HAWK-EYE"><Logo imageSrc={avatar.src} lightImageSrc={lightAvatar.src} /></a>
     <nav class="hidden items-center gap-7 text-sm font-medium text-muted-foreground lg:flex" aria-label="Navigasi utama">
       <a class="transition hover:text-foreground" href="#product"><span class="lang-id">Produk</span><span class="lang-en">Product</span></a>
       <a class="transition hover:text-foreground" href="#how-it-works"><span class="lang-id">Cara kerja</span><span class="lang-en">How it works</span></a>
@@ -26,10 +27,10 @@ const { demoUrl, repositoryUrl, release } = Astro.props;
     </nav>
     <div class="flex items-center justify-end gap-2">
       <button class="grid size-10 place-items-center rounded-full border border-border bg-transparent text-xs font-bold text-foreground transition hover:bg-muted" type="button" data-language-toggle aria-label="Ganti bahasa"><span data-language-label>EN</span></button>
-      <button class="hidden size-10 place-items-center rounded-full border border-border bg-transparent text-foreground transition hover:bg-muted sm:grid" type="button" data-theme-toggle aria-label="Ganti tema warna"><MoonStarsIcon aria-hidden="true" /></button>
+      <button class="hidden size-10 place-items-center rounded-full border border-border bg-transparent text-foreground transition hover:bg-muted sm:grid" type="button" data-theme-toggle aria-label="Ganti tema warna" title="Tema: gelap, terang, atau sistem"><span class="theme-icon theme-icon--dark" data-theme-icon><MoonStarsIcon aria-hidden="true" /></span><span class="theme-icon theme-icon--light" data-theme-icon><SunIcon aria-hidden="true" /></span></button>
       <a class="hidden min-h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_10px_28px_rgb(237_23_100/0.16)] transition hover:bg-primary/85 xl:inline-flex" href={demoUrl} target="_blank" rel="noreferrer"><span class="lang-id">Buka di browser</span><span class="lang-en">Open in browser</span></a>
       <div class="hidden sm:block"><DownloadMenu release={release} compact client:load /></div>
-      <MobileNavDrawer avatar={avatar.src} demoUrl={demoUrl} repositoryUrl={repositoryUrl} release={release} client:load />
+      <MobileNavDrawer avatar={avatar.src} lightAvatar={lightAvatar.src} demoUrl={demoUrl} repositoryUrl={repositoryUrl} release={release} client:load />
     </div>
   </div>
 </header>

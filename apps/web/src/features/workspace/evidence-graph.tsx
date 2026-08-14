@@ -3,9 +3,23 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
 } from "@phosphor-icons/react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { drawOfficialSocialIcon } from "@hawkeye/graph/canvas-icons"
-import { graphMotion } from "@hawkeye/graph/theme"
+import {
+  graphMotion,
+  graphPalette,
+  graphPalettes,
+  readGraphTheme,
+  subscribeGraphTheme,
+  type GraphPalette,
+} from "@hawkeye/graph/theme"
 import {
   applyMagneticForces,
   releaseWithMomentum,
@@ -275,12 +289,32 @@ function curvePoint(
   }
 }
 
-function edgeColor(edge: GraphEdge, target?: SimNode): string {
+function themedNodeColor(node: SimNode, palette: GraphPalette, light: boolean) {
+  if (!light) return node.presentation.color
+  if (node.primary) return palette.seed
+  return {
+    page: palette.page,
+    contact: palette.contact,
+    candidate: palette.candidate,
+    transaction: palette.payment,
+    offer: palette.offer,
+    brand: palette.candidate,
+    destination: palette.candidate,
+    other: palette.muted,
+  }[node.presentation.visualKind]
+}
+
+function edgeColor(
+  edge: GraphEdge,
+  target: SimNode | undefined,
+  palette: GraphPalette,
+  light: boolean
+): string {
   if (edge.appearance === "rejected" || edge.appearance === "hidden") {
-    return "#ff6577"
+    return palette.rejected
   }
-  if (edge.appearance === "dashed") return "#9a8cb8"
-  return target?.presentation.color ?? "#718096"
+  if (edge.appearance === "dashed") return palette.candidate
+  return target ? themedNodeColor(target, palette, light) : palette.muted
 }
 
 export function EvidenceGraph({
@@ -336,6 +370,12 @@ export function EvidenceGraph({
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     []
   )
+  const graphTheme = useSyncExternalStore(
+    subscribeGraphTheme,
+    readGraphTheme,
+    () => "dark" as const
+  )
+  const palette = graphPalettes?.[graphTheme] ?? graphPalette
 
   useEffect(() => {
     propsRef.current = {
@@ -504,7 +544,7 @@ export function EvidenceGraph({
       const height = minimap.height / dpr
       mini.setTransform(dpr, 0, 0, dpr, 0, 0)
       mini.clearRect(0, 0, width, height)
-      mini.fillStyle = "rgba(4, 13, 23, 0.94)"
+      mini.fillStyle = palette.minimap
       mini.fillRect(0, 0, width, height)
       if (!nodes.length) return
       const bounds = nodes.reduce(
@@ -525,7 +565,7 @@ export function EvidenceGraph({
         y: 9 + (node.y - bounds.minY) * scale,
       })
       mini.lineWidth = 0.75
-      mini.strokeStyle = "rgba(122, 145, 162, 0.24)"
+      mini.strokeStyle = palette.minimapLine
       for (const edge of edges) {
         const source = simulationRef.current.get(edge.source)
         const target = simulationRef.current.get(edge.target)
@@ -539,7 +579,7 @@ export function EvidenceGraph({
       }
       for (const node of nodes) {
         const point = mapPoint(node)
-        mini.fillStyle = node.presentation.color
+        mini.fillStyle = themedNodeColor(node, palette, graphTheme === "light")
         mini.beginPath()
         mini.arc(point.x, point.y, node.primary ? 3.5 : 2.2, 0, Math.PI * 2)
         mini.fill()
@@ -547,7 +587,7 @@ export function EvidenceGraph({
       const camera = cameraRef.current
       const worldWidth = sizeRef.current.width / camera.zoom
       const worldHeight = sizeRef.current.height / camera.zoom
-      mini.strokeStyle = "rgba(222, 235, 245, 0.58)"
+      mini.strokeStyle = palette.minimapViewport
       mini.lineWidth = 0.8
       mini.strokeRect(
         11 + (camera.x - worldWidth / 2 - bounds.minX) * scale,
@@ -569,7 +609,7 @@ export function EvidenceGraph({
       context.lineWidth = 0.7
       for (const radius of [155, 225, 305]) {
         circle(context, rootPoint.x, rootPoint.y, radius * camera.zoom)
-        context.strokeStyle = "rgba(100, 128, 149, 0.14)"
+        context.strokeStyle = palette.grid
         context.stroke()
       }
       context.restore()
@@ -590,14 +630,14 @@ export function EvidenceGraph({
       context.textAlign = "center"
       context.textBaseline = "middle"
       const width = context.measureText(text).width + 14
-      context.fillStyle = "rgba(3, 11, 19, 0.92)"
-      context.strokeStyle = "rgba(129, 155, 174, 0.28)"
+      context.fillStyle = palette.labelPlate
+      context.strokeStyle = palette.minimapLine
       context.lineWidth = 0.75
       context.beginPath()
       context.roundRect(point.x - width / 2, point.y - 10, width, 20, 6)
       context.fill()
       context.stroke()
-      context.fillStyle = "#bac7d1"
+      context.fillStyle = palette.labelMuted
       context.fillText(text, point.x, point.y + 0.5)
       context.restore()
     }
@@ -654,7 +694,7 @@ export function EvidenceGraph({
             .includes(query)
         const searchRelevant = !query || sourceMatches || targetMatches
         const alpha = contextual && searchRelevant ? 0.66 : 0.07
-        const color = edgeColor(edge, target)
+        const color = edgeColor(edge, target, palette, graphTheme === "light")
         context.save()
         context.globalAlpha = alpha
         context.beginPath()
@@ -746,29 +786,24 @@ export function EvidenceGraph({
           ? 1
           : Math.max(0, Math.min(1, (time - node.bornAt) / 260))
         const drawRadius = Math.max(4, radius * entered)
+        const nodeColor = themedNodeColor(node, palette, graphTheme === "light")
         context.save()
         context.globalAlpha = alpha * entered
 
         if (selected || hoveredNode) {
-          context.shadowColor = node.presentation.color
+          context.shadowColor = nodeColor
           context.shadowBlur = selected ? 20 : 13
           circle(context, point.x, point.y, drawRadius + 7)
-          context.strokeStyle = rgba(
-            node.presentation.color,
-            selected ? 0.9 : 0.62
-          )
+          context.strokeStyle = rgba(nodeColor, selected ? 0.9 : 0.62)
           context.lineWidth = 1.6
           context.stroke()
         }
 
         circle(context, point.x, point.y, drawRadius)
-        context.fillStyle = rgba(
-          node.presentation.color,
-          node.primary ? 0.2 : 0.12
-        )
+        context.fillStyle = rgba(nodeColor, node.primary ? 0.2 : 0.12)
         context.fill()
         context.lineWidth = node.primary ? 2.2 : 1.45
-        context.strokeStyle = node.presentation.color
+        context.strokeStyle = nodeColor
         if (node.presentation.visualKind === "candidate") {
           context.setLineDash([5, 4])
         }
@@ -776,9 +811,9 @@ export function EvidenceGraph({
         context.setLineDash([])
 
         circle(context, point.x, point.y, Math.max(3, drawRadius * 0.73))
-        context.fillStyle = "rgba(4, 14, 24, 0.94)"
+        context.fillStyle = palette.nodeCore
         context.fill()
-        context.strokeStyle = rgba(node.presentation.color, 0.35)
+        context.strokeStyle = rgba(nodeColor, 0.35)
         context.lineWidth = 0.8
         context.stroke()
         context.shadowBlur = 0
@@ -795,7 +830,7 @@ export function EvidenceGraph({
                 ? 0.82
                 : 0.43)
           ),
-          selected || node.primary ? "#f7fbff" : node.presentation.color
+          selected || node.primary ? palette.label : nodeColor
         )
 
         const labelY = point.y + drawRadius + (node.primary ? 24 : 19)
@@ -825,13 +860,16 @@ export function EvidenceGraph({
         if (showLabel) {
           occupiedLabels.push(labelBounds)
           context.font = `${node.primary ? 720 : 650} ${node.primary ? 12 : 10.5}px 'Geist Variable', sans-serif`
-          context.fillStyle = match ? "#edf3f7" : "#687987"
-          context.shadowColor = "rgba(0, 0, 0, 0.9)"
-          context.shadowBlur = 5
+          context.fillStyle = match ? palette.label : palette.labelMuted
+          context.shadowColor =
+            graphTheme === "dark"
+              ? "rgba(0, 0, 0, 0.9)"
+              : "rgba(255, 255, 255, 0.9)"
+          context.shadowBlur = graphTheme === "dark" ? 5 : 3
           context.fillText(title, point.x, labelY)
           context.shadowBlur = 0
           context.font = "500 8.5px 'Geist Variable', sans-serif"
-          context.fillStyle = related ? "#8797a6" : "#52616d"
+          context.fillStyle = related ? palette.labelMuted : palette.muted
           context.fillText(copy.subtitle, point.x, labelY + 14)
         }
 
@@ -840,13 +878,13 @@ export function EvidenceGraph({
           const badgeWidth = context.measureText(copy.badge).width + 10
           const badgeX = point.x + drawRadius * 0.76
           const badgeY = point.y - drawRadius * 0.68
-          context.fillStyle = "rgba(27, 13, 26, 0.96)"
-          context.strokeStyle = rgba(node.presentation.color, 0.66)
+          context.fillStyle = palette.labelPlate
+          context.strokeStyle = rgba(nodeColor, 0.66)
           context.beginPath()
           context.roundRect(badgeX, badgeY - 7, badgeWidth, 14, 5)
           context.fill()
           context.stroke()
-          context.fillStyle = node.presentation.color
+          context.fillStyle = nodeColor
           context.textAlign = "left"
           context.fillText(copy.badge, badgeX + 5, badgeY + 0.5)
         }
@@ -859,7 +897,7 @@ export function EvidenceGraph({
 
     frame = window.requestAnimationFrame(paint)
     return () => window.cancelAnimationFrame(frame)
-  }, [isVisible, reduceMotion, worldToScreen])
+  }, [graphTheme, isVisible, palette, reduceMotion, worldToScreen])
 
   const nodeAt = useCallback(
     (x: number, y: number) => {

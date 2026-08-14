@@ -377,7 +377,13 @@ def test_html_artifact_is_an_attachment_not_renderable_html_and_screenshot_is_lo
     assert html.headers["content-type"].startswith("text/plain")
     assert html.headers["content-disposition"].startswith("attachment")
     assert b"window.bad" in html.content
-    assert "img-src 'self' data:" in html.headers["content-security-policy"]
+    content_security_policy = html.headers["content-security-policy"]
+    assert "img-src 'self' data:" in content_security_policy
+    assert "script-src 'self';" in content_security_policy
+    assert (
+        "'unsafe-inline'" not in content_security_policy.split("script-src", 1)[1].split(";", 1)[0]
+    )
+    assert "style-src 'self' 'unsafe-inline';" in content_security_policy
     assert screenshot.status_code == 200
     assert screenshot.headers["content-type"] == "image/png"
     assert screenshot.headers["content-disposition"].startswith("inline")

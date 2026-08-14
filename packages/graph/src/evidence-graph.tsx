@@ -17,7 +17,14 @@ import {
 import { GraphLegend } from "./graph-legend";
 import { drawOfficialSocialIcon } from "./canvas-icons";
 import { applyMagneticForces, releaseWithMomentum } from "./force-simulation";
-import { graphMotion, graphPalette } from "./theme";
+import {
+  graphMotion,
+  graphPalette,
+  graphPalettes,
+  readGraphTheme,
+  subscribeGraphTheme,
+  type GraphTheme,
+} from "./theme";
 import type { EvidenceKind, EvidenceNodeData } from "./types";
 
 interface SimNode extends EvidenceNodeData {
@@ -52,16 +59,9 @@ interface PointerState {
   moved: boolean;
 }
 
-const colors: Record<string, string> = {
-  seed: graphPalette.seed,
-  page: graphPalette.page,
-  contact: graphPalette.contact,
-  pending: graphPalette.candidate,
-  rejected: graphPalette.rejected,
-};
-
 type GraphLanguage = "id" | "en";
-export type GraphBackground = "dark" | "transparent" | "chroma";
+export type GraphBackground =
+  "auto" | "dark" | "light" | "transparent" | "chroma";
 
 function readLanguage(): GraphLanguage {
   if (typeof document === "undefined") return "id";
@@ -111,12 +111,12 @@ function rgba(hex: string, alpha: number) {
   return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
 }
 
-function nodeColor(node: EvidenceNodeData) {
-  if (node.state === "pending") return colors.pending;
-  if (node.state === "rejected") return colors.rejected;
-  if (node.id === "seed") return colors.seed;
-  if (node.kind === "page") return colors.page;
-  return colors.contact;
+function nodeColor(node: EvidenceNodeData, palette = graphPalette) {
+  if (node.state === "pending") return palette.candidate;
+  if (node.state === "rejected") return palette.rejected;
+  if (node.id === "seed") return palette.seed;
+  if (node.kind === "page") return palette.page;
+  return palette.contact;
 }
 
 function nodeRadius(node: EvidenceNodeData) {
@@ -234,7 +234,7 @@ export function EvidenceGraph({
   compact = false,
   selectedId: controlledSelected,
   onSelectionChange,
-  background = "dark",
+  background = "auto",
   showAgent = true,
   showControls = true,
   showMinimap = true,
@@ -287,6 +287,14 @@ export function EvidenceGraph({
     readLanguage,
     () => "id",
   );
+  const rootTheme = useSyncExternalStore(
+    subscribeGraphTheme,
+    readGraphTheme,
+    () => "dark" as GraphTheme,
+  );
+  const canvasTheme: GraphTheme =
+    background === "dark" || background === "light" ? background : rootTheme;
+  const palette = graphPalettes?.[canvasTheme] ?? graphPalette;
   const [hovered, setHovered] = useState<{
     node: EvidenceNodeData;
     x: number;
@@ -462,11 +470,12 @@ export function EvidenceGraph({
       context.setTransform(scaleX, 0, 0, scaleY, 0, 0);
       context.clearRect(0, 0, width, height);
       if (background !== "transparent") {
-        context.fillStyle = background === "chroma" ? "#00b140" : "#07131f";
+        context.fillStyle =
+          background === "chroma" ? "#00b140" : palette.background;
         context.fillRect(0, 0, width, height);
       }
-      if (background === "dark") {
-        context.fillStyle = "rgba(143, 163, 181, 0.13)";
+      if (background !== "chroma" && background !== "transparent") {
+        context.fillStyle = palette.grid;
         for (let x = 18; x < width; x += 28)
           for (let y = 18; y < height; y += 28) context.fillRect(x, y, 1, 1);
       }
@@ -489,14 +498,14 @@ export function EvidenceGraph({
         };
         const color =
           edge.state === "pending"
-            ? colors.pending
+            ? palette.candidate
             : edge.state === "rejected"
-              ? colors.rejected
+              ? palette.rejected
               : bNode.kind === "page"
-                ? colors.page
+                ? palette.page
                 : bNode.kind === "domain"
-                  ? colors.seed
-                  : colors.contact;
+                  ? palette.seed
+                  : palette.contact;
         context.beginPath();
         context.moveTo(a.x, a.y);
         context.quadraticCurveTo(control.x, control.y, b.x, b.y);
@@ -546,7 +555,7 @@ export function EvidenceGraph({
         const baseRadius = nodeRadius(node) * camera.zoom;
         const age = Math.min(1, Math.max(0, (time - node.bornAt) / 430));
         const radius = baseRadius * (0.55 + age * 0.45);
-        const color = nodeColor(node);
+        const color = nodeColor(node, palette);
         const isSelected = selectedRef.current === node.id;
         const isHovered = hoveredRef.current === node.id;
         const pulse = reducedMotionRef.current ? 0 : Math.sin(time * 0.004) * 3;
@@ -579,7 +588,7 @@ export function EvidenceGraph({
         context.stroke();
         context.beginPath();
         context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-        context.fillStyle = "#0b1824";
+        context.fillStyle = palette.nodeCore;
         context.fill();
         context.strokeStyle = color;
         context.lineWidth = isSelected ? 3 : 2;
@@ -598,13 +607,17 @@ export function EvidenceGraph({
                 ? 0.84
                 : 0.42),
           ),
-          color,
+          node.kind === "telegram" || node.kind === "whatsapp"
+            ? color
+            : isSelected || node.id === "seed"
+              ? palette.label
+              : color,
         );
         context.textAlign = "center";
         context.textBaseline = "middle";
         context.font = `700 ${Math.max(11, 13 * camera.zoom)}px "Geist Variable", sans-serif`;
         const labelWidth = context.measureText(node.label).width + 16;
-        context.fillStyle = "rgba(5, 15, 24, 0.88)";
+        context.fillStyle = palette.labelPlate;
         context.beginPath();
         context.roundRect(
           point.x - labelWidth / 2,
@@ -614,11 +627,11 @@ export function EvidenceGraph({
           7,
         );
         context.fill();
-        context.fillStyle = "#f5f7fa";
+        context.fillStyle = palette.label;
         context.fillText(node.label, point.x, point.y + radius + 21);
         if (camera.zoom > 0.63) {
           context.font = `500 ${Math.max(9, 10 * camera.zoom)}px "Geist Variable", sans-serif`;
-          context.fillStyle = "#8fa3b5";
+          context.fillStyle = palette.labelMuted;
           context.fillText(
             localizedNode(node, language).detail,
             point.x,
@@ -683,7 +696,7 @@ export function EvidenceGraph({
           context.rotate(-0.14);
           context.shadowColor = "rgba(237, 23, 100, .7)";
           context.shadowBlur = 16;
-          context.fillStyle = "#f5f7fa";
+          context.fillStyle = palette.cursor;
           context.strokeStyle = "#ed1764";
           context.lineWidth = 1.5;
           context.beginPath();
@@ -701,13 +714,13 @@ export function EvidenceGraph({
 
           const labelX = Math.min(width - 135, cursorX + 18);
           const labelY = Math.max(22, cursorY - 22);
-          context.fillStyle = "rgba(7, 19, 31, .94)";
+          context.fillStyle = palette.panel;
           context.strokeStyle = "rgba(237, 23, 100, .42)";
           context.beginPath();
           context.roundRect(labelX, labelY - 15, 112, 27, 8);
           context.fill();
           context.stroke();
-          context.fillStyle = "#f5f7fa";
+          context.fillStyle = palette.label;
           context.textAlign = "left";
           context.textBaseline = "middle";
           context.font = '700 9px "Geist Variable", sans-serif';
@@ -724,7 +737,7 @@ export function EvidenceGraph({
         const miniHeight = minimap.height / dpr;
         mini.setTransform(dpr, 0, 0, dpr, 0, 0);
         mini.clearRect(0, 0, miniWidth, miniHeight);
-        mini.fillStyle = "rgba(4, 13, 23, 0.94)";
+        mini.fillStyle = palette.minimap;
         mini.fillRect(0, 0, miniWidth, miniHeight);
         const bounds = { minX: -390, maxX: 390, minY: -290, maxY: 290 };
         const miniPoint = (node: SimNode) => ({
@@ -732,7 +745,7 @@ export function EvidenceGraph({
           y:
             ((node.y - bounds.minY) / (bounds.maxY - bounds.minY)) * miniHeight,
         });
-        mini.strokeStyle = "rgba(122,145,162,.24)";
+        mini.strokeStyle = palette.minimapLine;
         mini.lineWidth = 0.75;
         for (const edge of edges) {
           const a = sim.get(edge.source);
@@ -747,7 +760,7 @@ export function EvidenceGraph({
         }
         for (const node of values) {
           const point = miniPoint(node);
-          mini.fillStyle = nodeColor(node);
+          mini.fillStyle = nodeColor(node, palette);
           mini.beginPath();
           mini.arc(
             point.x,
@@ -760,7 +773,7 @@ export function EvidenceGraph({
         }
         const worldWidth = width / camera.zoom;
         const worldHeight = height / camera.zoom;
-        mini.strokeStyle = "rgba(237, 70, 127, .76)";
+        mini.strokeStyle = palette.minimapViewport;
         mini.lineWidth = 1;
         mini.strokeRect(
           ((camera.x - worldWidth / 2 - bounds.minX) /
@@ -777,7 +790,7 @@ export function EvidenceGraph({
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [background, edges, frameRate, language, showAgent, showMinimap]);
+  }, [background, edges, frameRate, language, palette, showAgent, showMinimap]);
 
   const screenNodeAt = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;

@@ -41,9 +41,52 @@
   --he-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --hk-pink: #ed1764;
   --hk-panel: #0b1824;
+  --instrument-bg: #06111c;
+  --instrument-panel: rgb(8 23 36 / 88%);
+  --instrument-panel-solid: #081724;
+  --instrument-panel-raised: #0b1d2c;
+  --instrument-panel-soft: rgb(4 15 24 / 68%);
+  --instrument-panel-faint: rgb(3 12 21 / 46%);
+  --instrument-text: #f5f7fa;
+  --instrument-muted: #8fa3b5;
+  --instrument-quiet: #5e7283;
+  --instrument-line: rgb(135 170 195 / 17%);
+  --instrument-line-strong: rgb(135 170 195 / 28%);
+  --instrument-grid: rgb(135 170 195 / 3.5%);
+  --instrument-header: rgb(4 13 22 / 86%);
+  --instrument-shadow: 0 28px 80px rgb(0 0 0 / 30%);
+  --instrument-hero-surface:
+    radial-gradient(circle at 100% 0, rgb(239 39 111 / 6%), transparent 28rem),
+    linear-gradient(135deg, rgb(9 27 42 / 96%), rgb(6 18 29 / 92%));
+  --instrument-card-surface:
+    radial-gradient(circle at 0 0, rgb(239 39 111 / 12%), transparent 42%),
+    linear-gradient(145deg, rgb(10 28 43 / 98%), rgb(5 16 27 / 94%) 72%);
+  --instrument-inset-surface: rgb(9 27 41 / 65%);
+  --instrument-control-surface: rgb(4 15 24 / 64%);
+  --instrument-card-sheen: linear-gradient(
+    120deg,
+    rgb(255 255 255 / 3.5%),
+    transparent 30%,
+    transparent 72%,
+    rgb(58 191 240 / 2.5%)
+  );
+  --instrument-hover-shadow:
+    0 30px 70px rgb(0 0 0 / 32%),
+    0 0 0 1px rgb(239 39 111 / 8%),
+    0 0 42px rgb(239 39 111 / 6%);
+  --graph-canvas: #07131f;
+  --graph-grid: rgb(143 163 181 / 13%);
+  --graph-node-core: #0b1824;
+  --graph-label: #f5f7fa;
+  --graph-label-muted: #8fa3b5;
+  --graph-label-plate: rgb(5 15 24 / 88%);
+  --graph-minimap: rgb(4 13 23 / 94%);
+  --graph-tooltip: rgb(4 14 23 / 94%);
+  color-scheme: dark;
 }
 
-:root[data-theme="light"] {
+:root[data-theme="light"],
+.light {
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);
   --card: oklch(1 0 0);
@@ -79,4 +122,46 @@
   --he-shadow: 0 24px 70px rgb(25 44 64 / 12%);
   --hk-pink: #d5165b;
   --hk-panel: #ffffff;
+  --instrument-bg: #f3f6f8;
+  --instrument-panel: rgb(255 255 255 / 90%);
+  --instrument-panel-solid: #ffffff;
+  --instrument-panel-raised: #f9fbfc;
+  --instrument-panel-soft: rgb(241 246 249 / 86%);
+  --instrument-panel-faint: rgb(230 237 242 / 68%);
+  --instrument-text: #17232d;
+  --instrument-muted: #596e7d;
+  --instrument-quiet: #7b8c98;
+  --instrument-line: rgb(72 101 121 / 16%);
+  --instrument-line-strong: rgb(72 101 121 / 28%);
+  --instrument-grid: rgb(59 91 114 / 7%);
+  --instrument-header: rgb(255 255 255 / 90%);
+  --instrument-shadow: 0 24px 65px rgb(30 55 75 / 14%);
+  --instrument-hero-surface:
+    radial-gradient(circle at 100% 0, rgb(213 22 91 / 6%), transparent 28rem),
+    linear-gradient(135deg, rgb(255 255 255 / 98%), rgb(241 246 249 / 96%));
+  --instrument-card-surface:
+    radial-gradient(circle at 0 0, rgb(213 22 91 / 7%), transparent 42%),
+    linear-gradient(145deg, #ffffff, #f3f7f9 72%);
+  --instrument-inset-surface: rgb(233 240 244 / 88%);
+  --instrument-control-surface: rgb(239 244 247 / 92%);
+  --instrument-card-sheen: linear-gradient(
+    120deg,
+    rgb(255 255 255 / 78%),
+    transparent 32%,
+    transparent 72%,
+    rgb(55 143 181 / 5%)
+  );
+  --instrument-hover-shadow:
+    0 26px 58px rgb(29 53 72 / 16%),
+    0 0 0 1px rgb(213 22 91 / 10%),
+    0 0 34px rgb(213 22 91 / 5%);
+  --graph-canvas: #f5f8fa;
+  --graph-grid: rgb(56 88 110 / 14%);
+  --graph-node-core: #ffffff;
+  --graph-label: #182733;
+  --graph-label-muted: #5e7382;
+  --graph-label-plate: rgb(255 255 255 / 92%);
+  --graph-minimap: rgb(255 255 255 / 94%);
+  --graph-tooltip: rgb(255 255 255 / 96%);
+  color-scheme: light;
 }

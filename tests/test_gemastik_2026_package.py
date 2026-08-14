@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "competition" / "gemastik-2026"
+MARKDOWN_IMAGE = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
 
 
 def test_required_markdown_package_and_asset_directories_exist() -> None:
@@ -25,9 +28,32 @@ def test_required_markdown_package_and_asset_directories_exist() -> None:
         "submission/FIGURE_INDEX.md",
     }
     assert all((PACKAGE / path).is_file() for path in required)
-    for name in ("proposal", "technical", "video"):
-        assert (PACKAGE / "assets" / name / "README.md").is_file()
-    assert not list(PACKAGE.rglob("*.pdf"))
+    for path in ("technical/README.md", "video/README.md"):
+        assert (PACKAGE / "assets" / path).is_file()
+
+    screenshot_root = PACKAGE / "assets" / "technical-current"
+    manifest_path = screenshot_root / "screenshot-manifest.json"
+    assert manifest_path.is_file()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert len(manifest["screenshots"]) == 6
+    for screenshot in manifest["screenshots"]:
+        screenshot_path = screenshot_root / screenshot["file"]
+        assert screenshot_path.is_file()
+        assert screenshot_path.stat().st_size == screenshot["bytes"]
+        assert hashlib.sha256(screenshot_path.read_bytes()).hexdigest() == screenshot["sha256"]
+
+    # Reference PDFs may live under assets/source material, but the preliminary package must not
+    # claim a generated submission PDF before the human-owned export gate is complete.
+    assert not list((PACKAGE / "deliverables").glob("*.pdf"))
+
+
+def test_local_markdown_image_references_resolve() -> None:
+    for markdown in PACKAGE.rglob("*.md"):
+        for reference in MARKDOWN_IMAGE.findall(markdown.read_text(encoding="utf-8")):
+            assert "://" not in reference
+            assert (markdown.parent / reference).resolve().is_file(), (
+                f"Broken image reference in {markdown.relative_to(PACKAGE)}: {reference}"
+            )
 
 
 def test_proposal_uses_official_section_order_and_public_name_placeholder() -> None:

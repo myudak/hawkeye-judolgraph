@@ -18,6 +18,7 @@ import { hostnameFrom, titleCase } from "@/lib/format"
 import { useIndexes } from "@/hooks/use-indexes"
 import { BrandLockup } from "@/components/brand-mark"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { ThemeMenu } from "@/components/theme-menu"
 
 export function AppHeader({
   currentValue,
@@ -86,6 +87,7 @@ export function AppHeader({
       )}
 
       <div className="header-actions">
+        <ThemeMenu language={language} />
         <SettingsDialog language={language} />
         {onLanguageToggle ? (
           <Button

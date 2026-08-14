@@ -382,7 +382,7 @@ function ScanVisual({ job }: { job?: InvestigationJob }) {
             <span className="radar-ping ping-one" />
             <span className="radar-ping ping-two" />
             <span className="radar-core">
-              <HawkMark />
+              <HawkMark variant="radar" />
             </span>
           </div>
           <b>

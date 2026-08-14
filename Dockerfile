@@ -5,9 +5,14 @@ WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
-RUN pnpm install --frozen-lockfile
+COPY packages/brand/package.json packages/brand/package.json
+COPY packages/design/package.json packages/design/package.json
+COPY packages/graph/package.json packages/graph/package.json
+COPY packages/ui/package.json packages/ui/package.json
+RUN pnpm install --filter @hawkeye/web... --frozen-lockfile
 COPY apps/web apps/web
-RUN pnpm build
+COPY packages packages
+RUN pnpm --filter @hawkeye/web build
 
 FROM ghcr.io/astral-sh/uv:0.11.2 AS uv
 

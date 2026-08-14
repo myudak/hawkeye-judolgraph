@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -55,7 +56,7 @@ def _wait_for_health(port: int, timeout: float = 60) -> dict[str, object]:
                 f"http://127.0.0.1:{port}/health", timeout=3
             ) as response:
                 if response.status == 200:
-                    return json.loads(response.read(100_000))
+                    return cast(dict[str, object], json.loads(response.read(100_000)))
         except (OSError, urllib.error.URLError, json.JSONDecodeError):
             time.sleep(0.5)
     raise RuntimeError("Container did not become healthy before the acceptance timeout")
@@ -66,6 +67,10 @@ def main() -> int:
     port = _available_port()
     with tempfile.TemporaryDirectory(prefix="hawkeye-docker-data-") as temporary:
         data_root = Path(temporary).resolve()
+        # The runtime intentionally uses the image's non-root pwuser. A Linux temporary directory
+        # is owner-only by default and may belong to a sudo/root verifier, so grant the isolated
+        # acceptance mount write access without weakening the real deployment directory.
+        data_root.chmod(0o777)
         environment = os.environ.copy()
         environment.update(
             {
@@ -74,6 +79,7 @@ def main() -> int:
                 "HAWKEYE_LLM_BASE_URL": "",
                 "HAWKEYE_LLM_API_KEY": "",
                 "HAWKEYE_LLM_MODEL": "",
+                "HAWKEYE_PUBLIC_DEMO_ORIGIN": "https://hawkeye.example.test",
             }
         )
         compose = ["docker", "compose", "--project-name", project]
@@ -97,6 +103,22 @@ def main() -> int:
             if not uid or uid == "0":
                 raise RuntimeError(f"Container must run as non-root, observed uid={uid!r}")
             results["runtime_uid"] = uid
+
+            configured_demo_origin = _run(
+                [
+                    *compose,
+                    "exec",
+                    "-T",
+                    "hawkeye",
+                    "python",
+                    "-c",
+                    "import os; print(os.environ['HAWKEYE_PUBLIC_DEMO_ORIGIN'])",
+                ],
+                environment=environment,
+            ).stdout.strip()
+            if configured_demo_origin != environment["HAWKEYE_PUBLIC_DEMO_ORIGIN"]:
+                raise RuntimeError("Compose did not forward HAWKEYE_PUBLIC_DEMO_ORIGIN")
+            results["public_demo_origin_forwarded"] = configured_demo_origin
 
             container_id = _run(
                 [*compose, "ps", "-q", "hawkeye"], environment=environment

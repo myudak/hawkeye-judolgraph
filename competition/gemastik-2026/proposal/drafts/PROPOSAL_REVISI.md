@@ -477,7 +477,7 @@ Nama bagian mengikuti susunan resmi proposal, tetapi gambar berikut adalah tangk
 localhost, bukan mockup statis atau graph palsu. Semua gambar proposal memakai domain fixture
 `.invalid`; screenshot live, cookies, kredensial, dan data sesi tidak disertakan.
 
-![Workspace graph-first dengan screenshot fixture terverifikasi](../../assets/proposal/figure-03-workspace.png)
+![Workspace graph-first dengan screenshot fixture terverifikasi](../../assets/technical-current/02-workspace-graf-bukti.png)
 
 *Gambar 3. Workspace aktual berisi Site Intel, 2D canvas, minimap, timeline, evidence inspector, dan
 screenshot full-page fixture terverifikasi.*
@@ -486,12 +486,12 @@ Canvas mendukung force relaxation, edge particle, pan, zoom, drag, hit-testing, 
 minimap, replay, dan reduced-motion. Node mewakili page/domain, claimed brand, public contact,
 external destination, dan candidate domain—bukan setiap file, script, font, atau request jaringan.
 
-![Page B dan konteks candidate assertion](../../assets/proposal/figure-05-page-b-assertion.png)
+![Panel bukti dan konteks candidate assertion](../../assets/technical-current/03-bukti-dan-review.png)
 
 *Gambar 4. Page B fixture setelah recollection. Inspector menyediakan artefak Page A/Page B,
 observasi pendukung, assertion, event trail, timestamp, dan limitation.*
 
-![Policy preflight terblokir tanpa eksekusi](../../assets/proposal/figure-08-policy-block.png)
+![Policy preflight terblokir tanpa eksekusi](../../assets/technical-current/05-preflight-kebijakan.png)
 
 *Gambar 5. Event `tool.blocked` untuk kontrol Login. Inspector menunjukkan alasan policy dan
 `executed=false`, sehingga safety claim dapat diperiksa dari event, bukan hanya dari tampilan.*

@@ -73,7 +73,7 @@ pnpm verify:docker
 Script menggunakan project Compose dan data directory sementara, lalu membersihkan container test.
 Ia tidak menyentuh `./data` produksi.
 
-## Exception demo sementara: hawkeye.myudak.com
+## Exception demo sementara
 
 Owner mengizinkan satu demo sementara melalui Cloudflare Tunnel. Siapkan `.env` tanpa mengubah atau
 mem-publish key:
@@ -81,6 +81,7 @@ mem-publish key:
 ```dotenv
 OPENROUTER_APIKEY=isi-di-mesin-demo
 OPENROUTER_MODEL=openai/gpt-5.6-luna
+HAWKEYE_PUBLIC_DEMO_ORIGIN=https://hawkeye.example.com
 
 # Opsional. Hapus keduanya untuk demo tanpa login.
 HAWKEYE_AUTH_USERNAME=
@@ -96,7 +97,7 @@ docker compose -f compose.yaml -f compose.openrouter.yaml up -d --build
 Di Cloudflare dashboard, buat remotely-managed Tunnel dengan published application:
 
 ```text
-Public hostname: hawkeye.myudak.com
+Public hostname: hawkeye.example.com
 Service:         http://127.0.0.1:8760
 ```
 
@@ -106,11 +107,11 @@ JSON. Verify:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8760/health
-Invoke-WebRequest https://hawkeye.myudak.com/health
+Invoke-WebRequest https://hawkeye.example.com/health
 ```
 
 Ketika origin demo dikonfigurasi, mutation publik hanya menerima satu header
-`Origin: https://hawkeye.myudak.com`; missing, `null`, HTTP, alternate port, subdomain, wildcard,
+`Origin: https://hawkeye.example.com`; missing, `null`, HTTP, alternate port, subdomain, wildcard,
 duplicate, dan attacker origin ditolak. Local browser `127.0.0.1`/`localhost` tetap dapat melakukan
 mutation dengan same-origin header. Forwarded headers tidak dipercaya dan CORS tidak diaktifkan.
 

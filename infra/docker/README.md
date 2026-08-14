@@ -34,10 +34,11 @@ For the owner-authorized temporary OpenRouter demo, keep `OPENROUTER_APIKEY` in 
 docker compose -f compose.yaml -f compose.openrouter.yaml up -d --build
 ```
 
-The override selects `openai/gpt-5.6-luna` by default and enables only the exact browser origin
-`https://hawkeye.myudak.com`. The published port remains `127.0.0.1:8760`. Basic Auth remains
-optional; with both auth variables empty, the demo is intentionally unauthenticated. Origin checks
-do not authenticate direct clients, and this exception must not be described as production-ready.
+The override selects `openai/gpt-5.6-luna` by default. Set the machine-specific exact browser
+origin through `HAWKEYE_PUBLIC_DEMO_ORIGIN` in `.env`; the Compose file does not hard-code a domain.
+The published port remains `127.0.0.1:8760`. Basic Auth remains optional; with both auth variables
+empty, the demo is intentionally unauthenticated. Origin checks do not authenticate direct clients,
+and this exception must not be described as production-ready.
 
 Remote single-investigator access is supported through an SSH tunnel while the published port stays
 on host loopback. See `docs/operations/DEPLOYMENT.md`.
