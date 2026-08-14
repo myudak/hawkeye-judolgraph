@@ -25,7 +25,7 @@ jobs:
         run: |
           git fetch --force origin refs/tags/gemastik-g2:refs/tags/gemastik-g2
           git fetch --force origin refs/tags/gemastik-g3:refs/tags/gemastik-g3
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.3.0
           run_install: false
@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.3.0
           run_install: false
@@ -70,7 +70,7 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.3.0
           run_install: false
