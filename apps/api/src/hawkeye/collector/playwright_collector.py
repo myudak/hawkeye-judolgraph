@@ -207,7 +207,12 @@ class _RequestGuard:
             reason="websocket_disabled: persistent browser sockets are outside collection scope",
             is_navigation=False,
         )
-        route.close()
+        # A routed WebSocket is disconnected from the server unless the handler explicitly calls
+        # ``connect_to_server``.  Returning here therefore blocks network dispatch.  Calling the
+        # synchronous ``close`` method from Playwright's route callback can deadlock the sync
+        # bridge (observed on socket-heavy live pages), so leave the isolated page-side mock open
+        # for the short-lived browser context instead.
+        return
 
     def reject_navigation_url(self, url: str, *, reason: str, reason_code: str) -> None:
         """Record a navigation discovered in response headers and fail the collection."""

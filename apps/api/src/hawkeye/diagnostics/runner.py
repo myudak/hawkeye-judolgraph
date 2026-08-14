@@ -112,7 +112,10 @@ class _DiagnosticRequestGuard:
     def handle_websocket(self, route: WebSocketRoute) -> None:
         self.budget.consume_request()
         self._record("WebSocket blocked during non-interactive render diagnostics")
-        route.close()
+        # Routed sockets do not reach the server unless ``connect_to_server`` is called.  Avoid
+        # invoking the synchronous ``close`` method from inside Playwright's route callback: that
+        # can deadlock the sync bridge on pages that open a socket during initial rendering.
+        return
 
     def observe_response(self, request: Request, content_length: str | None) -> None:
         try:

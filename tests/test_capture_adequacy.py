@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 import pytest
 
-from hawkeye.collector.playwright_collector import BrowserCollector
+from hawkeye.collector.playwright_collector import (
+    BrowserCollector,
+    CollectionBudget,
+    _RequestGuard,
+)
 from hawkeye.collector.safety import SafetyPolicy
 from hawkeye.models import AccessOutcome, CaptureAdequacy, PublicCaptureStatus
 from hawkeye.pipeline import investigate
@@ -51,6 +56,27 @@ def test_subresources_reuse_case_dns_and_cross_host_iframe_is_not_top_level_navi
     # CSS, script, image, and iframe requests sharing an authority reuse the case-local answer.
     assert resolver_calls.count((seed_host, urlsplit(fixture_server_url).port or 80)) == 3
     assert sum(hostname == "localhost" for hostname, _port in resolver_calls) == 1
+
+
+def test_websocket_route_is_blocked_without_sync_close_or_server_connection() -> None:
+    class SocketRoute:
+        url = "wss://socket.example/events"
+
+        def close(self) -> None:
+            raise AssertionError("sync close must not run inside the route callback")
+
+        def connect_to_server(self) -> None:
+            raise AssertionError("blocked sockets must never reach the server")
+
+    budget = CollectionBudget()
+    guard = _RequestGuard(safety=SafetyPolicy(), max_redirects=5, budget=budget)
+
+    guard.handle_websocket(cast(Any, SocketRoute()))
+
+    assert budget.request_count == 1
+    assert [(item.resource_type, item.url) for item in guard.blocked_requests] == [
+        ("websocket", "wss://socket.example/events")
+    ]
 
 
 def test_delayed_render_uses_final_canonical_state_and_preserves_initial(
