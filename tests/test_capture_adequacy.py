@@ -8,7 +8,9 @@ from typing import Any, cast
 from urllib.parse import urlsplit
 
 import pytest
+from playwright.sync_api import Error as PlaywrightError
 
+from hawkeye.collector import playwright_collector
 from hawkeye.collector.playwright_collector import (
     BrowserCollector,
     CollectionBudget,
@@ -77,6 +79,26 @@ def test_websocket_route_is_blocked_without_sync_close_or_server_connection() ->
     assert [(item.resource_type, item.url) for item in guard.blocked_requests] == [
         ("websocket", "wss://socket.example/events")
     ]
+
+
+def test_late_semantic_snapshot_race_preserves_canonical_capture(
+    fixture_server_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_after_canonical_capture(_page: object) -> list[object]:
+        raise PlaywrightError("Execution context was destroyed")
+
+    monkeypatch.setattr(
+        playwright_collector, "_semantic_element_snapshots", fail_after_canonical_capture
+    )
+
+    collected = BrowserCollector(
+        safety=SafetyPolicy(allow_loopback_for_testing=True), timeout_seconds=15
+    ).collect(fixture_server_url)
+
+    assert collected.html
+    assert collected.screenshot.startswith(b"\x89PNG\r\n\x1a\n")
+    assert collected.semantic_elements == []
+    assert "semantic_snapshot_unavailable" in collected.readiness.limitation_reasons
 
 
 def test_delayed_render_uses_final_canonical_state_and_preserves_initial(

@@ -598,7 +598,22 @@ class BrowserCollector:
                     checkpoints.append(checkpoint)
                     checkpoint_screenshots.append(checkpoint_screenshot)
                     prior_elapsed += 500
-                title = page.title()
+                limitation_reasons: list[str] = []
+                try:
+                    title = page.title()
+                except PlaywrightError:
+                    # The canonical HTML, text, and pixels above are already immutable capture
+                    # inputs.  A late client-side navigation must not discard them merely because
+                    # the supplementary title read raced with execution-context replacement.
+                    title = ""
+                    limitation_reasons.append("title_snapshot_unavailable")
+                try:
+                    semantic_elements = _semantic_element_snapshots(page)
+                except PlaywrightError:
+                    # Semantic element geometry enriches agent context but is not source evidence;
+                    # rendered HTML and screenshots remain available for deterministic extraction.
+                    semantic_elements = []
+                    limitation_reasons.append("semantic_snapshot_unavailable")
                 html_bytes = len(html.encode("utf-8"))
                 html_sha256 = hashlib.sha256(html.encode("utf-8")).hexdigest()
                 screenshot = checkpoint_screenshots[-1]
@@ -606,7 +621,6 @@ class BrowserCollector:
                 image_dimensions = _image_dimensions(screenshot)
                 initial_dimensions = _image_dimensions(initial_screenshot)
                 deltas = _checkpoint_deltas(checkpoints)
-                limitation_reasons: list[str] = []
                 if deltas and deltas[-1].material_change:
                     limitation_reasons.append("rendering_changed_at_budget_end")
                 final_checkpoint = checkpoints[-1]
@@ -663,7 +677,6 @@ class BrowserCollector:
                     download_count=blocked_download_count,
                     generated_at=datetime.now(UTC),
                 )
-                semantic_elements = _semantic_element_snapshots(page)
                 return CollectedPage(
                     final_url=final.normalized_url,
                     redirect_chain=redirect_chain,
