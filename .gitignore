@@ -11,6 +11,7 @@ __pycache__/
 build/
 dist/
 *.spec.bak
+~$*.docx
 node_modules/
 .vercel/
 apps/api/src/hawkeye/review_app/static/
