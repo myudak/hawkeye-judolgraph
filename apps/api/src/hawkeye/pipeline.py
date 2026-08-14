@@ -324,6 +324,7 @@ def investigate(
             case_id=chosen_case_id,
             page_id=current.id,
             url=collected.final_url,
+            page_title=collected.title,
             captured_at=collected.collected_at.isoformat(),
             width=collected.image_dimensions["width"],
             height=collected.image_dimensions["height"],

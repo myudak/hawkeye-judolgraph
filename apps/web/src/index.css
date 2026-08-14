@@ -866,7 +866,11 @@ button:disabled {
 .seed-example-trigger[aria-expanded="true"] {
   color: var(--signal-pink);
   border-color: color-mix(in srgb, var(--signal-pink) 38%, transparent);
-  background: color-mix(in srgb, var(--signal-pink) 7%, var(--instrument-panel));
+  background: color-mix(
+    in srgb,
+    var(--signal-pink) 7%,
+    var(--instrument-panel)
+  );
 }
 .seed-example-trigger svg {
   width: 13px;
@@ -1377,10 +1381,14 @@ button:disabled {
   background:
     radial-gradient(
       circle at 50% 34%,
-      rgba(34, 113, 154, 0.12),
+      color-mix(in srgb, var(--signal-cyan) 10%, transparent),
       transparent 48%
     ),
-    linear-gradient(155deg, rgba(3, 13, 22, 0.98), rgba(5, 17, 28, 0.94));
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--signal-pink) 2%, var(--instrument-panel-solid)),
+      var(--instrument-panel-raised)
+    );
   isolation: isolate;
 }
 .scan-preview-panel::before {
@@ -1388,8 +1396,8 @@ button:disabled {
   z-index: -1;
   inset: 0;
   background-image:
-    linear-gradient(rgba(135, 170, 195, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(135, 170, 195, 0.035) 1px, transparent 1px);
+    linear-gradient(var(--instrument-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--instrument-grid) 1px, transparent 1px);
   background-size: 28px 28px;
   content: "";
   mask-image: linear-gradient(to bottom, black, transparent 86%);
@@ -1656,7 +1664,7 @@ button:disabled {
   border: 1px solid var(--instrument-line);
   border-radius: 8px;
   color: var(--instrument-muted);
-  background: rgba(2, 10, 17, 0.68);
+  background: var(--instrument-control-surface);
   text-align: left;
   transition:
     border-color 140ms ease,
@@ -1702,6 +1710,36 @@ button:disabled {
   color: var(--instrument-muted);
   font-size: 0.58rem;
   line-height: 1.5;
+}
+.preview-target-identity {
+  display: grid;
+  max-width: min(420px, 100%);
+  justify-items: center;
+  gap: 3px;
+}
+.preview-target-identity > span,
+.scan-target-summary > div > span {
+  color: var(--signal-pink);
+  font: 700 0.5rem var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.preview-target-identity strong {
+  max-width: 100%;
+  overflow: hidden;
+  font: 710 clamp(1rem, 2vw, 1.35rem)/1.2 var(--font-heading);
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-target-identity small,
+.scan-target-summary small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--instrument-muted);
+  font: 0.53rem var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .scan-radar {
   position: relative;
@@ -1837,6 +1875,43 @@ button:disabled {
   align-content: center;
   gap: 22px;
   padding: clamp(24px, 3vw, 42px);
+}
+.scan-target-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid var(--instrument-line);
+  border-radius: 12px;
+  background: var(--instrument-panel-soft);
+}
+.scan-target-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--signal-pink) 32%, transparent);
+  border-radius: 10px;
+  color: var(--signal-pink);
+  background: color-mix(in srgb, var(--signal-pink) 7%, transparent);
+}
+.scan-target-icon svg {
+  width: 21px;
+  height: 21px;
+}
+.scan-target-summary > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.scan-target-summary strong {
+  overflow: hidden;
+  font: 700 0.95rem/1.25 var(--font-heading);
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .scan-phase-heading {
   display: flex;

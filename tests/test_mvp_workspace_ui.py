@@ -277,6 +277,12 @@ def test_progressive_ui_job_reports_real_capture_stages(
             status = client.get(f"/api/investigation-jobs/{job_id}").json()
 
         assert status["status"] == "completed", status
+        assert status["target"] == {
+            "seed_url": f"{fixture_server_url}normal-content.html",
+            "investigation_name": "Progress fixture",
+            "final_url": f"{fixture_server_url}normal-content.html",
+            "page_title": "Fixture Product Landing",
+        }
         stages = {item["stage"] for item in status["history"]}
         assert {
             "launching_browser",

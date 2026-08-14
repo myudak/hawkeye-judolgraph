@@ -323,6 +323,12 @@ export interface InvestigationJob {
   updated_at?: string
   deadline_seconds: number
   detail?: Record<string, unknown>
+  target?: {
+    seed_url?: string | null
+    final_url?: string | null
+    page_title?: string | null
+    investigation_name?: string | null
+  }
   history?: JobHistoryItem[]
   error?: string | null
   result?: RunDetails | null

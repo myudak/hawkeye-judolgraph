@@ -30,7 +30,12 @@ import { HawkMark } from "@/components/brand-mark"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { formatElapsed, formatTime, titleCase } from "@/lib/format"
+import {
+  formatElapsed,
+  formatTime,
+  hostnameFrom,
+  titleCase,
+} from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const stageGroups = [
@@ -206,7 +211,36 @@ function previewTitle(preview: JobPreview): string {
   return preview.page_id.replace("page-", "Page ")
 }
 
-function ScanVisual({ job }: { job?: InvestigationJob }) {
+interface ProcessedSite {
+  title: string
+  hostname: string
+}
+
+function processedSite(job?: InvestigationJob): ProcessedSite {
+  const sourceCase = job?.result?.source_case
+  const url =
+    job?.target?.final_url ||
+    job?.visual_state?.latest_preview?.url ||
+    sourceCase?.final_url_display ||
+    job?.target?.seed_url ||
+    job?.result?.seed_url ||
+    ""
+  const hostname = url ? hostnameFrom(url) : "Preparing target"
+  const title =
+    job?.target?.page_title?.trim() ||
+    sourceCase?.page_title?.trim() ||
+    hostname
+
+  return { title, hostname }
+}
+
+function ScanVisual({
+  job,
+  site,
+}: {
+  job?: InvestigationJob
+  site: ProcessedSite
+}) {
   const previews = job?.visual_state?.previews ?? []
   const latest = job?.visual_state?.latest_preview
   const focus = job?.visual_state?.agent_focus
@@ -385,6 +419,13 @@ function ScanVisual({ job }: { job?: InvestigationJob }) {
               <HawkMark variant="radar" />
             </span>
           </div>
+          <div className="preview-target-identity" aria-live="polite">
+            <span>Website being processed</span>
+            <strong>{site.title}</strong>
+            {site.hostname !== site.title ? (
+              <small>{site.hostname}</small>
+            ) : null}
+          </div>
           <b>
             {job?.status === "failed"
               ? "No preview was preserved"
@@ -446,6 +487,7 @@ export function ScanPage() {
   }, [jobIsActive])
 
   const job = jobQuery.data
+  const site = processedSite(job)
   const elapsedAt = jobIsActive
     ? now
     : job?.updated_at
@@ -501,9 +543,21 @@ export function ScanPage() {
             job?.status === "completed" && "scan-console-complete"
           )}
         >
-          <ScanVisual job={job} />
+          <ScanVisual job={job} site={site} />
 
           <div className="scan-progress-panel">
+            <div className="scan-target-summary" aria-live="polite">
+              <span className="scan-target-icon">
+                <Browser weight="duotone" />
+              </span>
+              <div>
+                <span>Website being processed</span>
+                <strong>{site.title}</strong>
+                {site.hostname !== site.title ? (
+                  <small>{site.hostname}</small>
+                ) : null}
+              </div>
+            </div>
             <header className="scan-phase-heading">
               <div>
                 <p className="eyebrow">CURRENT PHASE</p>

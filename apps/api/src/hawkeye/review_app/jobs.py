@@ -31,7 +31,12 @@ class InvestigationJobManager:
         self._lock = threading.Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
 
-    def start(self, runner: JobRunner) -> dict[str, object]:
+    def start(
+        self,
+        runner: JobRunner,
+        *,
+        target: dict[str, object] | None = None,
+    ) -> dict[str, object]:
         with self._lock:
             active = self._active_unlocked()
             if active is not None:
@@ -45,6 +50,7 @@ class InvestigationJobManager:
                 "status": "queued",
                 "stage": "queued",
                 "detail": {},
+                "target": _bounded_detail(target or {}),
                 "started_at": now,
                 "updated_at": now,
                 "deadline_seconds": self.deadline_seconds,
@@ -153,6 +159,13 @@ class InvestigationJobManager:
                 job["history"].append({"stage": stage, "at": now})
                 job["history"] = job["history"][-48:]
             _apply_visual_update(job, stage=stage, detail=detail, now=now)
+            if stage == "page_preview_ready":
+                page_title = _short_text(detail.get("page_title"), 256)
+                final_url = _short_text(detail.get("url"), 300)
+                if page_title is not None:
+                    job["target"]["page_title"] = page_title
+                if final_url is not None:
+                    job["target"]["final_url"] = final_url
             job.update(
                 {
                     "status": status,
@@ -327,6 +340,7 @@ def _public_job(job: dict[str, Any]) -> dict[str, object]:
         "status": job["status"],
         "stage": job["stage"],
         "detail": dict(job["detail"]),
+        "target": dict(job["target"]),
         "started_at": job["started_at"],
         "updated_at": job["updated_at"],
         "deadline_seconds": job["deadline_seconds"],

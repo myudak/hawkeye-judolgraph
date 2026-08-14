@@ -62,6 +62,7 @@ def test_job_projects_bounded_transient_previews_without_paths() -> None:
                 "case_id": "case-preview",
                 "page_id": "page-001",
                 "url": "https://fixture.invalid/",
+                "page_title": "Fixture contact directory",
                 "captured_at": "2026-08-10T00:00:00Z",
                 "width": 1440,
                 "height": 1024,
@@ -99,7 +100,20 @@ def test_job_projects_bounded_transient_previews_without_paths() -> None:
         )
         return {"workspace_id": "run-live-preview"}
 
-    completed = _wait_for_job(manager, str(manager.start(run)["job_id"]))
+    completed = _wait_for_job(
+        manager,
+        str(
+            manager.start(
+                run,
+                target={"seed_url": "https://fixture.invalid/"},
+            )["job_id"]
+        ),
+    )
+    assert completed["target"] == {
+        "seed_url": "https://fixture.invalid/",
+        "final_url": "https://fixture.invalid/",
+        "page_title": "Fixture contact directory",
+    }
     visual = completed["visual_state"]
     assert visual["revision"] == 3
     assert visual["previews"][0]["verification"] == "verified"

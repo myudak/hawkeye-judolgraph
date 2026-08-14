@@ -341,7 +341,13 @@ def create_app(
                     report=report,
                 )
 
-            return scan_jobs.start(run)
+            return scan_jobs.start(
+                run,
+                target={
+                    "seed_url": seed_url,
+                    "investigation_name": investigation_name,
+                },
+            )
 
         @app.get("/api/investigation-jobs/active", include_in_schema=False)
         def active_investigation_job() -> dict[str, object]:
