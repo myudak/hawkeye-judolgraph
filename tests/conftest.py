@@ -223,7 +223,7 @@ def fixture_server_url() -> Iterator[str]:
                     """,
                 )
             elif path == "/aaa-slow":
-                time.sleep(1.0)
+                time.sleep(3.0)
                 body = _html("Slow child", "<p>Slow content.</p>")
             elif path == "/crawl-child":
                 body = _html("Crawl child", "<p>Normal child content.</p>")

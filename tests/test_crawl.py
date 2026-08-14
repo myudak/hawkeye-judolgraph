@@ -296,7 +296,9 @@ def test_non_html_child_and_timeout_do_not_fail_the_whole_case(
     timeout = _crawl(
         f"{fixture_server_url}crawl-timeout-root",
         tmp_path / "timeout-cases",
-        timeout_seconds=0.2,
+        # Leave enough time for the normal sibling under parallel CI load. The dedicated slow
+        # fixture waits three seconds, so this still exercises the navigation timeout boundary.
+        timeout_seconds=2.0,
     )
 
     assert non_html.case.status == "completed"
