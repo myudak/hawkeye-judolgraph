@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import math
 from collections.abc import Callable, Iterable
@@ -12,6 +14,7 @@ from urllib.parse import urljoin
 
 from PIL import Image
 from playwright.sync_api import (
+    CDPSession,
     Download,
     Page,
     Request,
@@ -524,7 +527,6 @@ class BrowserCollector:
                     )
                 checkpoints: list[CaptureCheckpoint] = []
                 checkpoint_screenshots: list[bytes] = []
-                artifact_timeout_ms = max(timeout_ms, 1_000)
                 visible_text = ""
                 html = ""
                 prior_elapsed = 0
@@ -538,7 +540,9 @@ class BrowserCollector:
                             blocked_download_count,
                         )
                     checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
-                        page, elapsed_ms=elapsed_ms, timeout_ms=artifact_timeout_ms
+                        page,
+                        cdp_session=cdp_session,
+                        elapsed_ms=elapsed_ms,
                     )
                     checkpoints.append(checkpoint)
                     checkpoint_screenshots.append(checkpoint_screenshot)
@@ -564,7 +568,9 @@ class BrowserCollector:
                                 blocked_download_count,
                             )
                         checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
-                            page, elapsed_ms=elapsed_ms, timeout_ms=artifact_timeout_ms
+                            page,
+                            cdp_session=cdp_session,
+                            elapsed_ms=elapsed_ms,
                         )
                         checkpoints.append(checkpoint)
                         checkpoint_screenshots.append(checkpoint_screenshot)
@@ -581,8 +587,8 @@ class BrowserCollector:
                         )
                     checkpoint, checkpoint_screenshot, visible_text, html = _capture_checkpoint(
                         page,
+                        cdp_session=cdp_session,
                         elapsed_ms=prior_elapsed + 500,
-                        timeout_ms=artifact_timeout_ms,
                     )
                     checkpoints.append(checkpoint)
                     checkpoint_screenshots.append(checkpoint_screenshot)
@@ -609,9 +615,7 @@ class BrowserCollector:
                     html_omitted_reason = "canonical_html_exceeds_5_mb_persistence_limit"
                     limitation_reasons.append(html_omitted_reason)
                 full_page_screenshot, full_page_dimensions, full_page_reason = (
-                    _bounded_full_page_screenshot(
-                        page, final_checkpoint, timeout_ms=artifact_timeout_ms
-                    )
+                    _bounded_full_page_screenshot(cdp_session, final_checkpoint)
                 )
                 if full_page_reason is not None:
                     limitation_reasons.append(full_page_reason)
@@ -814,7 +818,7 @@ def _image_dimensions(content: bytes) -> dict[str, int]:
 
 
 def _capture_checkpoint(
-    page: Page, *, elapsed_ms: int, timeout_ms: int
+    page: Page, *, cdp_session: CDPSession, elapsed_ms: int
 ) -> tuple[CaptureCheckpoint, bytes, str, str]:
     """Measure browser-visible state and pixels without interacting with the document."""
 
@@ -864,7 +868,7 @@ def _capture_checkpoint(
     )
     if not isinstance(raw, dict):
         raise CollectionError("Capture checkpoint did not return a metrics object")
-    screenshot = page.screenshot(type="png", full_page=False, timeout=timeout_ms)
+    screenshot = _capture_cdp_png(cdp_session, capture_beyond_viewport=False)
     image_dimensions = _image_dimensions(screenshot)
     entropy, tile_ratio = _visual_information(screenshot)
     visible_text = str(raw.get("visible_text", ""))
@@ -961,7 +965,7 @@ def _visual_dom_mismatch(checkpoint: CaptureCheckpoint) -> bool:
 
 
 def _bounded_full_page_screenshot(
-    page: Page, checkpoint: CaptureCheckpoint, *, timeout_ms: int
+    cdp_session: CDPSession, checkpoint: CaptureCheckpoint
 ) -> tuple[bytes | None, dict[str, int] | None, str | None]:
     capture_height = max(1, min(checkpoint.document_height, MAX_FULL_PAGE_HEIGHT))
     capture_width = max(1, min(checkpoint.document_width, VIEWPORT_WIDTH))
@@ -971,15 +975,48 @@ def _bounded_full_page_screenshot(
         else None
     )
     try:
-        content = page.screenshot(
-            type="png",
-            full_page=False,
-            clip={"x": 0, "y": 0, "width": capture_width, "height": capture_height},
-            timeout=timeout_ms,
+        content = _capture_cdp_png(
+            cdp_session,
+            capture_beyond_viewport=True,
+            clip={
+                "x": 0,
+                "y": 0,
+                "width": capture_width,
+                "height": capture_height,
+                "scale": 1,
+            },
         )
-    except PlaywrightError:
+    except (PlaywrightError, ValueError):
         return None, None, "bounded_full_page_screenshot_failed"
     return content, _image_dimensions(content), reason
+
+
+def _capture_cdp_png(
+    cdp_session: CDPSession,
+    *,
+    capture_beyond_viewport: bool,
+    clip: dict[str, int] | None = None,
+) -> bytes:
+    """Capture Chromium pixels without Playwright's unbounded web-font readiness wait."""
+
+    parameters: dict[str, object] = {
+        "format": "png",
+        "fromSurface": True,
+        "captureBeyondViewport": capture_beyond_viewport,
+    }
+    if clip is not None:
+        parameters["clip"] = clip
+    payload = cdp_session.send("Page.captureScreenshot", parameters)
+    encoded = payload.get("data")
+    if not isinstance(encoded, str):
+        raise ValueError("Chromium screenshot response did not contain PNG data")
+    try:
+        content = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error) as error:
+        raise ValueError("Chromium screenshot response contained invalid base64") from error
+    if not content.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("Chromium screenshot response was not a PNG")
+    return content
 
 
 def _visual_information(content: bytes) -> tuple[float, float]:
