@@ -4,5 +4,14 @@ import { useTheme } from "@/components/theme-provider"
 
 export function ThemedToaster() {
   const { resolvedTheme } = useTheme()
-  return <Toaster theme={resolvedTheme} richColors position="bottom-right" />
+  return (
+    <Toaster
+      theme={resolvedTheme}
+      richColors
+      closeButton
+      expand
+      visibleToasts={4}
+      position="bottom-right"
+    />
+  )
 }

@@ -20,8 +20,9 @@ import {
   Warning,
 } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { api, jobPreviewUrl } from "@/api/client"
 import type { InvestigationJob, JobPreview } from "@/api/types"
@@ -38,19 +39,21 @@ import {
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+type Language = "en" | "id"
+
 const stageGroups = [
   {
-    label: "Validate target",
+    label: { en: "Validate target", id: "Periksa alamat situs" },
     stages: ["queued", "validating_seed", "launching_browser"],
     icon: ShieldCheck,
   },
   {
-    label: "Capture pages",
+    label: { en: "Capture pages", id: "Ambil halaman" },
     stages: ["initializing_case", "capturing_page"],
     icon: Browser,
   },
   {
-    label: "Preserve & extract",
+    label: { en: "Preserve & extract", id: "Simpan & baca temuan" },
     stages: [
       "preserving_artifacts",
       "page_preview_ready",
@@ -63,7 +66,7 @@ const stageGroups = [
     icon: FileText,
   },
   {
-    label: "Bounded investigation",
+    label: { en: "Bounded investigation", id: "Telusuri secara aman" },
     stages: [
       "verifying_evidence",
       "evidence_verified",
@@ -76,106 +79,377 @@ const stageGroups = [
     icon: MagnifyingGlass,
   },
   {
-    label: "Classify & graph",
+    label: { en: "Classify & graph", id: "Susun graph" },
     stages: ["classifying_indicators", "building_graph"],
     icon: Graph,
   },
-  { label: "Finalize case", stages: ["completed"], icon: FlagCheckered },
+  {
+    label: { en: "Finalize case", id: "Selesaikan kasus" },
+    stages: ["completed"],
+    icon: FlagCheckered,
+  },
 ]
 
-const stageCopy: Record<string, [string, string]> = {
-  queued: [
-    "Preparing isolated workspace",
-    "A single local investigation slot has been reserved.",
-  ],
-  validating_seed: [
-    "Validating public destination",
-    "Checking scheme, destination, and read-only collection policy.",
-  ],
-  launching_browser: [
-    "Launching isolated browser",
-    "Starting a killable browser worker with a hard wall-clock boundary.",
-  ],
-  initializing_case: [
-    "Creating immutable case record",
-    "Recording scope, page budget, depth, and the normalized seed.",
-  ],
-  capturing_page: [
-    "Capturing rendered page",
-    "Waiting for visible render stability and collecting same-site public navigation.",
-  ],
-  preserving_artifacts: [
-    "Preserving source artifacts",
-    "Saving initial, canonical, and full-page screenshots with rendered HTML and response facts.",
-  ],
-  page_preview_ready: [
-    "Canonical preview ready",
-    "A real viewport screenshot has been persisted and is available as a transient preview.",
-  ],
-  running_ocr: [
-    "Checking screenshot text",
-    "Running bounded local OCR as supplemental evidence; OCR never replaces source artifacts.",
-  ],
-  extracting_evidence: [
-    "Extracting public OSINT evidence",
-    "Linking public contacts, offers, payments, destinations, and claims to page evidence.",
-  ],
-  page_completed: [
-    "Page evidence committed",
-    "The current page record and evidence references are now persisted.",
-  ],
-  generating_candidates: [
-    "Generating reviewable leads",
-    "Comparing verified evidence without treating similarity as ownership probability.",
-  ],
-  finalizing_case: [
-    "Finalizing case package",
-    "Writing the manifest and truthful capture limitations.",
-  ],
-  verifying_evidence: [
-    "Re-verifying saved artifacts",
-    "Checking the completed case package before the agent can inspect it.",
-  ],
-  evidence_verified: [
-    "Case evidence verified",
-    "The manifest and captured artifact hashes passed local verification.",
-  ],
-  running_agent: [
-    "Running policy-gated exploration",
-    "Planning safe public interactions with deterministic fallback and recorded tool events.",
-  ],
-  agent_focus_ready: [
-    "Agent selected a safe control",
-    "The server re-validated the reference and recorded its real viewport position.",
-  ],
-  interaction_preview_ready: [
-    "Public interaction captured",
-    "The resulting read-only page state and screenshot have been persisted.",
-  ],
-  agent_observations_ready: [
-    "Interaction evidence extracted",
-    "Visible public observations were checked after the safe action.",
-  ],
-  agent_focus_blocked: [
-    "Safe action stopped",
-    "The policy-gated action did not complete; no completion is implied.",
-  ],
-  classifying_indicators: [
-    "Classifying judol indicators",
-    "Counting evidence-backed text/entity indicators without percentages or verdicts.",
-  ],
-  building_graph: [
-    "Building event-sourced graph",
-    "Reducing persisted pages, observations, leads, and actions into the investigation view.",
-  ],
-  completed: [
-    "Investigation ready",
-    "The saved graph, screenshots, evidence, and timeline are ready for review.",
-  ],
-  failed: [
-    "Investigation stopped safely",
-    "The failure boundary was recorded; no result is presented as a completed capture.",
-  ],
+const stageCopy: Record<string, Record<Language, [string, string]>> = {
+  queued: {
+    en: [
+      "Preparing investigation",
+      "Reserving a safe workspace for this site.",
+    ],
+    id: [
+      "Menyiapkan investigasi",
+      "Menyiapkan ruang kerja yang aman untuk situs ini.",
+    ],
+  },
+  validating_seed: {
+    en: [
+      "Checking the site address",
+      "Making sure the address is public and safe to open.",
+    ],
+    id: [
+      "Memeriksa alamat situs",
+      "Memastikan alamat dapat diakses publik dan aman untuk dibuka.",
+    ],
+  },
+  launching_browser: {
+    en: [
+      "Opening a secure browser",
+      "Starting an isolated browser with a fixed time limit.",
+    ],
+    id: [
+      "Membuka browser aman",
+      "Menjalankan browser terisolasi dengan batas waktu tetap.",
+    ],
+  },
+  initializing_case: {
+    en: [
+      "Creating the case",
+      "Saving the target, collection limits, and investigation scope.",
+    ],
+    id: [
+      "Membuat kasus",
+      "Menyimpan target, batas pengumpulan, dan ruang lingkup investigasi.",
+    ],
+  },
+  capturing_page: {
+    en: [
+      "Waiting for the page to load",
+      "Letting visible content finish loading before it is captured.",
+    ],
+    id: [
+      "Menunggu halaman selesai dimuat",
+      "Memberi waktu agar konten terlihat lengkap sebelum disimpan.",
+    ],
+  },
+  preserving_artifacts: {
+    en: [
+      "Saving the original page",
+      "Saving screenshots, visible text, HTML, and response details.",
+    ],
+    id: [
+      "Menyimpan halaman asli",
+      "Menyimpan screenshot, teks terlihat, HTML, dan detail respons.",
+    ],
+  },
+  page_preview_ready: {
+    en: [
+      "Page preview is ready",
+      "A saved screenshot is now available in the preview.",
+    ],
+    id: [
+      "Pratinjau halaman siap",
+      "Screenshot yang sudah tersimpan kini tampil di pratinjau.",
+    ],
+  },
+  running_ocr: {
+    en: [
+      "Reading text from the screenshot",
+      "Checking visible image text as additional evidence.",
+    ],
+    id: [
+      "Membaca teks dari screenshot",
+      "Memeriksa teks pada gambar sebagai temuan tambahan.",
+    ],
+  },
+  extracting_evidence: {
+    en: [
+      "Looking for useful findings",
+      "Finding public contacts, payments, offers, links, and claims.",
+    ],
+    id: [
+      "Mencari temuan penting",
+      "Mencari kontak, pembayaran, promosi, tautan, dan klaim publik.",
+    ],
+  },
+  page_completed: {
+    en: [
+      "Page saved",
+      "The page and its findings have been added to this case.",
+    ],
+    id: [
+      "Halaman sudah disimpan",
+      "Halaman dan temuannya sudah ditambahkan ke kasus ini.",
+    ],
+  },
+  generating_candidates: {
+    en: [
+      "Comparing related findings",
+      "Finding possible connections that still need human review.",
+    ],
+    id: [
+      "Membandingkan temuan terkait",
+      "Mencari kemungkinan hubungan yang masih perlu ditinjau manusia.",
+    ],
+  },
+  finalizing_case: {
+    en: [
+      "Packing the evidence",
+      "Writing the case manifest and recording capture limitations.",
+    ],
+    id: [
+      "Merapikan paket bukti",
+      "Menyusun manifest kasus dan mencatat batas hasil pengumpulan.",
+    ],
+  },
+  verifying_evidence: {
+    en: [
+      "Checking saved files",
+      "Making sure the collected files are complete before exploration.",
+    ],
+    id: [
+      "Memeriksa file yang tersimpan",
+      "Memastikan hasil pengumpulan lengkap sebelum penelusuran.",
+    ],
+  },
+  evidence_verified: {
+    en: [
+      "Saved evidence passed checks",
+      "The manifest and artifact hashes match the saved files.",
+    ],
+    id: [
+      "Bukti tersimpan lolos pemeriksaan",
+      "Manifest dan hash artefak cocok dengan file yang disimpan.",
+    ],
+  },
+  running_agent: {
+    en: [
+      "Choosing the next safe step",
+      "The model or fallback selects only read-only actions allowed by the server.",
+    ],
+    id: [
+      "Memilih langkah aman berikutnya",
+      "Model atau fallback hanya memilih aksi baca yang diizinkan server.",
+    ],
+  },
+  agent_focus_ready: {
+    en: [
+      "A safe control was selected",
+      "The target was checked again before the browser action.",
+    ],
+    id: [
+      "Kontrol aman dipilih",
+      "Target diperiksa kembali sebelum aksi browser dijalankan.",
+    ],
+  },
+  interaction_preview_ready: {
+    en: [
+      "The next page state was saved",
+      "The read-only action result and screenshot are now preserved.",
+    ],
+    id: [
+      "Tampilan setelah aksi sudah disimpan",
+      "Hasil aksi baca dan screenshot kini telah disimpan.",
+    ],
+  },
+  agent_observations_ready: {
+    en: [
+      "New page state checked",
+      "Visible findings were checked again after the safe action.",
+    ],
+    id: [
+      "Tampilan baru sudah diperiksa",
+      "Temuan yang terlihat diperiksa kembali setelah aksi aman.",
+    ],
+  },
+  agent_focus_blocked: {
+    en: [
+      "Action was not allowed",
+      "The action was stopped safely and no successful result is claimed.",
+    ],
+    id: [
+      "Aksi tidak dapat dijalankan",
+      "Aksi dihentikan dengan aman dan tidak dianggap berhasil.",
+    ],
+  },
+  classifying_indicators: {
+    en: [
+      "Grouping gambling indicators",
+      "Counting evidence-backed indicators without producing a verdict.",
+    ],
+    id: [
+      "Mengelompokkan indikasi judi online",
+      "Menghitung indikator berbasis temuan tanpa membuat putusan.",
+    ],
+  },
+  building_graph: {
+    en: [
+      "Building the investigation graph",
+      "Connecting saved pages, findings, leads, and actions in one view.",
+    ],
+    id: [
+      "Menyusun graph investigasi",
+      "Menghubungkan halaman, temuan, kandidat, dan aksi dalam satu tampilan.",
+    ],
+  },
+  completed: {
+    en: [
+      "Investigation is ready",
+      "The graph, screenshots, findings, and timeline are ready to review.",
+    ],
+    id: [
+      "Investigasi siap ditinjau",
+      "Graph, screenshot, temuan, dan timeline sudah siap diperiksa.",
+    ],
+  },
+  failed: {
+    en: [
+      "Investigation stopped",
+      "Nothing incomplete is presented as a successful capture.",
+    ],
+    id: [
+      "Investigasi dihentikan",
+      "Hasil yang belum lengkap tidak ditampilkan sebagai pengumpulan yang berhasil.",
+    ],
+  },
+}
+
+const scanText = {
+  en: {
+    siteProcessing: "Website being processed",
+    currentPhase: "Current step",
+    noPreview: "No page preview is available",
+    noPreviewDetail:
+      "The process stopped before a valid screenshot could be saved.",
+    waitingPreview: "Waiting for the first page preview",
+    waitingPreviewDetail:
+      "The screenshot will appear here after it has been saved.",
+    captureStopped: "Capture stopped",
+    evidenceSaved: "Evidence saved",
+    active: "Investigation active",
+    pages: "Pages saved",
+    queued: "waiting",
+    observations: "Findings",
+    extractor: "Read from saved evidence",
+    elapsed: "Time elapsed",
+    timing: "Collection and exploration",
+    pipeline: "Current step",
+    loading: "Loading",
+    stopped: "Stopped",
+    completed: "Done",
+    inProgress: "In progress",
+    pending: "Waiting",
+    openWorkspace: "Open investigation results",
+    returnForm: "Start another investigation",
+    activity: "Investigation activity",
+    activityHint: "Saved updates from the current process",
+    captured: "Complete",
+    live: "Running",
+    waitingActivity: "Waiting for the first update…",
+    technicalProgress: "Technical details",
+    browserPending: "Browser is waiting to start",
+    boundaryTitle: "Safe collection is active.",
+    boundaryBody:
+      "HAWK-EYE will not sign in, submit forms, send messages, purchase, or bypass access controls.",
+    unavailable: "Investigation cannot be opened",
+    unavailableBody:
+      "The latest status could not be loaded. Check the connection and try again.",
+    returnCases: "Return to cases",
+    viewLatest: "Follow latest",
+    pageFallback: "Captured public page",
+    previewGroup: "Saved page previews",
+  },
+  id: {
+    siteProcessing: "Situs yang sedang diproses",
+    currentPhase: "Langkah sekarang",
+    noPreview: "Pratinjau halaman belum tersedia",
+    noPreviewDetail:
+      "Proses berhenti sebelum screenshot yang valid sempat disimpan.",
+    waitingPreview: "Menunggu pratinjau halaman pertama",
+    waitingPreviewDetail:
+      "Screenshot akan muncul di sini setelah berhasil disimpan.",
+    captureStopped: "Pengumpulan dihentikan",
+    evidenceSaved: "Bukti sudah disimpan",
+    active: "Investigasi sedang berjalan",
+    pages: "Halaman tersimpan",
+    queued: "menunggu",
+    observations: "Temuan",
+    extractor: "Dibaca dari bukti tersimpan",
+    elapsed: "Waktu berjalan",
+    timing: "Pengumpulan dan penelusuran",
+    pipeline: "Langkah proses",
+    loading: "Memuat",
+    stopped: "Dihentikan",
+    completed: "Selesai",
+    inProgress: "Sedang berjalan",
+    pending: "Menunggu",
+    openWorkspace: "Buka hasil investigasi",
+    returnForm: "Mulai investigasi lain",
+    activity: "Aktivitas investigasi",
+    activityHint: "Pembaruan yang tersimpan dari proses ini",
+    captured: "Selesai",
+    live: "Berjalan",
+    waitingActivity: "Menunggu pembaruan pertama…",
+    technicalProgress: "Detail teknis",
+    browserPending: "Browser menunggu untuk dijalankan",
+    boundaryTitle: "Pengumpulan aman sedang aktif.",
+    boundaryBody:
+      "HAWK-EYE tidak akan login, mengirim formulir atau pesan, melakukan pembelian, maupun melewati pembatasan akses.",
+    unavailable: "Investigasi tidak dapat dibuka",
+    unavailableBody:
+      "Status terbaru tidak berhasil dimuat. Periksa koneksi lalu coba lagi.",
+    returnCases: "Kembali ke daftar kasus",
+    viewLatest: "Ikuti yang terbaru",
+    pageFallback: "Halaman publik yang tersimpan",
+    previewGroup: "Pratinjau halaman tersimpan",
+  },
+} satisfies Record<Language, Record<string, string>>
+
+function localizedStageCopy(stage: string | undefined, language: Language) {
+  return (
+    stageCopy[stage ?? "queued"]?.[language] ?? [
+      titleCase(stage),
+      language === "id"
+        ? "Mencatat perkembangan proses saat ini."
+        : "Recording the current process update.",
+    ]
+  )
+}
+
+function friendlyFailure(error: string | null | undefined, language: Language) {
+  const message = error?.toLowerCase() ?? ""
+  if (/timeout|timed out|deadline/.test(message)) {
+    return language === "id"
+      ? "Situs terlalu lama merespons. Coba lagi atau periksa koneksi VPN."
+      : "The site took too long to respond. Try again or check the VPN connection."
+  }
+  if (/dns|name.*resolv|err_name_not_resolved/.test(message)) {
+    return language === "id"
+      ? "Alamat situs tidak berhasil ditemukan oleh jaringan."
+      : "The site address could not be found by the network."
+  }
+  if (/blocked|policy|private network|not allowed/.test(message)) {
+    return language === "id"
+      ? "Alamat atau aksi ini dihentikan oleh batas keamanan HAWK-EYE."
+      : "This address or action was stopped by HAWK-EYE's safety boundary."
+  }
+  if (/browser|chromium|executable/.test(message)) {
+    return language === "id"
+      ? "Browser pengumpulan tidak dapat dijalankan. Periksa instalasi Chromium."
+      : "The collection browser could not start. Check the Chromium installation."
+  }
+  return language === "id"
+    ? "Investigasi berhenti sebelum selesai. Tidak ada hasil yang belum lengkap dianggap berhasil."
+    : "The investigation stopped before completion. No incomplete result is treated as successful."
 }
 
 function detailNumber(job: InvestigationJob, key: string): number | null {
@@ -205,10 +479,15 @@ function stageIcon(stage: string) {
   return Check
 }
 
-function previewTitle(preview: JobPreview): string {
-  if (preview.kind === "agent_before") return "Before safe action"
-  if (preview.kind === "agent_after") return "After safe action"
-  return preview.page_id.replace("page-", "Page ")
+function previewTitle(preview: JobPreview, language: Language): string {
+  if (preview.kind === "agent_before")
+    return language === "id" ? "Sebelum aksi aman" : "Before safe action"
+  if (preview.kind === "agent_after")
+    return language === "id" ? "Setelah aksi aman" : "After safe action"
+  return preview.page_id.replace(
+    "page-",
+    language === "id" ? "Halaman " : "Page "
+  )
 }
 
 interface ProcessedSite {
@@ -216,7 +495,10 @@ interface ProcessedSite {
   hostname: string
 }
 
-function processedSite(job?: InvestigationJob): ProcessedSite {
+function processedSite(
+  job: InvestigationJob | undefined,
+  language: Language
+): ProcessedSite {
   const sourceCase = job?.result?.source_case
   const url =
     job?.target?.final_url ||
@@ -225,7 +507,11 @@ function processedSite(job?: InvestigationJob): ProcessedSite {
     job?.target?.seed_url ||
     job?.result?.seed_url ||
     ""
-  const hostname = url ? hostnameFrom(url) : "Preparing target"
+  const hostname = url
+    ? hostnameFrom(url)
+    : language === "id"
+      ? "Menyiapkan target"
+      : "Preparing target"
   const title =
     job?.target?.page_title?.trim() ||
     sourceCase?.page_title?.trim() ||
@@ -237,10 +523,13 @@ function processedSite(job?: InvestigationJob): ProcessedSite {
 function ScanVisual({
   job,
   site,
+  language,
 }: {
   job?: InvestigationJob
   site: ProcessedSite
+  language: Language
 }) {
+  const text = scanText[language]
   const previews = job?.visual_state?.previews ?? []
   const latest = job?.visual_state?.latest_preview
   const focus = job?.visual_state?.agent_focus
@@ -278,7 +567,7 @@ function ScanVisual({
           <header className="preview-header">
             <span>
               <ImageSquare weight="duotone" />
-              <b>{previewTitle(selected)}</b>
+              <b>{previewTitle(selected, language)}</b>
             </span>
             <Badge
               className={cn(
@@ -288,10 +577,16 @@ function ScanVisual({
               )}
             >
               {selected.verification === "verified"
-                ? "VERIFIED EVIDENCE"
+                ? language === "id"
+                  ? "BUKTI TERVERIFIKASI"
+                  : "VERIFIED EVIDENCE"
                 : selected.verification === "persisted"
-                  ? "PERSISTED ACTION"
-                  : "PREVIEW · VERIFICATION PENDING"}
+                  ? language === "id"
+                    ? "AKSI TERSIMPAN"
+                    : "PERSISTED ACTION"
+                  : language === "id"
+                    ? "PRATINJAU · MENUNGGU VERIFIKASI"
+                    : "PREVIEW · VERIFICATION PENDING"}
             </Badge>
             {selected.revision !== latest?.revision ? (
               <button
@@ -299,7 +594,7 @@ function ScanVisual({
                 type="button"
                 onClick={() => setSelectedRevision(null)}
               >
-                Follow latest
+                {text.viewLatest}
               </button>
             ) : null}
           </header>
@@ -315,7 +610,7 @@ function ScanVisual({
             <img
               key={selected.revision}
               src={jobPreviewUrl(job!.job_id, selected.revision)}
-              alt={`Captured public page preview: ${previewTitle(selected)}`}
+              alt={`${language === "id" ? "Pratinjau halaman publik" : "Captured public page preview"}: ${previewTitle(selected, language)}`}
               decoding="async"
             />
             {job?.status === "running" ? (
@@ -340,7 +635,7 @@ function ScanVisual({
                   job?.status !== "running" && "live-dot-static"
                 )}
               />
-              {selected.url || "Captured public page"}
+              {selected.url || text.pageFallback}
             </span>
             <small>{formatTime(selected.captured_at)}</small>
           </div>
@@ -352,26 +647,48 @@ function ScanVisual({
               <div>
                 <b>
                   {focus.status === "selected"
-                    ? "Agent selected a safe public control"
+                    ? language === "id"
+                      ? "Kontrol publik yang aman dipilih"
+                      : "A safe public control was selected"
                     : focus.status === "evidence_extracted"
                       ? (focus.added_observation_count ?? 0) > 0
-                        ? "New public observations extracted"
-                        : "Post-action extraction completed"
+                        ? language === "id"
+                          ? "Temuan publik baru dibaca"
+                          : "New public findings were extracted"
+                        : language === "id"
+                          ? "Pemeriksaan setelah aksi selesai"
+                          : "Post-action check completed"
                       : focus.status === "blocked"
-                        ? "Safe action stopped"
-                        : "Read-only action completed"}
+                        ? language === "id"
+                          ? "Aksi aman dihentikan"
+                          : "Safe action stopped"
+                        : language === "id"
+                          ? "Aksi baca selesai"
+                          : "Read-only action completed"}
                 </b>
                 <p>
-                  {focus.label || "Public information control"}
+                  {focus.label ||
+                    (language === "id"
+                      ? "Kontrol informasi publik"
+                      : "Public information control")}
                   {focus.status === "blocked" && focus.reason
                     ? ` · ${focus.reason}`
                     : (focus.added_observation_count ?? 0) > 0
-                      ? ` · ${focus.added_observation_count} new observations`
+                      ? language === "id"
+                        ? ` · ${focus.added_observation_count} temuan baru`
+                        : ` · ${focus.added_observation_count} new findings`
                       : focus.status === "evidence_extracted"
-                        ? " · no new observations"
+                        ? language === "id"
+                          ? " · tidak ada temuan baru"
+                          : " · no new findings"
                         : ""}
                 </p>
-                <small>{focus.tool_name || "Policy-gated tool"}</small>
+                <small>
+                  {focus.tool_name ||
+                    (language === "id"
+                      ? "Aksi dibatasi kebijakan"
+                      : "Policy-gated action")}
+                </small>
               </div>
             </div>
           ) : null}
@@ -379,7 +696,7 @@ function ScanVisual({
             <div
               className="preview-thumbnails"
               role="group"
-              aria-label="Captured preview states"
+              aria-label={text.previewGroup}
             >
               {previews.slice(-6).map((preview) => (
                 <button
@@ -389,7 +706,7 @@ function ScanVisual({
                     preview.revision === selected.revision && "preview-selected"
                   )}
                   onClick={() => setSelectedRevision(preview.revision)}
-                  aria-label={`Show ${previewTitle(preview)}`}
+                  aria-label={`${language === "id" ? "Tampilkan" : "Show"} ${previewTitle(preview, language)}`}
                   aria-pressed={preview.revision === selected.revision}
                 >
                   <img
@@ -398,7 +715,7 @@ function ScanVisual({
                     loading="lazy"
                     decoding="async"
                   />
-                  <span>{previewTitle(preview)}</span>
+                  <span>{previewTitle(preview, language)}</span>
                 </button>
               ))}
             </div>
@@ -420,21 +737,19 @@ function ScanVisual({
             </span>
           </div>
           <div className="preview-target-identity" aria-live="polite">
-            <span>Website being processed</span>
+            <span>{text.siteProcessing}</span>
             <strong>{site.title}</strong>
             {site.hostname !== site.title ? (
               <small>{site.hostname}</small>
             ) : null}
           </div>
           <b>
-            {job?.status === "failed"
-              ? "No preview was preserved"
-              : "Waiting for the first persisted frame"}
+            {job?.status === "failed" ? text.noPreview : text.waitingPreview}
           </b>
           <p>
             {job?.status === "failed"
-              ? "Capture stopped before a valid screenshot became available."
-              : "The preview appears after a real screenshot has been safely written."}
+              ? text.noPreviewDetail
+              : text.waitingPreviewDetail}
           </p>
         </div>
       )}
@@ -452,10 +767,10 @@ function ScanVisual({
           )}
         />
         {job?.status === "failed"
-          ? "CAPTURE STOPPED"
+          ? text.captureStopped
           : job?.status === "completed"
-            ? "EVIDENCE SAVED"
-            : "INVESTIGATION ACTIVE"}
+            ? text.evidenceSaved
+            : text.active}
       </Badge>
     </div>
   )
@@ -465,6 +780,11 @@ export function ScanPage() {
   const { jobId } = useParams<{ jobId: string }>()
   const navigate = useNavigate()
   const [now, setNow] = useState(() => Date.now())
+  const [language, setLanguage] = useState<Language>(() =>
+    window.localStorage.getItem("hawk-eye-language") === "id" ? "id" : "en"
+  )
+  const notificationRef = useRef<string | null>(null)
+  const text = scanText[language]
   const jobQuery = useQuery({
     queryKey: ["job", jobId],
     queryFn: () => api.getJob(jobId || ""),
@@ -487,17 +807,60 @@ export function ScanPage() {
   }, [jobIsActive])
 
   const job = jobQuery.data
-  const site = processedSite(job)
+  const site = processedSite(job, language)
+  const failureMessage = friendlyFailure(job?.error, language)
+
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
+
+  useEffect(() => {
+    if (!job || job.status !== "failed") return
+    const notificationId = `${job.job_id}:failed:${language}`
+    if (notificationRef.current === notificationId) return
+    notificationRef.current = notificationId
+    toast.error(
+      language === "id" ? "Investigasi dihentikan" : "Investigation stopped",
+      {
+        id: `scan-failed-${job.job_id}`,
+        description: friendlyFailure(job.error, language),
+        duration: 12_000,
+        action: {
+          label: language === "id" ? "Kembali" : "Go back",
+          onClick: () => navigate("/"),
+        },
+      }
+    )
+  }, [job, language, navigate])
+
+  useEffect(() => {
+    if (!jobQuery.isError) return
+    toast.error(
+      language === "id"
+        ? "Status investigasi tidak dapat dimuat"
+        : "Investigation status could not be loaded",
+      {
+        id: `scan-query-error-${jobId}`,
+        description: text.unavailableBody,
+        duration: 10_000,
+      }
+    )
+  }, [jobId, jobQuery.isError, language, text.unavailableBody])
+
+  const toggleLanguage = () => {
+    setLanguage((current) => {
+      const next = current === "en" ? "id" : "en"
+      window.localStorage.setItem("hawk-eye-language", next)
+      return next
+    })
+  }
   const elapsedAt = jobIsActive
     ? now
     : job?.updated_at
       ? new Date(job.updated_at).getTime()
       : now
   const groupIndex = job ? currentGroup(job) : 0
-  const [phaseTitle, phaseCopy] = stageCopy[job?.stage ?? "queued"] ?? [
-    titleCase(job?.stage),
-    "Recording the current bounded operation.",
-  ]
+  const [phaseTitle, phaseCopy] = localizedStageCopy(job?.stage, language)
   const pages =
     job?.result?.source_case?.pages?.length ??
     (job?.history ?? []).filter((item) => item.stage === "preserving_artifacts")
@@ -521,12 +884,16 @@ export function ScanPage() {
   if (jobQuery.isError) {
     return (
       <div className="app-page scan-page">
-        <AppHeader context="scan" />
+        <AppHeader
+          context="scan"
+          language={language}
+          onLanguageToggle={toggleLanguage}
+        />
         <main className="scan-error">
           <Warning weight="duotone" />
-          <h1>Investigation state unavailable</h1>
-          <p>{jobQuery.error.message}</p>
-          <Button onClick={() => navigate("/")}>Return to cases</Button>
+          <h1>{text.unavailable}</h1>
+          <p>{text.unavailableBody}</p>
+          <Button onClick={() => navigate("/")}>{text.returnCases}</Button>
         </main>
       </div>
     )
@@ -534,7 +901,11 @@ export function ScanPage() {
 
   return (
     <div className="app-page scan-page">
-      <AppHeader context="scan" />
+      <AppHeader
+        context="scan"
+        language={language}
+        onLanguageToggle={toggleLanguage}
+      />
       <main className="scan-main-page">
         <section
           className={cn(
@@ -543,7 +914,7 @@ export function ScanPage() {
             job?.status === "completed" && "scan-console-complete"
           )}
         >
-          <ScanVisual job={job} site={site} />
+          <ScanVisual job={job} site={site} language={language} />
 
           <div className="scan-progress-panel">
             <div className="scan-target-summary" aria-live="polite">
@@ -551,7 +922,7 @@ export function ScanPage() {
                 <Browser weight="duotone" />
               </span>
               <div>
-                <span>Website being processed</span>
+                <span>{text.siteProcessing}</span>
                 <strong>{site.title}</strong>
                 {site.hostname !== site.title ? (
                   <small>{site.hostname}</small>
@@ -560,9 +931,9 @@ export function ScanPage() {
             </div>
             <header className="scan-phase-heading">
               <div>
-                <p className="eyebrow">CURRENT PHASE</p>
+                <p className="eyebrow">{text.currentPhase}</p>
                 <h1 aria-live="polite">{phaseTitle}</h1>
-                <p>{job?.error || phaseCopy}</p>
+                <p>{job?.status === "failed" ? failureMessage : phaseCopy}</p>
               </div>
               <span className="elapsed-clock">
                 <Clock weight="duotone" />
@@ -576,24 +947,26 @@ export function ScanPage() {
                   <Browser weight="duotone" />
                 </span>
                 <strong>{pages}</strong>
-                <p>Pages captured</p>
-                <small>{queue ?? "—"} queued</small>
+                <p>{text.pages}</p>
+                <small>
+                  {queue ?? "—"} {text.queued}
+                </small>
               </article>
               <article>
                 <span>
                   <Binoculars weight="duotone" />
                 </span>
                 <strong>{evidence ?? "—"}</strong>
-                <p>Evidence observations</p>
-                <small>Deterministic extractors</small>
+                <p>{text.observations}</p>
+                <small>{text.extractor}</small>
               </article>
               <article>
                 <span>
                   <Clock weight="duotone" />
                 </span>
                 <strong>{formatElapsed(job?.started_at, elapsedAt)}</strong>
-                <p>Elapsed time</p>
-                <small>Bounded collector and agent timing</small>
+                <p>{text.elapsed}</p>
+                <small>{text.timing}</small>
               </article>
               <article>
                 <span>
@@ -602,8 +975,12 @@ export function ScanPage() {
                 <strong>
                   {groupIndex + 1} / {stageGroups.length}
                 </strong>
-                <p>Pipeline stage</p>
-                <small>{job?.stage ? titleCase(job.stage) : "Loading"}</small>
+                <p>{text.pipeline}</p>
+                <small>
+                  {job?.stage
+                    ? localizedStageCopy(job.stage, language)[0]
+                    : text.loading}
+                </small>
               </article>
             </div>
 
@@ -616,7 +993,7 @@ export function ScanPage() {
                 const failed = index === groupIndex && job?.status === "failed"
                 return (
                   <li
-                    key={group.label}
+                    key={group.label.en}
                     className={cn(
                       reached && "stage-reached",
                       active && "stage-active",
@@ -628,15 +1005,15 @@ export function ScanPage() {
                       {reached ? <Check weight="bold" /> : index + 1}
                     </span>
                     <Icon weight="duotone" />
-                    <strong>{group.label}</strong>
+                    <strong>{group.label[language]}</strong>
                     <small>
                       {failed
-                        ? "Stopped"
+                        ? text.stopped
                         : reached
-                          ? "Completed"
+                          ? text.completed
                           : active
-                            ? "In progress"
-                            : "Pending"}
+                            ? text.inProgress
+                            : text.pending}
                     </small>
                   </li>
                 )
@@ -649,7 +1026,7 @@ export function ScanPage() {
                 size="lg"
                 onClick={() => navigate(`/workspace/run/${workspaceId}`)}
               >
-                Open evidence workspace <ArrowRight weight="bold" />
+                {text.openWorkspace} <ArrowRight weight="bold" />
               </Button>
             ) : null}
             {job?.status === "failed" ? (
@@ -659,7 +1036,7 @@ export function ScanPage() {
                 size="lg"
                 onClick={() => navigate("/")}
               >
-                Return to investigation form
+                {text.returnForm}
               </Button>
             ) : null}
           </div>
@@ -667,19 +1044,24 @@ export function ScanPage() {
 
         <section className="activity-console">
           <header>
-            <div>
-              <Pulse weight="fill" />
-              <span>LIVE ACTIVITY STREAM</span>
+            <div className="activity-heading">
+              <span className="activity-heading-icon">
+                <Pulse weight="fill" />
+              </span>
+              <span>
+                <strong>{text.activity}</strong>
+                <small>{text.activityHint}</small>
+              </span>
             </div>
             <Badge variant="outline" aria-live="polite">
               <span
                 className={cn("live-dot", !jobIsActive && "live-dot-static")}
               />{" "}
               {job?.status === "completed"
-                ? "Captured"
+                ? text.captured
                 : job?.status === "failed"
-                  ? "Stopped"
-                  : "Live"}
+                  ? text.stopped
+                  : text.live}
             </Badge>
           </header>
           <ScrollArea className="activity-scroll">
@@ -687,14 +1069,18 @@ export function ScanPage() {
               {history.length ? (
                 history.map((entry, index) => {
                   const Icon = stageIcon(entry.stage)
-                  const [label, copy] = stageCopy[entry.stage] ?? [
-                    titleCase(entry.stage),
-                    "Persisted bounded stage transition.",
-                  ]
+                  const [label, copy] = localizedStageCopy(
+                    entry.stage,
+                    language
+                  )
                   return (
                     <article
                       key={`${entry.stage}:${entry.at}:${index}`}
-                      className="activity-row"
+                      className={cn(
+                        "activity-row",
+                        index === history.length - 1 && "activity-row-latest",
+                        entry.stage === "failed" && "activity-row-failed"
+                      )}
                       style={{
                         animationDelay: `${Math.min(index * 25, 200)}ms`,
                       }}
@@ -710,8 +1096,7 @@ export function ScanPage() {
                 })
               ) : (
                 <article className="activity-empty">
-                  <SpinnerGap className="animate-spin" /> Waiting for the first
-                  persisted stage…
+                  <SpinnerGap className="animate-spin" /> {text.waitingActivity}
                 </article>
               )}
             </div>
@@ -720,18 +1105,18 @@ export function ScanPage() {
 
         <section className="technical-strip">
           <span className="technical-label">
-            <Code weight="duotone" /> TECHNICAL PROGRESS
+            <Code weight="duotone" /> {text.technicalProgress}
           </span>
           <div>
             {history.slice(-8).map((entry, index) => (
               <span key={`${entry.stage}:${index}`}>
-                <i /> {titleCase(entry.stage)}{" "}
+                <i /> {localizedStageCopy(entry.stage, language)[0]}{" "}
                 <time>{formatTime(entry.at)}</time>
               </span>
             ))}
             {!history.length ? (
               <span>
-                <i /> Browser worker pending
+                <i /> {text.browserPending}
               </span>
             ) : null}
           </div>
@@ -741,8 +1126,7 @@ export function ScanPage() {
         <aside className="scan-boundary">
           <ShieldCheck weight="duotone" />
           <span>
-            <b>Evidence boundary active.</b> HAWK-EYE will not sign in, submit
-            forms, message contacts, purchase, or bypass access controls.
+            <b>{text.boundaryTitle}</b> {text.boundaryBody}
           </span>
           <Sparkle weight="duotone" />
         </aside>

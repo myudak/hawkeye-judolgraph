@@ -1917,9 +1917,9 @@ button:disabled {
 }
 .scan-phase-heading h1 {
   margin-top: 6px;
-  font: 720 clamp(1.55rem, 3vw, 2.65rem)/1 var(--font-heading);
+  max-width: 18ch;
+  font: 720 clamp(1.55rem, 3vw, 2.55rem)/1.03 var(--font-heading);
   letter-spacing: -0.035em;
-  text-transform: uppercase;
 }
 .scan-phase-heading > div > p:last-child {
   margin-top: 10px;
@@ -2082,16 +2082,35 @@ button:disabled {
   padding: 0 17px;
   border-bottom: 1px solid var(--instrument-line);
 }
-.activity-console > header > div {
+.activity-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--instrument-muted);
-  font: 700 0.58rem var(--font-sans);
-  letter-spacing: 0.09em;
+  gap: 10px;
 }
-.activity-console > header svg {
+.activity-heading-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgb(239 39 111 / 18%);
+  border-radius: 9px;
+  background: rgb(239 39 111 / 6%);
+}
+.activity-heading-icon svg {
   color: var(--signal-pink);
+}
+.activity-heading > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+.activity-heading strong {
+  color: var(--foreground);
+  font: 690 0.68rem var(--font-heading);
+  letter-spacing: -0.01em;
+}
+.activity-heading small {
+  color: var(--instrument-quiet);
+  font-size: 0.52rem;
 }
 .activity-scroll {
   height: 235px;
@@ -2100,6 +2119,7 @@ button:disabled {
   display: grid;
 }
 .activity-row {
+  position: relative;
   display: grid;
   grid-template-columns: 32px minmax(140px, 0.34fr) minmax(0, 1fr) auto;
   min-height: 45px;
@@ -2108,6 +2128,24 @@ button:disabled {
   padding: 7px 16px;
   border-bottom: 1px solid rgba(135, 170, 195, 0.09);
   animation: activity-in 260ms ease both;
+}
+.activity-row-latest {
+  background: linear-gradient(90deg, rgb(239 39 111 / 5%), transparent 44%);
+}
+.activity-row-latest::before {
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--signal-pink);
+  content: "";
+}
+.activity-row-failed {
+  background: linear-gradient(90deg, rgb(255 87 109 / 8%), transparent 48%);
+}
+.activity-row-failed .activity-icon {
+  color: var(--signal-red);
+  background: rgb(255 87 109 / 9%);
 }
 .activity-icon {
   display: grid;
