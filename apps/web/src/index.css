@@ -1381,14 +1381,10 @@ button:disabled {
   background:
     radial-gradient(
       circle at 50% 34%,
-      color-mix(in srgb, var(--signal-cyan) 10%, transparent),
+      rgba(34, 113, 154, 0.12),
       transparent 48%
     ),
-    linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--signal-pink) 2%, var(--instrument-panel-solid)),
-      var(--instrument-panel-raised)
-    );
+    linear-gradient(155deg, rgba(3, 13, 22, 0.98), rgba(5, 17, 28, 0.94));
   isolation: isolate;
 }
 .scan-preview-panel::before {
@@ -1892,10 +1888,10 @@ button:disabled {
   height: 38px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--signal-pink) 32%, transparent);
+  border: 1px solid rgba(239, 39, 111, 0.32);
   border-radius: 10px;
   color: var(--signal-pink);
-  background: color-mix(in srgb, var(--signal-pink) 7%, transparent);
+  background: rgba(239, 39, 111, 0.07);
 }
 .scan-target-icon svg {
   width: 21px;
@@ -4069,6 +4065,17 @@ button:disabled {
 
 :root[data-theme="light"] .brand-hero-banner {
   background: #ffffff;
+}
+
+:root[data-theme="light"] .scan-preview-panel {
+  background:
+    radial-gradient(circle at 50% 34%, rgb(55 143 181 / 8%), transparent 48%),
+    linear-gradient(155deg, #ffffff, #f3f7f9);
+}
+
+:root[data-theme="light"] .scan-target-icon {
+  border-color: rgb(213 22 91 / 24%);
+  background: rgb(213 22 91 / 6%);
 }
 
 :root[data-theme="light"] .graph-panel {
