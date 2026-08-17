@@ -1,0 +1,67 @@
+---
+import { ArrowUpRightIcon, PlayIcon } from "@phosphor-icons/react";
+
+const videoUrl = "https://youtu.be/IieM4sbExk0";
+const embedUrl = "https://www.youtube-nocookie.com/embed/IieM4sbExk0?rel=0";
+---
+
+<section
+  id="video"
+  class="mx-auto w-full max-w-[90rem] scroll-mt-28 px-5 pb-20 sm:px-8 sm:pb-28"
+  aria-labelledby="video-title"
+>
+  <div class="grid gap-8 lg:grid-cols-[0.58fr_1.42fr] lg:items-end">
+    <div class="max-w-xl pb-2">
+      <div class="flex size-11 items-center justify-center rounded-xl border border-primary/35 bg-primary/10 text-primary">
+        <PlayIcon className="size-5" weight="fill" aria-hidden="true" />
+      </div>
+      <h2
+        id="video-title"
+        class="mt-5 text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl"
+      >
+        <span class="lang-id">Lihat alur investigasinya.</span>
+        <span class="lang-en">Watch the investigation flow.</span>
+      </h2>
+      <p class="mt-4 text-base leading-7 text-muted-foreground">
+        <span class="lang-id"
+          >Video ini memperlihatkan pengumpulan halaman, pembentukan graph, pemeriksaan
+          artefak, dan replay kasus dalam HAWK-EYE.</span
+        >
+        <span class="lang-en"
+          >This video shows page collection, graph construction, artifact inspection,
+          and case replay in HAWK-EYE.</span
+        >
+      </p>
+      <a
+        class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+        href={videoUrl}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <span class="lang-id">Buka di YouTube</span>
+        <span class="lang-en">Open on YouTube</span>
+        <ArrowUpRightIcon aria-hidden="true" />
+      </a>
+    </div>
+
+    <div
+      class="relative overflow-hidden rounded-2xl border border-border bg-card shadow-[0_30px_90px_rgb(0_0_0/0.28)]"
+    >
+      <div class="flex items-center justify-between border-b border-border px-5 py-3 font-mono text-[0.68rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+        <span>HAWK-EYE</span>
+        <span><span class="lang-id">Video demonstrasi</span><span class="lang-en">Demo video</span></span>
+      </div>
+      <div class="aspect-video bg-black">
+        <iframe
+          class="size-full border-0"
+          src={embedUrl}
+          title="Demonstrasi alur investigasi HAWK-EYE"
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
+  </div>
+</section>

@@ -7,11 +7,13 @@ import EvaluationSection from "../components/EvaluationSection.astro";
 import EvidenceSection from "../components/EvidenceSection.astro";
 import Hero from "../components/Hero.astro";
 import InstitutionStrip from "../components/InstitutionStrip.astro";
+import OpenSourceSection from "../components/OpenSourceSection.astro";
 import ProductDemoSection from "../components/ProductDemoSection.astro";
 import SafetySection from "../components/SafetySection.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import TechnologySection from "../components/TechnologySection.astro";
+import VideoSection from "../components/VideoSection.astro";
 import { windowsRelease } from "../lib/release";
 
 const repositoryUrl = "https://github.com/myudak/hawkeye-judolgraph";
@@ -48,6 +50,7 @@ const description =
         </div>
       </section>
 
+      <VideoSection />
       <ProductDemoSection />
       <EvidenceSection />
       <AgentSection />
@@ -55,6 +58,7 @@ const description =
       <EvaluationSection {repositoryUrl} />
       <SafetySection />
       <CompareSection />
+      <OpenSourceSection {repositoryUrl} />
       <InstitutionStrip />
       <ClosingCTA {demoUrl} {release} />
     </main>

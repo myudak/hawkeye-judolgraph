@@ -60,6 +60,8 @@ export function MobileNavDrawer({
     { id: "Cara kerja", en: "How it works", href: "#how-it-works" },
     { id: "Teknologi", en: "Technology", href: "#technology" },
     { id: "Evaluasi", en: "Evaluation", href: "#evaluation" },
+    { id: "Video", en: "Video", href: "#video" },
+    { id: "Kode sumber", en: "Source code", href: "#open-source" },
     { id: "Batas pengumpulan", en: "Collection limits", href: "#safety" },
   ];
 

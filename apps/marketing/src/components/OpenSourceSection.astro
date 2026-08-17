@@ -1,0 +1,62 @@
+---
+import { ArrowUpRightIcon, GitForkIcon, GithubLogoIcon } from "@phosphor-icons/react";
+
+interface Props {
+  repositoryUrl: string;
+}
+
+const { repositoryUrl } = Astro.props;
+---
+
+<section
+  id="open-source"
+  class="mx-auto w-full max-w-[90rem] scroll-mt-28 px-5 pb-20 sm:px-8 sm:pb-28"
+  aria-labelledby="open-source-title"
+>
+  <div
+    class="relative isolate overflow-hidden rounded-2xl border border-primary/35 bg-[radial-gradient(circle_at_85%_15%,color-mix(in_srgb,var(--hk-pink)_18%,transparent),transparent_26rem),var(--card)] p-7 sm:p-10 lg:p-14"
+  >
+    <div
+      class="pointer-events-none absolute inset-y-0 right-[12%] -z-10 w-px bg-gradient-to-b from-transparent via-primary/45 to-transparent"
+      aria-hidden="true"
+    ></div>
+    <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div class="max-w-4xl">
+        <GithubLogoIcon className="size-12 text-primary" weight="fill" aria-hidden="true" />
+        <h2
+          id="open-source-title"
+          class="mt-6 text-4xl font-semibold tracking-[-0.05em] text-foreground sm:text-6xl"
+        >
+          <span class="lang-id">Kode sumber terbuka.</span>
+          <span class="lang-en">Open source.</span>
+        </h2>
+        <p class="mt-4 max-w-3xl text-lg leading-8 text-muted-foreground sm:text-xl">
+          <span class="lang-id"
+            >Tidak cocok dengan suatu bagian? Periksa implementasinya, ubah, atau fork
+            sendiri. Collector, model bukti, graph, evaluasi, dan riwayat keputusan dapat
+            dilihat langsung di repository.</span
+          >
+          <span class="lang-en"
+            >Do not like a part of it? Inspect the implementation, change it, or fork it.
+            The collector, evidence model, graph, evaluation, and decision history are
+            available in the repository.</span
+          >
+        </p>
+        <p class="mt-5 font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
+          MIT License · github.com/myudak/hawkeye-judolgraph
+        </p>
+      </div>
+      <a
+        class="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_16px_42px_rgb(237_23_100/0.24)] transition hover:-translate-y-0.5 hover:bg-primary/85"
+        href={repositoryUrl}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <GitForkIcon className="size-5" weight="bold" aria-hidden="true" />
+        <span class="lang-id">Lihat kode di GitHub</span>
+        <span class="lang-en">View the code on GitHub</span>
+        <ArrowUpRightIcon aria-hidden="true" />
+      </a>
+    </div>
+  </div>
+</section>
