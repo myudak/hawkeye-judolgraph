@@ -1,5 +1,8 @@
 import { ArrowSquareOut, Plus, Translate } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
+import { resetDemo } from "@/api/client"
+import { isDemo } from "@/lib/runtime"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -32,7 +35,19 @@ export function AppHeader({
   onLanguageToggle?: () => void
 }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { cases, runs } = useIndexes()
+  const currentRun = runs.find(
+    (run) => `run:${run.workspace_id}` === currentValue
+  )
+  const currentCase = cases.find(
+    (item) => `case:${item.case_id}` === currentValue
+  )
+  const currentLabel = currentRun
+    ? `${hostnameFrom(currentRun.seed_url || currentRun.case_id)} · ${titleCase(currentRun.lead_status)}`
+    : currentCase
+      ? `${hostnameFrom(currentCase.final_url_display)} · ${titleCase(currentCase.capture_adequacy)}`
+      : "Select saved evidence"
 
   const openEvidence = (value: string | null) => {
     if (!value) return
@@ -45,7 +60,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="app-header">
+    <header className="app-header" data-demo={isDemo || undefined}>
       <button
         className="brand-button"
         type="button"
@@ -60,7 +75,9 @@ export function AppHeader({
             className="header-case-select"
             aria-label="Open saved evidence"
           >
-            <SelectValue placeholder="Select saved evidence" />
+            <SelectValue placeholder="Select saved evidence">
+              {currentLabel}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {runs.map((run) => (
@@ -88,7 +105,22 @@ export function AppHeader({
 
       <div className="header-actions">
         <ThemeMenu language={language} />
-        <SettingsDialog language={language} />
+        {isDemo ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Reset demo"
+            onClick={() => {
+              resetDemo()
+              queryClient.clear()
+              navigate("/")
+            }}
+          >
+            Reset<span className="header-reset-suffix"> demo</span>
+          </Button>
+        ) : (
+          <SettingsDialog language={language} />
+        )}
         {onLanguageToggle ? (
           <Button
             className="header-language"
@@ -112,19 +144,36 @@ export function AppHeader({
             render={
               <Button
                 className="header-action"
+                aria-label={
+                  isDemo
+                    ? language === "id"
+                      ? "Pilih skenario"
+                      : "Choose scenario"
+                    : undefined
+                }
                 onClick={() => navigate("/")}
                 variant={context === "landing" ? "default" : "outline"}
               >
                 <Plus weight="bold" />
-                {language === "id" ? "Investigasi baru" : "New investigation"}
+                <span className="header-action-label">
+                  {isDemo
+                    ? language === "id"
+                      ? "Pilih skenario"
+                      : "Choose scenario"
+                    : language === "id"
+                      ? "Investigasi baru"
+                      : "New investigation"}
+                </span>
                 {context === "landing" ? null : <ArrowSquareOut />}
               </Button>
             }
           />
           <TooltipContent>
-            {language === "id"
-              ? "Mulai investigasi publik baru yang terkontrol"
-              : "Start a new bounded public investigation"}
+            {isDemo
+              ? "Explore a sample investigation"
+              : language === "id"
+                ? "Mulai investigasi publik baru yang terkontrol"
+                : "Start a new bounded public investigation"}
           </TooltipContent>
         </Tooltip>
       </div>

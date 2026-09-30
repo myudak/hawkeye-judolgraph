@@ -971,7 +971,15 @@ export function buildRunProjection(details: RunDetails): GraphProjection {
       event,
     })
   }
-  return { nodes, edges, timeline, mode: "Live investigation replay" }
+  return {
+    nodes,
+    edges,
+    timeline,
+    mode:
+      details.source_kind === "synthetic_fixture"
+        ? "Sample investigation replay"
+        : "Live investigation replay",
+  }
 }
 
 export function timelinePresentation(item: TimelineItem): {

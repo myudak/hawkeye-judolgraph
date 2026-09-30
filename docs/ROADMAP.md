@@ -3,6 +3,15 @@
 This roadmap records boundaries, not promises. A future milestone begins only after its scope and
 acceptance criteria are documented and reviewed.
 
+## Public interactive demo — completed
+
+A static build reuses the investigator UI with three authored fictional scenarios and an explicit
+sample-data boundary. Dropdown selection, accelerated scan playback, graph/timeline, source
+screenshots, approval/review, session reset, tutorial, and browser-generated reports run without a
+backend. Static verification rejects API/external requests and exercises subpath hosting and mobile
+flows. See `STATIC_DEMO.md` and ADR-040. Offline installation, new agent frameworks, authentication,
+and expanded research evaluation remain separate future milestones.
+
 ## Verified baseline — completed
 
 - **V0 — Seed to Evidence Graph:** safe public URL validation, bounded Playwright collection,

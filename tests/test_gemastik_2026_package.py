@@ -7,8 +7,14 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "competition" / "gemastik-2026"
+pytestmark = pytest.mark.skipif(
+    not PACKAGE.is_dir(),
+    reason="The optional GEMASTIK submission archive is not included in public checkouts.",
+)
 MARKDOWN_IMAGE = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
 
 

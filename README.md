@@ -110,7 +110,7 @@ The interface is organized around a single evidence trail:
 ```text
 apps/                       API, investigator app, and static marketing site
 packages/                   Shared brand, design, graph, and UI packages
-competition/gemastik-2026/  Proposal, technical sources, submission material, and assets
+competition/gemastik-2026/  Optional local submission archive (excluded from public checkout)
 distribution/windows/       PyInstaller and installer definitions
 evaluation/                 Controlled fixtures and benchmark inputs
 infra/docker/               Chromium seccomp and container guidance
@@ -148,6 +148,20 @@ data/                       Local cases and SQLite workspace (ignored)
 | Tooling             | pnpm workspace, uv lockfile, multi-stage Docker build        |
 
 ## Quick start
+
+### Interactive demo — no backend
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev:demo
+```
+
+Choose a fictional scenario and explore capture playback, the evidence graph, source screenshots,
+human review, and report export. The demo accepts only bundled samples and never contacts the API,
+a live target, or a model provider. Reviews stay in the current browser session.
+
+`pnpm build:demo` produces `apps/web/dist-demo/` for static hosting; `pnpm preview:demo` previews it.
+See [demo setup and verification](docs/STATIC_DEMO.md) for deployment settings and limitations.
 
 ### Option A — Windows app
 
@@ -300,7 +314,7 @@ controlled local fixtures.
 - [Deployment and backup guide](docs/operations/DEPLOYMENT.md)
 - [Windows application and release guide](docs/operations/WINDOWS_DISTRIBUTION.md)
 - [Docker runtime notes](infra/docker/README.md)
-- [GEMASTIK 2026 package](competition/gemastik-2026/README.md)
+- [Backend-free interactive demo](docs/STATIC_DEMO.md)
 
 ## Project story
 

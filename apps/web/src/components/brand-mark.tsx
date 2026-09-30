@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme-provider"
+import { isDemo, publicAssetUrl } from "@/lib/runtime"
 
-const hawkeyeAvatar = "/assets/hawkeye-avatar.png"
-const hawkeyeAvatarLight = "/assets/hawkeye-avatar-light.jpg"
-const hawkeyeRadarLight = "/assets/hawkeye-radar-light.jpg"
+const hawkeyeAvatar = publicAssetUrl("hawkeye-avatar.png")
+const hawkeyeAvatarLight = publicAssetUrl("hawkeye-avatar-light.jpg")
+const hawkeyeRadarLight = publicAssetUrl("hawkeye-radar-light.jpg")
 
 export function HawkMark({
   className,
@@ -33,7 +34,13 @@ export function BrandLockup({ compact = false }: { compact?: boolean }) {
       <HawkMark />
       <span className="min-w-0">
         <strong>HAWK-EYE</strong>
-        {compact ? null : <small>ALAT INVESTIGASI EKOSISTEM JUDI ONLINE</small>}
+        {compact ? null : (
+          <small className={isDemo ? "demo-label" : undefined}>
+            {isDemo
+              ? "Demo · Sample data"
+              : "ALAT INVESTIGASI EKOSISTEM JUDI ONLINE"}
+          </small>
+        )}
       </span>
     </span>
   )

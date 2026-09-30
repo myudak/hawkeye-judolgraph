@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
+import { isDemo } from "@/lib/runtime"
 
 import { api, jobPreviewUrl } from "@/api/client"
 import type { InvestigationJob, JobPreview } from "@/api/types"
@@ -933,7 +934,15 @@ export function ScanPage() {
               <div>
                 <p className="eyebrow">{text.currentPhase}</p>
                 <h1 aria-live="polite">{phaseTitle}</h1>
-                <p>{job?.status === "failed" ? failureMessage : phaseCopy}</p>
+                <p>
+                  {job?.status === "failed"
+                    ? failureMessage
+                    : isDemo
+                      ? language === "id"
+                        ? "Pemutaran dipercepat dari data contoh. Tidak ada situs atau model yang dihubungi."
+                        : "Accelerated sample playback. No website or model is contacted."
+                      : phaseCopy}
+                </p>
               </div>
               <span className="elapsed-clock">
                 <Clock weight="duotone" />
@@ -966,7 +975,13 @@ export function ScanPage() {
                 </span>
                 <strong>{formatElapsed(job?.started_at, elapsedAt)}</strong>
                 <p>{text.elapsed}</p>
-                <small>{text.timing}</small>
+                <small>
+                  {isDemo
+                    ? language === "id"
+                      ? "Waktu pemutaran"
+                      : "Playback time"
+                    : text.timing}
+                </small>
               </article>
               <article>
                 <span>

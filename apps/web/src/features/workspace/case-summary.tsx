@@ -18,6 +18,7 @@ import {
   type VisualKind,
 } from "@/lib/graph"
 import { hostnameFrom, titleCase } from "@/lib/format"
+import { isDemo } from "@/lib/runtime"
 
 const EMPTY_INDICATORS: IndicatorSummary = {
   status: "insufficient_evidence",
@@ -144,9 +145,14 @@ export function CaseSummary({
             </span>
             <h1>{hostname}</h1>
             <p>
-              {source.kind === "run"
-                ? `Event-sourced investigation using ${["model", "codex"].includes(run?.agent_mode || "") ? run?.agent_model || "a configured model" : "the deterministic safe fallback"}. Animation never creates evidence.`
-                : "Verified public capture. Graph nodes are observations and destinations, not identity or ownership conclusions."}
+              {isDemo
+                ? tr(
+                    "Authored sample evidence and events. Playback does not perform collection or model inference.",
+                    "Bukti dan event contoh yang disusun untuk demo. Pemutaran tidak melakukan pengumpulan atau inferensi model."
+                  )
+                : source.kind === "run"
+                  ? `Event-sourced investigation using ${["model", "codex"].includes(run?.agent_mode || "") ? run?.agent_model || "a configured model" : "the deterministic safe fallback"}. Animation never creates evidence.`
+                  : "Verified public capture. Graph nodes are observations and destinations, not identity or ownership conclusions."}
             </p>
             <div className="status-row">
               {statuses.filter(Boolean).map((status) => (

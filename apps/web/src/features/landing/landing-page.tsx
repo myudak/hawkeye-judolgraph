@@ -50,9 +50,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useCapability, useIndexes } from "@/hooks/use-indexes"
 import { formatTime, hostnameFrom, titleCase } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { isDemo, publicAssetUrl } from "@/lib/runtime"
+import { demoScenarios } from "@/demo/scenarios"
 
-const hawkeyeBanner = "/assets/hawkeye-banner.png"
-const hawkeyeBannerLight = "/assets/hawkeye-banner-light.jpg"
+const hawkeyeBanner = publicAssetUrl("hawkeye-banner.png")
+const hawkeyeBannerLight = publicAssetUrl("hawkeye-banner-light.jpg")
 
 const exampleSites = [
   "https://888.com",
@@ -275,6 +277,39 @@ const landingCopy = {
   },
 } as const
 
+const demoCopy = {
+  en: {
+    launchTitle: "Explore an investigation",
+    launchDescription:
+      "Choose a fictional scenario and follow the evidence trail.",
+    seedLabel: "Sample scenario",
+    scopeTitle: "Local sample playback.",
+    scopeBody:
+      "No live collection or model requests. Reviews stay in this browser session.",
+    startInvestigation: "Start demo",
+    safeFallback: "Sample workflow",
+    cases: "Sample cases",
+    casesDescription:
+      "Open a saved example directly, or start the guided playback above.",
+    immutableBody:
+      "Authored sample artifacts include source files and SHA-256 hashes.",
+  },
+  id: {
+    launchTitle: "Jelajahi alur investigasi",
+    launchDescription: "Pilih skenario fiktif dan ikuti jejak buktinya.",
+    seedLabel: "Skenario contoh",
+    scopeTitle: "Pemutaran contoh lokal.",
+    scopeBody:
+      "Tanpa pengumpulan langsung atau permintaan model. Review tersimpan di sesi browser ini.",
+    startInvestigation: "Mulai demo",
+    safeFallback: "Alur contoh",
+    cases: "Kasus contoh",
+    casesDescription:
+      "Buka contoh tersimpan langsung, atau mulai pemutaran terpandu di atas.",
+    immutableBody: "Artefak contoh menyertakan file sumber dan hash SHA-256.",
+  },
+}
+
 function localizedStateLabel(entry: CaseEntry, language: Language) {
   if (language === "en") return entry.stateLabel
   if (entry.state === "error") return "Error integritas"
@@ -388,7 +423,9 @@ export function LandingPage() {
     staleTime: 0,
     retry: false,
   })
-  const [seedUrl, setSeedUrl] = useState("https://qq101xfw.com")
+  const [seedUrl, setSeedUrl] = useState<string>(
+    isDemo ? demoScenarios[0].seedUrl : "https://qq101xfw.com"
+  )
   const [investigationName, setInvestigationName] = useState("")
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<CaseFilter>("all")
@@ -398,7 +435,13 @@ export function LandingPage() {
     window.localStorage.getItem("hawk-eye-language") === "id" ? "id" : "en"
   )
   const deferredQuery = useDeferredValue(query)
-  const copy = landingCopy[language]
+  const copy = {
+    ...landingCopy[language],
+    ...(isDemo ? demoCopy[language] : {}),
+  }
+  const selectedScenario =
+    demoScenarios.find((scenario) => scenario.seedUrl === seedUrl) ??
+    demoScenarios[0]
 
   useEffect(() => {
     document.documentElement.lang = language
@@ -414,6 +457,7 @@ export function LandingPage() {
     mutationFn: api.startJob,
     onSuccess: (job) => {
       queryClient.setQueryData(["job", job.job_id], job)
+      if (isDemo) void queryClient.invalidateQueries({ queryKey: ["runs"] })
       navigate(`/scan/${job.job_id}`)
     },
     onError: (error) => toast.error(error.message),
@@ -500,76 +544,110 @@ export function LandingPage() {
           <form className="launch-form" onSubmit={submit}>
             <div className="field-stack launch-url-field">
               <Label htmlFor="seed-url">{copy.seedLabel}</Label>
-              <span className="input-shell">
-                <LinkSimple weight="bold" />
-                <Input
-                  id="seed-url"
-                  type="url"
-                  required
+              {isDemo ? (
+                <Select
                   value={seedUrl}
-                  onChange={(event) => setSeedUrl(event.target.value)}
-                  placeholder={copy.seedPlaceholder}
-                  autoComplete="url"
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <button
-                        className="seed-example-trigger"
-                        type="button"
-                        aria-label={copy.chooseExample}
-                        title={copy.chooseExample}
-                      >
-                        <span>{copy.exampleSites}</span>
-                        <CaretDown weight="bold" />
-                      </button>
-                    }
-                  />
-                  <DropdownMenuContent
-                    align="end"
-                    className="seed-example-menu w-72"
+                  onValueChange={(value) => value && setSeedUrl(value)}
+                >
+                  <SelectTrigger
+                    id="seed-url"
+                    className="demo-scenario-select"
+                    aria-label={copy.seedLabel}
                   >
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>{copy.knownSites}</DropdownMenuLabel>
-                      {exampleSites.map((site) => (
-                        <DropdownMenuItem
-                          key={site}
-                          onClick={() => setSeedUrl(site)}
+                    <SelectValue>
+                      {selectedScenario.title[language]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {demoScenarios.map((scenario) => (
+                      <SelectItem key={scenario.id} value={scenario.seedUrl}>
+                        {scenario.title[language]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="input-shell">
+                  <LinkSimple weight="bold" />
+                  <Input
+                    id="seed-url"
+                    type="url"
+                    required
+                    value={seedUrl}
+                    onChange={(event) => setSeedUrl(event.target.value)}
+                    placeholder={copy.seedPlaceholder}
+                    autoComplete="url"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          className="seed-example-trigger"
+                          type="button"
+                          aria-label={copy.chooseExample}
+                          title={copy.chooseExample}
                         >
-                          <GlobeHemisphereWest />
-                          <span>{hostnameFrom(site)}</span>
-                          {seedUrl === site ? (
+                          <span>{copy.exampleSites}</span>
+                          <CaretDown weight="bold" />
+                        </button>
+                      }
+                    />
+                    <DropdownMenuContent
+                      align="end"
+                      className="seed-example-menu w-72"
+                    >
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>{copy.knownSites}</DropdownMenuLabel>
+                        {exampleSites.map((site) => (
+                          <DropdownMenuItem
+                            key={site}
+                            onClick={() => setSeedUrl(site)}
+                          >
+                            <GlobeHemisphereWest />
+                            <span>{hostnameFrom(site)}</span>
+                            {seedUrl === site ? (
+                              <CheckCircle className="ml-auto" weight="fill" />
+                            ) : null}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                          {copy.controlSite}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => setSeedUrl(controlSite)}
+                        >
+                          <ShieldCheck />
+                          <span>{hostnameFrom(controlSite)}</span>
+                          {seedUrl === controlSite ? (
                             <CheckCircle className="ml-auto" weight="fill" />
                           ) : null}
                         </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuGroup>
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>{copy.controlSite}</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setSeedUrl(controlSite)}>
-                        <ShieldCheck />
-                        <span>{hostnameFrom(controlSite)}</span>
-                        {seedUrl === controlSite ? (
-                          <CheckCircle className="ml-auto" weight="fill" />
-                        ) : null}
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </span>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </span>
+              )}
             </div>
-            <div className="field-stack">
-              <Label htmlFor="investigation-name">
-                {copy.nameLabel} <span>({copy.optional})</span>
-              </Label>
-              <Input
-                id="investigation-name"
-                value={investigationName}
-                onChange={(event) => setInvestigationName(event.target.value)}
-                placeholder={copy.namePlaceholder}
-                maxLength={200}
-              />
-            </div>
+            {isDemo ? (
+              <p className="demo-scenario-description">
+                {selectedScenario.description[language]}
+              </p>
+            ) : (
+              <div className="field-stack">
+                <Label htmlFor="investigation-name">
+                  {copy.nameLabel} <span>({copy.optional})</span>
+                </Label>
+                <Input
+                  id="investigation-name"
+                  value={investigationName}
+                  onChange={(event) => setInvestigationName(event.target.value)}
+                  placeholder={copy.namePlaceholder}
+                  maxLength={200}
+                />
+              </div>
+            )}
             <div className="launch-footer">
               <div className="scope-notice">
                 <LockKey weight="duotone" />
@@ -632,7 +710,13 @@ export function LandingPage() {
                 onValueChange={(value) => setSort(value ?? "newest")}
               >
                 <SelectTrigger className="sort-select" aria-label={copy.sort}>
-                  <SelectValue />
+                  <SelectValue>
+                    {sort === "newest"
+                      ? copy.newest
+                      : sort === "oldest"
+                        ? copy.oldest
+                        : copy.domain}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">{copy.newest}</SelectItem>

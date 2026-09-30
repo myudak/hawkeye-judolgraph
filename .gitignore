@@ -10,6 +10,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+dist-demo/
 *.spec.bak
 *.ovpn
 vpn-secrets/

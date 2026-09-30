@@ -7,6 +7,76 @@
 
 @custom-variant dark (&:is([data-theme="dark"] *));
 
+.demo-label {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.demo-scenario-select {
+  width: 100%;
+  height: 48px;
+}
+.demo-scenario-description {
+  align-self: end;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+.demo-guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  font-size: 0.875rem;
+}
+.demo-guide p {
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+.demo-guide-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.demo-guide-closed { margin-bottom: 10px; }
+.demo-report-note {
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+@media (max-width: 800px) {
+  .demo-guide { flex-direction: column; align-items: flex-start; }
+  .demo-guide-actions { flex-wrap: wrap; }
+  .demo-label { white-space: normal; max-width: 80px; }
+}
+@media print {
+  .demo-label { display: inline; color: black; }
+}
+@media (max-width: 600px) {
+  .app-header[data-demo] { grid-template-columns: 1fr; }
+  .app-header[data-demo] .brand-button { grid-column: 1; grid-row: 1; }
+  .app-header[data-demo] .header-actions { grid-column: 1; grid-row: 2; justify-content: space-between; }
+  .app-header[data-demo] .header-case-select { grid-row: 3; }
+  .app-header[data-demo] .brand-lockup strong { white-space: nowrap; }
+  .app-header[data-demo] .header-actions { gap: 4px; }
+  .app-header[data-demo] .header-reset-suffix { display: none; }
+  .app-header[data-demo] .brand-lockup small.demo-label { font-size: 0.625rem; letter-spacing: 0.01em; }
+  .app-header[data-demo] .brand-lockup small.demo-label { display: block; max-width: none; }
+  .app-header[data-demo] .header-action-label { display: none; }
+  .app-header[data-demo] .header-action svg:first-child { display: block; }
+  .app-header[data-demo] .header-action svg:last-child:not(:first-child) { display: none; }
+}
+
 :root[data-theme="light"] {
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);

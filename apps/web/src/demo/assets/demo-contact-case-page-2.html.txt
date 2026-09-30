@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public contact</title><style>
+body { margin: 0; background: #eef2f5; color: #182e3f; font: 18px Arial, sans-serif; }
+header { background: #163a45; color: white; padding: 28px 70px; }
+header strong { font-size: 25px; } header span { float: right; color: #b2d9d4; }
+main { max-width: 1000px; margin: 45px auto; }
+h1 { font-size: 48px; margin: 15px 0; } p { line-height: 1.7; max-width: 780px; }
+.eyebrow { color: #54737d; font-size: 14px; letter-spacing: 2px; }
+.card { background: white; border: 1px solid #d5e1e6; padding: 30px; margin: 25px 0; }
+a { color: #186b76; } footer { margin-top: 38px; font-size: 14px; color: #54737d; }
+</style></head><body><header><strong>Harbor Demo</strong><span>FICTIONAL DEMO PAGE</span></header><main><div class="eyebrow">HAWK-EYE / SYNTHETIC FIXTURE</div><h1>Public contact</h1><p>Contact information displayed by the fictional Harbor Demo site.</p><div class="card"><h2>Support desk</h2><p>Email: support@harbor.demo.invalid</p></div><footer>Authored synthetic example. No live collection, model inference, or ownership claim.</footer></main></body></html>
