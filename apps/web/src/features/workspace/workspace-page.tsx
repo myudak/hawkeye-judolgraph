@@ -31,6 +31,8 @@ import { CaseSummary } from "@/features/workspace/case-summary"
 import { EvidenceGraph } from "@/features/workspace/evidence-graph"
 import { EvidenceInspector } from "@/features/workspace/evidence-inspector"
 import { InvestigationTimeline } from "@/features/workspace/timeline"
+import { isDemo } from "@/lib/runtime"
+import { DemoGuide } from "@/demo/demo-guide"
 
 const ALL_FILTERS = new Set<VisualKind>([
   "page",
@@ -63,6 +65,10 @@ export function WorkspacePage() {
   )
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
+  const [inspectorTab, setInspectorTab] = useState({
+    sourceKey: "",
+    value: "overview",
+  })
   const [timelineSelection, setTimelineSelection] = useState({
     sourceKey: "",
     index: 0,
@@ -194,7 +200,7 @@ export function WorkspacePage() {
       standaloneCase?.case_id
 
   return (
-    <div className="app-page workspace-page">
+    <div className={cn("app-page workspace-page", isDemo && "demo-workspace")}>
       <AppHeader
         context="workspace"
         currentValue={`${source.kind}:${source.id}`}
@@ -205,9 +211,13 @@ export function WorkspacePage() {
           <div className="workspace-identity">
             <span className="eyebrow">
               <Pulse weight="fill" />
-              {language === "id"
-                ? " INVESTIGASI AKTIF"
-                : " ACTIVE INVESTIGATION"}
+              {isDemo
+                ? language === "id"
+                  ? "KASUS CONTOH"
+                  : "SAMPLE INVESTIGATION"
+                : language === "id"
+                  ? " INVESTIGASI AKTIF"
+                  : " ACTIVE INVESTIGATION"}
             </span>
             <strong>{host}</strong>
           </div>
@@ -293,6 +303,29 @@ export function WorkspacePage() {
           </Button>
         </header>
 
+        {isDemo ? (
+          <DemoGuide
+            key={sourceKey}
+            language={language}
+            scenarioId={id ?? ""}
+            onReplay={() => selectTimeline(0)}
+            onInspect={() => {
+              setRightCollapsed(false)
+              setInspectorTab({ sourceKey, value: "evidence" })
+              setTimelineSelection({
+                sourceKey,
+                index: Math.max(0, projection.timeline.length - 1),
+              })
+              const node =
+                projection.nodes.find(
+                  (item) => item.kind === "public_contact"
+                ) ?? defaultNode
+              if (node) selectNode(node)
+            }}
+            onSummary={() => navigate(`/summary/${source.kind}/${source.id}`)}
+          />
+        ) : null}
+
         <section
           className={cn(
             "workspace-grid",
@@ -327,6 +360,13 @@ export function WorkspacePage() {
             />
           </div>
           <EvidenceInspector
+            key={sourceKey}
+            activeTab={
+              inspectorTab.sourceKey === sourceKey
+                ? inspectorTab.value
+                : "overview"
+            }
+            onTabChange={(value) => setInspectorTab({ sourceKey, value })}
             source={source}
             projection={projection}
             selectedNode={selectedNode}

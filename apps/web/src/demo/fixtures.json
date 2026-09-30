@@ -1,0 +1,1422 @@
+{
+  "runs": [
+    {
+      "workspace_id": "demo-contact",
+      "case_id": "demo-contact-case",
+      "run_id": "demo-contact",
+      "source_kind": "synthetic_fixture",
+      "source_case_id": "demo-contact-case",
+      "seed_url": "https://harbor.demo.invalid/",
+      "investigation_name": "Sample investigation",
+      "investigation_mode": "guided",
+      "agent_mode": "demo_replay",
+      "agent_steps": 0,
+      "capture_adequacy": "usable",
+      "extraction_tier": "dom",
+      "agent_stop_reason": "completed",
+      "lead_status": "complete",
+      "updated_at": "2026-09-01T09:00:00Z",
+      "pending_leads": [],
+      "events": [
+        {
+          "event_id": "demo-contact-event-1",
+          "sequence": 1,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "run.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture"
+          }
+        },
+        {
+          "event_id": "demo-contact-event-2",
+          "sequence": 2,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "collection.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "page_id": "demo-contact-case-page-1"
+          }
+        },
+        {
+          "event_id": "demo-contact-event-3",
+          "sequence": 3,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "artifact.captured",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "artifact_id": "demo-contact-case-page-1-screenshot",
+            "artifact_type": "screenshot"
+          }
+        },
+        {
+          "event_id": "demo-contact-event-4",
+          "sequence": 4,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "collection.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "page_id": "demo-contact-case-page-2"
+          }
+        },
+        {
+          "event_id": "demo-contact-event-5",
+          "sequence": 5,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "artifact.captured",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "artifact_id": "demo-contact-case-page-2-screenshot",
+            "artifact_type": "screenshot"
+          }
+        },
+        {
+          "event_id": "demo-contact-event-6",
+          "sequence": 6,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "observation.created",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "id": "demo-contact-case-obs-1",
+            "type": "claimed_brand_identity",
+            "display_value": "Harbor Demo",
+            "raw_value": "Harbor Demo",
+            "source_page_id": "demo-contact-case-page-1",
+            "source_artifact_id": "demo-contact-case-page-1-html",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "surrounding_text": "Harbor Demo",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        },
+        {
+          "event_id": "demo-contact-event-7",
+          "sequence": 7,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "observation.created",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "id": "demo-contact-case-obs-2",
+            "type": "public_offer_claim",
+            "display_value": "Sample casino bonus offer",
+            "raw_value": "Sample casino bonus offer",
+            "source_page_id": "demo-contact-case-page-1",
+            "source_artifact_id": "demo-contact-case-page-1-html",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "surrounding_text": "Sample casino bonus offer",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        },
+        {
+          "event_id": "demo-contact-event-8",
+          "sequence": 8,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "observation.created",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "id": "demo-contact-case-obs-3",
+            "type": "public_email_address",
+            "display_value": "support@harbor.demo.invalid",
+            "raw_value": "support@harbor.demo.invalid",
+            "source_page_id": "demo-contact-case-page-2",
+            "source_artifact_id": "demo-contact-case-page-2-html",
+            "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+            "surrounding_text": "support@harbor.demo.invalid",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        },
+        {
+          "event_id": "demo-contact-event-9",
+          "sequence": 9,
+          "case_id": "demo-contact-case",
+          "run_id": "demo-contact",
+          "kind": "run.completed",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "stop_reason": "completed"
+          }
+        }
+      ],
+      "graph": {
+        "nodes": [
+          {
+            "id": "page:demo-contact-case-page-1",
+            "kind": "seed_page",
+            "label": "https://harbor.demo.invalid/",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-contact-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://harbor.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-contact-case-page-1-html",
+                "visible_text_evidence_id": "demo-contact-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+              },
+              "page_id": "demo-contact-case-page-1",
+              "url": "https://harbor.demo.invalid/",
+              "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "page:demo-contact-case-page-2",
+            "kind": "collected_page",
+            "label": "https://harbor.demo.invalid/contact",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-contact-case-page-2",
+                "depth": 1,
+                "state": "complete",
+                "final_url_display": "https://harbor.demo.invalid/contact",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-contact-case-page-2-html",
+                "visible_text_evidence_id": "demo-contact-case-page-2-visible_text",
+                "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+                "initial_screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+                "full_page_screenshot_evidence_id": "demo-contact-case-page-2-screenshot"
+              },
+              "page_id": "demo-contact-case-page-2",
+              "url": "https://harbor.demo.invalid/contact",
+              "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observation:demo-contact-case-obs-1",
+            "kind": "claimed_brand",
+            "label": "Harbor Demo",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-contact-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://harbor.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-contact-case-page-1-html",
+                "visible_text_evidence_id": "demo-contact-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+              },
+              "observation": {
+                "id": "demo-contact-case-obs-1",
+                "type": "claimed_brand_identity",
+                "display_value": "Harbor Demo",
+                "raw_value": "Harbor Demo",
+                "source_page_id": "demo-contact-case-page-1",
+                "source_artifact_id": "demo-contact-case-page-1-html",
+                "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "surrounding_text": "Harbor Demo",
+                "evidence_strength": "observed",
+                "extraction_method": "authored_fixture",
+                "limitations": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ]
+              },
+              "observation_type": "claimed_brand_identity",
+              "claim_category": "",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observation:demo-contact-case-obs-2",
+            "kind": "public_claim",
+            "label": "Sample casino bonus offer",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-contact-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://harbor.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-contact-case-page-1-html",
+                "visible_text_evidence_id": "demo-contact-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+              },
+              "observation": {
+                "id": "demo-contact-case-obs-2",
+                "type": "public_offer_claim",
+                "display_value": "Sample casino bonus offer",
+                "raw_value": "Sample casino bonus offer",
+                "source_page_id": "demo-contact-case-page-1",
+                "source_artifact_id": "demo-contact-case-page-1-html",
+                "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+                "surrounding_text": "Sample casino bonus offer",
+                "evidence_strength": "observed",
+                "extraction_method": "authored_fixture",
+                "limitations": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ]
+              },
+              "observation_type": "public_offer_claim",
+              "claim_category": "Offer claims",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observation:demo-contact-case-obs-3",
+            "kind": "public_contact",
+            "label": "support@harbor.demo.invalid",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-contact-case-page-2",
+                "depth": 1,
+                "state": "complete",
+                "final_url_display": "https://harbor.demo.invalid/contact",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-contact-case-page-2-html",
+                "visible_text_evidence_id": "demo-contact-case-page-2-visible_text",
+                "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+                "initial_screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+                "full_page_screenshot_evidence_id": "demo-contact-case-page-2-screenshot"
+              },
+              "observation": {
+                "id": "demo-contact-case-obs-3",
+                "type": "public_email_address",
+                "display_value": "support@harbor.demo.invalid",
+                "raw_value": "support@harbor.demo.invalid",
+                "source_page_id": "demo-contact-case-page-2",
+                "source_artifact_id": "demo-contact-case-page-2-html",
+                "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+                "surrounding_text": "support@harbor.demo.invalid",
+                "evidence_strength": "observed",
+                "extraction_method": "authored_fixture",
+                "limitations": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ]
+              },
+              "observation_type": "public_email_address",
+              "claim_category": "",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "navigation-page:demo-contact-case-page-2",
+            "source": "page:demo-contact-case-page-1",
+            "target": "page:demo-contact-case-page-2",
+            "relation": "public_navigation",
+            "appearance": "solid",
+            "supporting_event_ids": ["demo-contact-event-5"]
+          },
+          {
+            "id": "observed-demo-contact-case-obs-1",
+            "source": "page:demo-contact-case-page-1",
+            "target": "observation:demo-contact-case-obs-1",
+            "relation": "observed_on_page",
+            "appearance": "solid",
+            "supporting_event_ids": ["demo-contact-event-6"],
+            "evidence": {
+              "source_artifact_ids": ["demo-contact-case-page-1-html"],
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observed-demo-contact-case-obs-2",
+            "source": "page:demo-contact-case-page-1",
+            "target": "observation:demo-contact-case-obs-2",
+            "relation": "observed_on_page",
+            "appearance": "solid",
+            "supporting_event_ids": ["demo-contact-event-7"],
+            "evidence": {
+              "source_artifact_ids": ["demo-contact-case-page-1-html"],
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observed-demo-contact-case-obs-3",
+            "source": "page:demo-contact-case-page-2",
+            "target": "observation:demo-contact-case-obs-3",
+            "relation": "observed_on_page",
+            "appearance": "solid",
+            "supporting_event_ids": ["demo-contact-event-8"],
+            "evidence": {
+              "source_artifact_ids": ["demo-contact-case-page-2-html"],
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          }
+        ],
+        "animations": [
+          {
+            "target_id": "page:demo-contact-case-page-1",
+            "sequence": 1
+          },
+          {
+            "target_id": "page:demo-contact-case-page-1",
+            "sequence": 2
+          },
+          {
+            "target_id": "page:demo-contact-case-page-1",
+            "sequence": 3
+          },
+          {
+            "target_id": "page:demo-contact-case-page-2",
+            "sequence": 4
+          },
+          {
+            "target_id": "page:demo-contact-case-page-2",
+            "sequence": 5
+          },
+          {
+            "target_id": "observation:demo-contact-case-obs-1",
+            "sequence": 6
+          },
+          {
+            "target_id": "observation:demo-contact-case-obs-2",
+            "sequence": 7
+          },
+          {
+            "target_id": "observation:demo-contact-case-obs-3",
+            "sequence": 8
+          },
+          {
+            "target_id": "page:demo-contact-case-page-1",
+            "sequence": 9
+          }
+        ]
+      },
+      "source_case": {
+        "case_id": "demo-contact-case",
+        "integrity": "verified",
+        "status": "complete",
+        "started_at": "2026-09-01T09:00:00Z",
+        "completed_at": "2026-09-01T09:00:00Z",
+        "page_title": "Harbor Demo",
+        "seed_url_display": "https://harbor.demo.invalid/",
+        "final_url_display": "https://harbor.demo.invalid/",
+        "capture_outcome": "captured",
+        "access_outcome": "accessible",
+        "capture_adequacy": "usable",
+        "content_usable": true,
+        "extraction_eligible": true,
+        "extraction_tier": "dom",
+        "extraction_skip_reason": null,
+        "public_status": "complete",
+        "limitation_reasons": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim."
+        ],
+        "pages": [
+          {
+            "id": "demo-contact-case-page-1",
+            "depth": 0,
+            "state": "complete",
+            "final_url_display": "https://harbor.demo.invalid/",
+            "capture_outcome": "captured",
+            "access_outcome": "accessible",
+            "capture_adequacy": "usable",
+            "extraction_eligible": true,
+            "extraction_tier": "dom",
+            "extraction_skip_reason": null,
+            "public_status": "complete",
+            "limitation_reasons": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ],
+            "html_evidence_id": "demo-contact-case-page-1-html",
+            "visible_text_evidence_id": "demo-contact-case-page-1-visible_text",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "initial_screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "full_page_screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+          },
+          {
+            "id": "demo-contact-case-page-2",
+            "depth": 1,
+            "state": "complete",
+            "final_url_display": "https://harbor.demo.invalid/contact",
+            "capture_outcome": "captured",
+            "access_outcome": "accessible",
+            "capture_adequacy": "usable",
+            "extraction_eligible": true,
+            "extraction_tier": "dom",
+            "extraction_skip_reason": null,
+            "public_status": "complete",
+            "limitation_reasons": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ],
+            "html_evidence_id": "demo-contact-case-page-2-html",
+            "visible_text_evidence_id": "demo-contact-case-page-2-visible_text",
+            "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+            "initial_screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+            "full_page_screenshot_evidence_id": "demo-contact-case-page-2-screenshot"
+          }
+        ],
+        "evidence": [
+          {
+            "id": "demo-contact-case-page-1-html",
+            "type": "html",
+            "source_url_display": "https://harbor.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "5fcde0192d4befc815455840ec5c9de115bbd08e0a7e0f1f99426fd75f540281",
+            "page_id": "demo-contact-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-contact-case-page-1-visible_text",
+            "type": "visible_text",
+            "source_url_display": "https://harbor.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "fea5deb2e0edc6b4b51d868b8de44b9761812a39469232b6e466c5b1890dd8f8",
+            "page_id": "demo-contact-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-contact-case-page-1-screenshot",
+            "type": "screenshot",
+            "source_url_display": "https://harbor.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "879057d4a2aad7775a0e2b7133774774af73507a490e65354352d0f678368f73",
+            "page_id": "demo-contact-case-page-1",
+            "artifact_available": true,
+            "image_dimensions": {
+              "width": 1200,
+              "height": 760
+            }
+          },
+          {
+            "id": "demo-contact-case-page-2-html",
+            "type": "html",
+            "source_url_display": "https://harbor.demo.invalid/contact",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "f01f24261242e6c1392ee72f9c35eb3f58d034d639a9c101894e3e432bd76e68",
+            "page_id": "demo-contact-case-page-2",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-contact-case-page-2-visible_text",
+            "type": "visible_text",
+            "source_url_display": "https://harbor.demo.invalid/contact",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "6328fb39f015cfef6a908e4555c4ce2513077ff7e1a93a087c56db287a47cf38",
+            "page_id": "demo-contact-case-page-2",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-contact-case-page-2-screenshot",
+            "type": "screenshot",
+            "source_url_display": "https://harbor.demo.invalid/contact",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "4570a2a200684713cd932b9e176c847a2900d085705b587c88c20976bb6a02e9",
+            "page_id": "demo-contact-case-page-2",
+            "artifact_available": true,
+            "image_dimensions": {
+              "width": 1200,
+              "height": 760
+            }
+          }
+        ],
+        "observations": [
+          {
+            "id": "demo-contact-case-obs-1",
+            "type": "claimed_brand_identity",
+            "display_value": "Harbor Demo",
+            "raw_value": "Harbor Demo",
+            "source_page_id": "demo-contact-case-page-1",
+            "source_artifact_id": "demo-contact-case-page-1-html",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "surrounding_text": "Harbor Demo",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          },
+          {
+            "id": "demo-contact-case-obs-2",
+            "type": "public_offer_claim",
+            "display_value": "Sample casino bonus offer",
+            "raw_value": "Sample casino bonus offer",
+            "source_page_id": "demo-contact-case-page-1",
+            "source_artifact_id": "demo-contact-case-page-1-html",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot",
+            "surrounding_text": "Sample casino bonus offer",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          },
+          {
+            "id": "demo-contact-case-obs-3",
+            "type": "public_email_address",
+            "display_value": "support@harbor.demo.invalid",
+            "raw_value": "support@harbor.demo.invalid",
+            "source_page_id": "demo-contact-case-page-2",
+            "source_artifact_id": "demo-contact-case-page-2-html",
+            "screenshot_evidence_id": "demo-contact-case-page-2-screenshot",
+            "surrounding_text": "support@harbor.demo.invalid",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        ],
+        "candidates": [],
+        "page_count": 2,
+        "candidate_count": 0,
+        "gambling_indicator_count": 1,
+        "gambling_indicators": {
+          "status": "sample",
+          "policy_version": "demo-v1",
+          "indicator_count": 1,
+          "reviewed_observation_count": 3,
+          "category_counts": {
+            "gambling_offer": 1
+          },
+          "classifications": [
+            {
+              "observation_id": "demo-contact-case-obs-2",
+              "label": "indicator",
+              "category": "gambling_offer",
+              "display_value": "Sample casino bonus offer",
+              "matched_terms": ["casino"],
+              "source_artifact_id": "demo-contact-case-page-1-html",
+              "screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+            }
+          ],
+          "limitations": [
+            "Authored synthetic example. No live collection, model inference, or ownership claim."
+          ]
+        }
+      },
+      "gambling_indicators": {
+        "status": "sample",
+        "policy_version": "demo-v1",
+        "indicator_count": 1,
+        "reviewed_observation_count": 3,
+        "category_counts": {
+          "gambling_offer": 1
+        },
+        "classifications": [
+          {
+            "observation_id": "demo-contact-case-obs-2",
+            "label": "indicator",
+            "category": "gambling_offer",
+            "display_value": "Sample casino bonus offer",
+            "matched_terms": ["casino"],
+            "source_artifact_id": "demo-contact-case-page-1-html",
+            "screenshot_evidence_id": "demo-contact-case-page-1-screenshot"
+          }
+        ],
+        "limitations": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim."
+        ]
+      },
+      "assertions": [],
+      "reviews": [],
+      "all_reviews": [],
+      "assertion_statuses": {},
+      "pending_review_count": 0,
+      "artifacts": [
+        {
+          "name": "demo-contact-case-page-1.html.txt",
+          "type": "html"
+        },
+        {
+          "name": "demo-contact-case-page-1.txt",
+          "type": "visible_text"
+        },
+        {
+          "name": "demo-contact-case-page-1.png",
+          "type": "screenshot"
+        },
+        {
+          "name": "demo-contact-case-page-2.html.txt",
+          "type": "html"
+        },
+        {
+          "name": "demo-contact-case-page-2.txt",
+          "type": "visible_text"
+        },
+        {
+          "name": "demo-contact-case-page-2.png",
+          "type": "screenshot"
+        }
+      ]
+    },
+    {
+      "workspace_id": "demo-related",
+      "case_id": "demo-related-case",
+      "run_id": "demo-related",
+      "source_kind": "synthetic_fixture",
+      "source_case_id": "demo-related-case",
+      "seed_url": "https://tide.demo.invalid/",
+      "investigation_name": "Sample investigation",
+      "investigation_mode": "guided",
+      "agent_mode": "demo_replay",
+      "agent_steps": 0,
+      "capture_adequacy": "usable",
+      "extraction_tier": "dom",
+      "agent_stop_reason": "waiting_for_approval",
+      "lead_status": "waiting_for_approval",
+      "updated_at": "2026-09-01T09:00:00Z",
+      "pending_leads": [
+        {
+          "lead_id": "demo-harbor-lead",
+          "url": "https://harbor.demo.invalid/",
+          "hostname": "harbor.demo.invalid",
+          "status": "pending"
+        }
+      ],
+      "events": [
+        {
+          "event_id": "demo-related-event-1",
+          "sequence": 1,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "run.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture"
+          }
+        },
+        {
+          "event_id": "demo-related-event-2",
+          "sequence": 2,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "collection.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "page_id": "demo-related-case-page-1"
+          }
+        },
+        {
+          "event_id": "demo-related-event-3",
+          "sequence": 3,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "artifact.captured",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "artifact_id": "demo-related-case-page-1-screenshot",
+            "artifact_type": "screenshot"
+          }
+        },
+        {
+          "event_id": "demo-related-event-4",
+          "sequence": 4,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "observation.created",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "id": "demo-related-case-obs-1",
+            "type": "public_link",
+            "display_value": "https://harbor.demo.invalid/",
+            "raw_value": "https://harbor.demo.invalid/",
+            "source_page_id": "demo-related-case-page-1",
+            "source_artifact_id": "demo-related-case-page-1-html",
+            "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+            "surrounding_text": "https://harbor.demo.invalid/",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        },
+        {
+          "event_id": "demo-related-event-5",
+          "sequence": 5,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "candidate_page.approval_required",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "url": "https://harbor.demo.invalid/"
+          }
+        },
+        {
+          "event_id": "demo-related-event-6",
+          "sequence": 6,
+          "case_id": "demo-related-case",
+          "run_id": "demo-related",
+          "kind": "run.completed",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "stop_reason": "waiting_for_approval"
+          }
+        }
+      ],
+      "graph": {
+        "nodes": [
+          {
+            "id": "page:demo-related-case-page-1",
+            "kind": "seed_page",
+            "label": "https://tide.demo.invalid/",
+            "status": "observed",
+            "attributes": {
+              "page": {
+                "id": "demo-related-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://tide.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-related-case-page-1-html",
+                "visible_text_evidence_id": "demo-related-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-related-case-page-1-screenshot"
+              },
+              "page_id": "demo-related-case-page-1",
+              "url": "https://tide.demo.invalid/",
+              "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          },
+          {
+            "id": "observation:demo-related-case-obs-1",
+            "kind": "candidate_domain",
+            "label": "https://harbor.demo.invalid/",
+            "status": "lead",
+            "attributes": {
+              "page": {
+                "id": "demo-related-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://tide.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "accessible",
+                "capture_adequacy": "usable",
+                "extraction_eligible": true,
+                "extraction_tier": "dom",
+                "extraction_skip_reason": null,
+                "public_status": "complete",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ],
+                "html_evidence_id": "demo-related-case-page-1-html",
+                "visible_text_evidence_id": "demo-related-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-related-case-page-1-screenshot"
+              },
+              "observation": {
+                "id": "demo-related-case-obs-1",
+                "type": "public_link",
+                "display_value": "https://harbor.demo.invalid/",
+                "raw_value": "https://harbor.demo.invalid/",
+                "source_page_id": "demo-related-case-page-1",
+                "source_artifact_id": "demo-related-case-page-1-html",
+                "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+                "surrounding_text": "https://harbor.demo.invalid/",
+                "evidence_strength": "observed",
+                "extraction_method": "authored_fixture",
+                "limitations": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim."
+                ]
+              },
+              "observation_type": "public_link",
+              "claim_category": "",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "observed-demo-related-case-obs-1",
+            "source": "page:demo-related-case-page-1",
+            "target": "observation:demo-related-case-obs-1",
+            "relation": "candidate_lead",
+            "appearance": "dashed",
+            "supporting_event_ids": ["demo-related-event-4"],
+            "evidence": {
+              "source_artifact_ids": ["demo-related-case-page-1-html"],
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim."
+              ]
+            }
+          }
+        ],
+        "animations": [
+          {
+            "target_id": "page:demo-related-case-page-1",
+            "sequence": 1
+          },
+          {
+            "target_id": "page:demo-related-case-page-1",
+            "sequence": 2
+          },
+          {
+            "target_id": "page:demo-related-case-page-1",
+            "sequence": 3
+          },
+          {
+            "target_id": "observation:demo-related-case-obs-1",
+            "sequence": 4
+          },
+          {
+            "target_id": "observation:demo-related-case-obs-1",
+            "sequence": 5
+          },
+          {
+            "target_id": "page:demo-related-case-page-1",
+            "sequence": 6
+          }
+        ]
+      },
+      "source_case": {
+        "case_id": "demo-related-case",
+        "integrity": "verified",
+        "status": "complete",
+        "started_at": "2026-09-01T09:00:00Z",
+        "completed_at": "2026-09-01T09:00:00Z",
+        "page_title": "Tide Demo",
+        "seed_url_display": "https://tide.demo.invalid/",
+        "final_url_display": "https://tide.demo.invalid/",
+        "capture_outcome": "captured",
+        "access_outcome": "accessible",
+        "capture_adequacy": "usable",
+        "content_usable": true,
+        "extraction_eligible": true,
+        "extraction_tier": "dom",
+        "extraction_skip_reason": null,
+        "public_status": "complete",
+        "limitation_reasons": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim."
+        ],
+        "pages": [
+          {
+            "id": "demo-related-case-page-1",
+            "depth": 0,
+            "state": "complete",
+            "final_url_display": "https://tide.demo.invalid/",
+            "capture_outcome": "captured",
+            "access_outcome": "accessible",
+            "capture_adequacy": "usable",
+            "extraction_eligible": true,
+            "extraction_tier": "dom",
+            "extraction_skip_reason": null,
+            "public_status": "complete",
+            "limitation_reasons": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ],
+            "html_evidence_id": "demo-related-case-page-1-html",
+            "visible_text_evidence_id": "demo-related-case-page-1-visible_text",
+            "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+            "initial_screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+            "full_page_screenshot_evidence_id": "demo-related-case-page-1-screenshot"
+          }
+        ],
+        "evidence": [
+          {
+            "id": "demo-related-case-page-1-html",
+            "type": "html",
+            "source_url_display": "https://tide.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "540982cb301ec735e2cb907bc24739d533f2cf0cfde3921dc15982a635e1c083",
+            "page_id": "demo-related-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-related-case-page-1-visible_text",
+            "type": "visible_text",
+            "source_url_display": "https://tide.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "f013abe411bdbd1c317eb561c2c7dffa36c1fede9b01e30d46b0e4b23aaf9230",
+            "page_id": "demo-related-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-related-case-page-1-screenshot",
+            "type": "screenshot",
+            "source_url_display": "https://tide.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "b072fcaa2ac879da491c6ea2451382814b959fbce19ec4a5ff41606cf067ae3a",
+            "page_id": "demo-related-case-page-1",
+            "artifact_available": true,
+            "image_dimensions": {
+              "width": 1200,
+              "height": 760
+            }
+          }
+        ],
+        "observations": [
+          {
+            "id": "demo-related-case-obs-1",
+            "type": "public_link",
+            "display_value": "https://harbor.demo.invalid/",
+            "raw_value": "https://harbor.demo.invalid/",
+            "source_page_id": "demo-related-case-page-1",
+            "source_artifact_id": "demo-related-case-page-1-html",
+            "screenshot_evidence_id": "demo-related-case-page-1-screenshot",
+            "surrounding_text": "https://harbor.demo.invalid/",
+            "evidence_strength": "observed",
+            "extraction_method": "authored_fixture",
+            "limitations": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim."
+            ]
+          }
+        ],
+        "candidates": [
+          {
+            "candidate_id": "demo-harbor-lead",
+            "hostname": "harbor.demo.invalid",
+            "url": "https://harbor.demo.invalid/",
+            "state": "pending",
+            "reasons": [
+              {
+                "kind": "direct_public_link"
+              }
+            ]
+          }
+        ],
+        "page_count": 1,
+        "candidate_count": 1,
+        "gambling_indicator_count": 0,
+        "gambling_indicators": {
+          "status": "sample",
+          "policy_version": "demo-v1",
+          "indicator_count": 0,
+          "reviewed_observation_count": 0,
+          "category_counts": {},
+          "classifications": [],
+          "limitations": [
+            "Authored synthetic example. No live collection, model inference, or ownership claim."
+          ]
+        }
+      },
+      "gambling_indicators": {
+        "status": "sample",
+        "policy_version": "demo-v1",
+        "indicator_count": 0,
+        "reviewed_observation_count": 0,
+        "category_counts": {},
+        "classifications": [],
+        "limitations": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim."
+        ]
+      },
+      "assertions": [],
+      "reviews": [],
+      "all_reviews": [],
+      "assertion_statuses": {},
+      "pending_review_count": 0,
+      "artifacts": [
+        {
+          "name": "demo-related-case-page-1.html.txt",
+          "type": "html"
+        },
+        {
+          "name": "demo-related-case-page-1.txt",
+          "type": "visible_text"
+        },
+        {
+          "name": "demo-related-case-page-1.png",
+          "type": "screenshot"
+        }
+      ]
+    },
+    {
+      "workspace_id": "demo-restricted",
+      "case_id": "demo-restricted-case",
+      "run_id": "demo-restricted",
+      "source_kind": "synthetic_fixture",
+      "source_case_id": "demo-restricted-case",
+      "seed_url": "https://restricted.demo.invalid/",
+      "investigation_name": "Sample investigation",
+      "investigation_mode": "guided",
+      "agent_mode": "demo_replay",
+      "agent_steps": 0,
+      "capture_adequacy": "limited",
+      "extraction_tier": "none",
+      "agent_stop_reason": "limited",
+      "lead_status": "limited",
+      "updated_at": "2026-09-01T09:00:00Z",
+      "pending_leads": [],
+      "events": [
+        {
+          "event_id": "demo-restricted-event-1",
+          "sequence": 1,
+          "case_id": "demo-restricted-case",
+          "run_id": "demo-restricted",
+          "kind": "run.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture"
+          }
+        },
+        {
+          "event_id": "demo-restricted-event-2",
+          "sequence": 2,
+          "case_id": "demo-restricted-case",
+          "run_id": "demo-restricted",
+          "kind": "collection.started",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "page_id": "demo-restricted-case-page-1"
+          }
+        },
+        {
+          "event_id": "demo-restricted-event-3",
+          "sequence": 3,
+          "case_id": "demo-restricted-case",
+          "run_id": "demo-restricted",
+          "kind": "artifact.captured",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "artifact_id": "demo-restricted-case-page-1-screenshot",
+            "artifact_type": "screenshot"
+          }
+        },
+        {
+          "event_id": "demo-restricted-event-4",
+          "sequence": 4,
+          "case_id": "demo-restricted-case",
+          "run_id": "demo-restricted",
+          "kind": "run.completed",
+          "occurred_at": "2026-09-01T09:00:00Z",
+          "schema_version": "1",
+          "payload": {
+            "collection_mode": "synthetic_fixture",
+            "stop_reason": "limited"
+          }
+        }
+      ],
+      "graph": {
+        "nodes": [
+          {
+            "id": "page:demo-restricted-case-page-1",
+            "kind": "seed_page",
+            "label": "https://restricted.demo.invalid/",
+            "status": "limited",
+            "attributes": {
+              "page": {
+                "id": "demo-restricted-case-page-1",
+                "depth": 0,
+                "state": "complete",
+                "final_url_display": "https://restricted.demo.invalid/",
+                "capture_outcome": "captured",
+                "access_outcome": "restricted",
+                "capture_adequacy": "limited",
+                "extraction_eligible": false,
+                "extraction_tier": "none",
+                "extraction_skip_reason": "restricted_sample",
+                "public_status": "limited",
+                "limitation_reasons": [
+                  "Authored synthetic example. No live collection, model inference, or ownership claim.",
+                  "Restricted sample: no content extracted."
+                ],
+                "html_evidence_id": "demo-restricted-case-page-1-html",
+                "visible_text_evidence_id": "demo-restricted-case-page-1-visible_text",
+                "screenshot_evidence_id": "demo-restricted-case-page-1-screenshot",
+                "initial_screenshot_evidence_id": "demo-restricted-case-page-1-screenshot",
+                "full_page_screenshot_evidence_id": "demo-restricted-case-page-1-screenshot"
+              },
+              "page_id": "demo-restricted-case-page-1",
+              "url": "https://restricted.demo.invalid/",
+              "screenshot_evidence_id": "demo-restricted-case-page-1-screenshot",
+              "limitations": [
+                "Authored synthetic example. No live collection, model inference, or ownership claim.",
+                "Restricted sample: no content extracted."
+              ]
+            }
+          }
+        ],
+        "edges": [],
+        "animations": [
+          {
+            "target_id": "page:demo-restricted-case-page-1",
+            "sequence": 1
+          },
+          {
+            "target_id": "page:demo-restricted-case-page-1",
+            "sequence": 2
+          },
+          {
+            "target_id": "page:demo-restricted-case-page-1",
+            "sequence": 3
+          },
+          {
+            "target_id": "page:demo-restricted-case-page-1",
+            "sequence": 4
+          }
+        ]
+      },
+      "source_case": {
+        "case_id": "demo-restricted-case",
+        "integrity": "verified",
+        "status": "complete",
+        "started_at": "2026-09-01T09:00:00Z",
+        "completed_at": "2026-09-01T09:00:00Z",
+        "page_title": "Content unavailable",
+        "seed_url_display": "https://restricted.demo.invalid/",
+        "final_url_display": "https://restricted.demo.invalid/",
+        "capture_outcome": "captured",
+        "access_outcome": "restricted",
+        "capture_adequacy": "limited",
+        "content_usable": false,
+        "extraction_eligible": false,
+        "extraction_tier": "none",
+        "extraction_skip_reason": "restricted_sample",
+        "public_status": "limited",
+        "limitation_reasons": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim.",
+          "Restricted sample: no content extracted."
+        ],
+        "pages": [
+          {
+            "id": "demo-restricted-case-page-1",
+            "depth": 0,
+            "state": "complete",
+            "final_url_display": "https://restricted.demo.invalid/",
+            "capture_outcome": "captured",
+            "access_outcome": "restricted",
+            "capture_adequacy": "limited",
+            "extraction_eligible": false,
+            "extraction_tier": "none",
+            "extraction_skip_reason": "restricted_sample",
+            "public_status": "limited",
+            "limitation_reasons": [
+              "Authored synthetic example. No live collection, model inference, or ownership claim.",
+              "Restricted sample: no content extracted."
+            ],
+            "html_evidence_id": "demo-restricted-case-page-1-html",
+            "visible_text_evidence_id": "demo-restricted-case-page-1-visible_text",
+            "screenshot_evidence_id": "demo-restricted-case-page-1-screenshot",
+            "initial_screenshot_evidence_id": "demo-restricted-case-page-1-screenshot",
+            "full_page_screenshot_evidence_id": "demo-restricted-case-page-1-screenshot"
+          }
+        ],
+        "evidence": [
+          {
+            "id": "demo-restricted-case-page-1-html",
+            "type": "html",
+            "source_url_display": "https://restricted.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "d4bdb364e20ba32539960af3a0174f407292653141ca4770c0c158291d6c67e5",
+            "page_id": "demo-restricted-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-restricted-case-page-1-visible_text",
+            "type": "visible_text",
+            "source_url_display": "https://restricted.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "b057961e81be26259deb36847c14b7f53f9c63c338c810d8867476b0858663d4",
+            "page_id": "demo-restricted-case-page-1",
+            "artifact_available": true
+          },
+          {
+            "id": "demo-restricted-case-page-1-screenshot",
+            "type": "screenshot",
+            "source_url_display": "https://restricted.demo.invalid/",
+            "collected_at": "2026-09-01T09:00:00Z",
+            "sha256": "f170a4b50732836061b56b36baecd628e5b49db38a55efb76d9aa262b1b58a2f",
+            "page_id": "demo-restricted-case-page-1",
+            "artifact_available": true,
+            "image_dimensions": {
+              "width": 1200,
+              "height": 760
+            }
+          }
+        ],
+        "observations": [],
+        "candidates": [],
+        "page_count": 1,
+        "candidate_count": 0,
+        "gambling_indicator_count": 0,
+        "gambling_indicators": {
+          "status": "sample",
+          "policy_version": "demo-v1",
+          "indicator_count": 0,
+          "reviewed_observation_count": 0,
+          "category_counts": {},
+          "classifications": [],
+          "limitations": [
+            "Authored synthetic example. No live collection, model inference, or ownership claim."
+          ]
+        }
+      },
+      "gambling_indicators": {
+        "status": "sample",
+        "policy_version": "demo-v1",
+        "indicator_count": 0,
+        "reviewed_observation_count": 0,
+        "category_counts": {},
+        "classifications": [],
+        "limitations": [
+          "Authored synthetic example. No live collection, model inference, or ownership claim."
+        ]
+      },
+      "assertions": [],
+      "reviews": [],
+      "all_reviews": [],
+      "assertion_statuses": {},
+      "pending_review_count": 0,
+      "artifacts": [
+        {
+          "name": "demo-restricted-case-page-1.html.txt",
+          "type": "html"
+        },
+        {
+          "name": "demo-restricted-case-page-1.txt",
+          "type": "visible_text"
+        },
+        {
+          "name": "demo-restricted-case-page-1.png",
+          "type": "screenshot"
+        }
+      ]
+    }
+  ],
+  "assets": {
+    "demo-contact-case": {
+      "demo-contact-case-page-1-html": "demo-contact-case-page-1.html.txt",
+      "demo-contact-case-page-1-visible_text": "demo-contact-case-page-1.txt",
+      "demo-contact-case-page-1-screenshot": "demo-contact-case-page-1.png",
+      "demo-contact-case-page-2-html": "demo-contact-case-page-2.html.txt",
+      "demo-contact-case-page-2-visible_text": "demo-contact-case-page-2.txt",
+      "demo-contact-case-page-2-screenshot": "demo-contact-case-page-2.png"
+    },
+    "demo-related-case": {
+      "demo-related-case-page-1-html": "demo-related-case-page-1.html.txt",
+      "demo-related-case-page-1-visible_text": "demo-related-case-page-1.txt",
+      "demo-related-case-page-1-screenshot": "demo-related-case-page-1.png"
+    },
+    "demo-restricted-case": {
+      "demo-restricted-case-page-1-html": "demo-restricted-case-page-1.html.txt",
+      "demo-restricted-case-page-1-visible_text": "demo-restricted-case-page-1.txt",
+      "demo-restricted-case-page-1-screenshot": "demo-restricted-case-page-1.png"
+    }
+  },
+  "limitation": "Authored synthetic example. No live collection, model inference, or ownership claim."
+}

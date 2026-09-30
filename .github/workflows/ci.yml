@@ -46,6 +46,8 @@ jobs:
           uv run playwright install --with-deps chromium
       - name: Run complete quality gate
         run: pnpm check:core
+      - name: Verify backend-free static demo
+        run: uv run python tools/verification/verify_static_demo.py
 
   marketing:
     runs-on: ubuntu-24.04

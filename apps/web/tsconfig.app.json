@@ -22,6 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
+      "@/api/transport": ["./src/api/live-client.ts"],
       "@/*": ["./src/*"]
     }
   },

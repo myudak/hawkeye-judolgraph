@@ -476,3 +476,23 @@ under `docs/{architecture,security,operations,guides}`. Docker and Vercel entry 
 repository root to preserve one-command operator workflows. This is a source-navigation change
 only and does not alter evidence schemas, case packages, review history, evaluation truth, or
 runtime safety policy.
+
+## ADR-040 — Public demonstration is a separate static sample build
+
+**Status:** accepted.
+
+The existing React investigator UI has a build-selected local sample adapter for a backend-free
+public demonstration. `pnpm build:demo` writes `apps/web/dist-demo`; ordinary live builds retain
+the HTTP adapter and backend bundle path. There is no runtime URL or query flag that enables live
+collection inside the static demo.
+
+The demo accepts only bundled fictional `.invalid` scenarios, labels its data as sample material,
+and replays authored capture stages without collector or model calls. Source HTML is inert text;
+screenshots, observations, events, and graph edges retain fixture provenance. Approval reveals a
+bundled candidate page and reviews remain bounded browser-session state with a reset action.
+Reports identify synthetic data and session-only review state. These examples are not live
+evidence or benchmark measurements, and do not change the live safety or interpretation policy.
+
+Relative assets and hash routes support static subdirectory hosting. The existing marketing
+deployment remains independent. Offline installation and a service worker are deferred; the build
+can be served from a local static HTTP host without internet access.

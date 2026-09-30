@@ -1,0 +1,12 @@
+Harbor Demo
+FICTIONAL DEMO PAGE
+HAWK-EYE / SYNTHETIC FIXTURE
+Public contact
+
+Contact information displayed by the fictional Harbor Demo site.
+
+Support desk
+
+Email: support@harbor.demo.invalid
+
+Authored synthetic example. No live collection, model inference, or ownership claim.

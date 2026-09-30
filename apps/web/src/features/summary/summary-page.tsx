@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { api, runExportUrl } from "@/api/client"
+import { isDemo } from "@/lib/runtime"
 import type { CaseDetails, EvidenceSource, IndicatorSummary } from "@/api/types"
 import { AppHeader } from "@/components/app-header"
 import { Badge } from "@/components/ui/badge"
@@ -185,6 +186,13 @@ export function SummaryPage() {
         currentValue={`${source.kind}:${source.id}`}
       />
       <main className="report-main">
+        {isDemo ? (
+          <p className="demo-report-note">
+            Demo · Sample data. This report uses authored fictional pages, with
+            no live collection or model inference. Reviews are local to this
+            browser session.
+          </p>
+        ) : null}
         <header className="report-heading">
           <div>
             <p className="eyebrow">
@@ -352,21 +360,29 @@ export function SummaryPage() {
               <div className="export-actions">
                 {run ? (
                   <>
-                    <a href={runExportUrl(run.workspace_id, "md")} download>
+                    <a
+                      href={runExportUrl(run.workspace_id, "md")}
+                      download={isDemo ? `${run.workspace_id}.md` : true}
+                    >
                       <FileMd weight="duotone" />
                       <span>Markdown</span>
                       <small>.md report</small>
                     </a>
-                    <a href={runExportUrl(run.workspace_id, "json")} download>
+                    <a
+                      href={runExportUrl(run.workspace_id, "json")}
+                      download={isDemo ? `${run.workspace_id}.json` : true}
+                    >
                       <FileJs weight="duotone" />
                       <span>JSON</span>
                       <small>Structured case</small>
                     </a>
-                    <a href={runExportUrl(run.workspace_id, "zip")} download>
-                      <Archive weight="duotone" />
-                      <span>Case archive</span>
-                      <small>.zip package</small>
-                    </a>
+                    {!isDemo ? (
+                      <a href={runExportUrl(run.workspace_id, "zip")} download>
+                        <Archive weight="duotone" />
+                        <span>Case archive</span>
+                        <small>.zip package</small>
+                      </a>
+                    ) : null}
                   </>
                 ) : null}
                 <button type="button" onClick={() => window.print()}>

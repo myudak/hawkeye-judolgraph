@@ -24,6 +24,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useDeferredValue, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { isDemo } from "@/lib/runtime"
 
 import { api, caseArtifactUrl, runArtifactUrl } from "@/api/client"
 import type {
@@ -680,7 +681,12 @@ function ReviewForm({ run }: { run: RunDetails }) {
       await queryClient.invalidateQueries({
         queryKey: ["run", run.workspace_id],
       })
-      toast.success("Append-only review version saved")
+      await queryClient.invalidateQueries({ queryKey: ["runs"] })
+      toast.success(
+        isDemo
+          ? "Demo review saved for this session"
+          : "Append-only review version saved"
+      )
       setReason("")
     },
     onError: (error) => toast.error(error.message),
@@ -694,6 +700,12 @@ function ReviewForm({ run }: { run: RunDetails }) {
         mutation.mutate()
       }}
     >
+      {isDemo ? (
+        <p className="boundary-copy">
+          This review changes sample state in this browser session. Reset demo
+          to start over.
+        </p>
+      ) : null}
       <Label htmlFor="reviewer">Reviewer label</Label>
       <Input
         id="reviewer"
@@ -733,7 +745,11 @@ function ReviewForm({ run }: { run: RunDetails }) {
         onChange={(event) => setReason(event.target.value)}
       />
       <Button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? "Saving review…" : "Append review decision"}
+        {mutation.isPending
+          ? "Saving review…"
+          : isDemo
+            ? "Save demo review"
+            : "Append review decision"}
       </Button>
     </form>
   )
@@ -867,6 +883,8 @@ export function EvidenceInspector({
   selectedEvent,
   onFocusNode,
   language,
+  activeTab,
+  onTabChange,
 }: {
   source: EvidenceSource
   projection: GraphProjection
@@ -874,12 +892,22 @@ export function EvidenceInspector({
   selectedEvent?: InvestigationEvent | null
   onFocusNode: (nodeId: string) => void
   language: "en" | "id"
+  activeTab?: string
+  onTabChange?: (value: string) => void
 }) {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const caseDetails = sourceCase(source)
+  const attachedPage = selectedNode?.attributes.page as
+    CaseDetails["pages"][number] | undefined
+  const candidateCase =
+    source.kind === "run" ? source.details.candidate_case : undefined
+  const caseDetails = candidateCase?.pages.some(
+    (page) => page.id === attachedPage?.id
+  )
+    ? candidateCase
+    : sourceCase(source)
   const cards = useMemo(
     () =>
       source.kind === "case"
@@ -908,7 +936,12 @@ export function EvidenceInspector({
         await queryClient.invalidateQueries({
           queryKey: ["run", run.workspace_id],
         })
-      toast.success("Approval recorded before bounded candidate collection")
+      await queryClient.invalidateQueries({ queryKey: ["runs"] })
+      toast.success(
+        isDemo
+          ? "Sample candidate revealed for this session"
+          : "Approval recorded before bounded candidate collection"
+      )
     },
     onError: (error) => toast.error(error.message),
   })
@@ -939,7 +972,12 @@ export function EvidenceInspector({
 
   return (
     <aside className="evidence-inspector" aria-label="Evidence inspector">
-      <Tabs defaultValue="overview" className="inspector-tabs">
+      <Tabs
+        defaultValue="overview"
+        value={activeTab}
+        onValueChange={onTabChange}
+        className="inspector-tabs"
+      >
         <TabsList className="inspector-tab-list">
           <TabsTrigger value="overview">
             {language === "id" ? "Ringkas" : "Overview"}
@@ -1045,8 +1083,9 @@ export function EvidenceInspector({
                   <ShieldWarning weight="duotone" /> Approval boundary
                 </h3>
                 <p>
-                  Collect one directly observed candidate page only after an
-                  explicit approval event is persisted.
+                  {isDemo
+                    ? "Reveal the bundled candidate page to try the approval and review flow. This does not collect a live website."
+                    : "Collect one directly observed candidate page only after an explicit approval event is persisted."}
                 </p>
                 <Button
                   variant="outline"
@@ -1055,7 +1094,9 @@ export function EvidenceInspector({
                 >
                   {approve.isPending
                     ? "Collecting approved page…"
-                    : "Approve candidate collection"}
+                    : isDemo
+                      ? "Reveal sample candidate page"
+                      : "Approve candidate collection"}
                 </Button>
               </section>
             ) : null}

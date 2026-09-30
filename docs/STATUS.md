@@ -1,5 +1,28 @@
 # Project Status
 
+## Backend-free interactive demo — 2026-09-30
+
+- The investigator UI now has a separate static demo build with dropdown-only fictional scenarios:
+  public contact provenance, approval/review of a linked site, and restricted capture with no
+  inferred observations. The scan is explicitly accelerated sample playback.
+- Graph/timeline, evidence screenshots, a three-step guide, Markdown/JSON export, session-only
+  approval and review versions, reset, theme switching, and Indonesian/English entry flows work
+  without an API, database, account, model key, or runtime Python installation.
+- `pnpm build:demo` outputs `apps/web/dist-demo`; relative assets and hash routes support a static
+  subdirectory. Ordinary live builds exclude demo artifacts and retain the existing HTTP client.
+  Setup, deployment settings, fixture regeneration, and limitations are in `docs/STATIC_DEMO.md`.
+- The full `pnpm check` gate passed with four pytest workers: 10 frontend tests, both Vite builds,
+  Ruff, strict mypy over 73 files, 244 Python tests, and marketing diagnostics. Five optional
+  submission-archive tests now explicitly skip when the ignored GEMASTIK archive is absent;
+  their original assertions still run when it is present. Historical evaluation inputs are unchanged.
+- Static-only browser verification passed all three flows, refresh, contact source screenshots,
+  approval/review/reset, JSON/Markdown downloads, unknown routes, both themes, Indonesian copy,
+  mobile layout, and subpath hosting, with zero API or external page requests.
+
+These examples demonstrate product interaction. They are authored sample data, not additional live
+research results. A service worker/offline installation, JEV integration, and ChatGPT authentication
+are not part of this milestone.
+
 ## Gemastik license and document snapshot — 2026-08-13
 
 - Project-authored source now adopts MIT through the root `LICENSE`, JavaScript/Python metadata,
